@@ -7,7 +7,7 @@
 |---|---|---|---|
 | **0. 土台** | Vite+React+TS+Tailwind+Zustand 雛形、モード切替の骨組み、カラー/フォント適用、`.env.example`、抽象IFの空定義 | 2モードが切り替わる空アプリが動く | 🚧 進行中 |
 | **1. 妖精表示＋ペルソナ** | 2Dキャラ表示（`CharacterRenderer`＋仮イラスト・表情差分）、`characters/default/persona.md` | カメラ右下／ホーム中央に妖精が出る | ⬜ |
-| **2. 会話（Claude）** | `api/chat.ts`＋`ChatProvider`、ホームの会話UI | 妖精とおしゃべりできる（APIプロキシ＆ペルソナ参照の型を検証） | ⬜ |
+| **2. 会話（Gemini）** | `api/chat.ts`＋`ChatProvider`（Geminiで実装、将来Claudeに差し替え可）、ホームの会話UI | 妖精とおしゃべりできる（APIプロキシ＆ペルソナ参照の型を検証） | ⬜ |
 | **3. 撮影→アイテム化（Gemini）** ⚠️核 | ライブ撮影、`api/generate-item.ts`、`ImageGenProvider`、リロール、元写真破棄 | 撮影→統一絵柄のアイコン＋名前説明が出る（絵柄統一をここで詰める） | ⬜ |
 | **4. 永続化（Supabase）** | 匿名認証、`items`＋RLS、Storage、`ItemRepository`、図鑑UI | 集めたアイテムが保存され図鑑に並ぶ | ⬜ |
 | **5. 音声（Fish Audio）** | `api/tts.ts`＋`TtsProvider`、ON/OFF | 妖精が喋る | ⬜ |

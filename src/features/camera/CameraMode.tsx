@@ -1,9 +1,14 @@
+import { useAppStore } from '../../store/appStore'
+import Sprite2DRenderer from '../../lib/character/Sprite2DRenderer'
+
 /**
- * カメラモード（プレースホルダー）。
+ * カメラモード。
  * ライブ撮影 → AI アイテム化（STEP3）・風景コメント（STEP6）をこの中に実装していく。
  * 妖精は画面右下に小さく表示する。
  */
 export default function CameraMode() {
+  const characterId = useAppStore((s) => s.characterId)
+
   return (
     <div className="relative flex h-full flex-col items-center justify-center gap-6 bg-slate-900/90 px-6 text-center text-white">
       <div>
@@ -14,8 +19,8 @@ export default function CameraMode() {
       </div>
 
       {/* 妖精は画面右下に小さく */}
-      <div className="absolute bottom-4 right-4 flex h-20 w-20 items-center justify-center rounded-full bg-white/80 text-4xl shadow-pop">
-        🧚
+      <div className="absolute bottom-4 right-4">
+        <Sprite2DRenderer characterId={characterId} expression="neutral" size="sm" />
       </div>
     </div>
   )

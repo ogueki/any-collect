@@ -9,7 +9,7 @@
 - React 19 + TypeScript + Vite + Tailwind CSS + Zustand
 - API層：Vercel Serverless Functions（`api/`）
 - バックエンド：Supabase（Postgres / Storage / 匿名認証）
-- AI：Gemini 2.5 Flash Image（画像）/ Gemini（定型テキスト）/ Claude（会話）/ Fish Audio（音声）
+- AI：Gemini 2.5 Flash Image（画像）/ Gemini（定型テキスト・会話）/ Fish Audio（音声）。会話は将来 Claude に切替可（`ChatProvider` 実装の差し替え）
 
 ## 開発コマンド
 - `npm run dev` … 開発サーバ
@@ -37,7 +37,7 @@
 - Supabase は全テーブル RLS を有効化し、ユーザーは自分の行のみアクセス可。
 
 ## 環境変数 / シークレット
-- サーバ側（Vercel Functions）：`GEMINI_API_KEY` / `ANTHROPIC_API_KEY` / `FISH_AUDIO_API_KEY` / `SUPABASE_SERVICE_ROLE_KEY`
+- サーバ側（Vercel Functions）：`GEMINI_API_KEY` / `FISH_AUDIO_API_KEY` / `SUPABASE_SERVICE_ROLE_KEY`（`ANTHROPIC_API_KEY` は将来 Claude で会話する場合のみ）
 - クライアント：`VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` のみ（公開前提の値）
 - `.env.example` を更新したら必ずコミット。実値はコミットしない。
 
