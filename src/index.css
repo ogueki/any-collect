@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: theme('fontFamily.sans');
+  color: #3f3d56;
+  /* ポップでやわらかい背景グラデーション */
+  background: linear-gradient(160deg, #fdf4ff 0%, #eef2ff 45%, #ecfdf5 100%);
+  -webkit-font-smoothing: antialiased;
+}
