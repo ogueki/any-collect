@@ -92,8 +92,9 @@ any-collect/
     generate-item.ts         # Gemini: 写真→アイコン+名前+説明
     describe-scene.ts        # Gemini: 風景コメント
     synthesize.ts            # Gemini: アイテム合成
-    chat.ts                  # Claude: 妖精会話
+    chat.ts                  # Gemini: 妖精会話（将来 Claude へ切替可）
     tts.ts                   # Fish Audio: 音声
+    _lib/                    # Function 共通のサーバ内部ユーティリティ（persona/gemini 等・ルート対象外）
   src/
     features/{camera,home,codex,kiln,fairy}/
     lib/
@@ -142,3 +143,4 @@ any-collect/
 - アプリ正式名称・妖精のデフォルトキャラ設定。
 - レア度/カテゴリの体系。
 - 図鑑のソーシャル要素（共有等）の是非。
+- **イベント/トリガー機能**：行動・状況起点で妖精がイベントを起こす（例：道に迷う→コンパス付与）。詳細は ROADMAP のバックログ参照。STEP4 以降に独立 STEP として追加想定。
