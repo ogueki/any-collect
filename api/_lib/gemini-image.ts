@@ -54,8 +54,8 @@ export async function generateItemImage({
           ],
         },
       ],
-      // 画像モデルは TEXT+IMAGE を返す前提。絵柄を揺らさないよう温度は低め。
-      generationConfig: { responseModalities: ['TEXT', 'IMAGE'], temperature: 0.4 },
+      // 画像モデルは TEXT+IMAGE を返す前提。忠実さ優先で温度は低め（創作的な要素追加を抑制）。
+      generationConfig: { responseModalities: ['TEXT', 'IMAGE'], temperature: 0.25 },
     }),
   })
 
