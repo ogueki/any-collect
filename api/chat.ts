@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { loadPersona, buildSystemPrompt } from './_lib/persona'
-import { generateChatReply, type ChatTurn } from './_lib/gemini'
+import { loadPersona, buildSystemPrompt } from './_lib/persona.js'
+import { generateChatReply, type ChatTurn } from './_lib/gemini.js'
 
 /**
  * 会話 API プロキシ。Gemini の API キーはサーバ側にのみ置く（claude.md 原則1）。

@@ -6,8 +6,8 @@
  * 追加依存を避けるため SDK ではなく Node18+ の global fetch で REST を叩く。
  */
 
-import type { InlineImage } from './gemini-image'
-import { RARITY_VALUES, type Rarity } from './item-prompt'
+import type { InlineImage } from './gemini-image.js'
+import { RARITY_VALUES, type Rarity } from './item-prompt.js'
 
 const DEFAULT_MODEL = 'gemini-2.5-flash'
 

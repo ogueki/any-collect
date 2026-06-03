@@ -1,8 +1,8 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { loadPersona } from './_lib/persona'
-import { buildItemImagePrompt, buildItemMetaPrompt } from './_lib/item-prompt'
-import { generateItemImage, type InlineImage } from './_lib/gemini-image'
-import { generateItemMeta } from './_lib/gemini'
+import { loadPersona } from './_lib/persona.js'
+import { buildItemImagePrompt, buildItemMetaPrompt } from './_lib/item-prompt.js'
+import { generateItemImage, type InlineImage } from './_lib/gemini-image.js'
+import { generateItemMeta } from './_lib/gemini.js'
 
 /**
  * 撮影→アイテム化 API プロキシ（STEP3 の核）。
