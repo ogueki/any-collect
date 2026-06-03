@@ -9,8 +9,9 @@ import type { FairyExpression, FairyViewProps } from './CharacterRenderer'
  * 将来は同じ FairyViewProps で Live2D / 3D 実装に差し替え可能。
  */
 
-// 全キャラの sprites/*.png を URL として取り込む（存在する分だけマッチ）
-const spriteModules = import.meta.glob('/src/characters/*/sprites/*.png', {
+// 全キャラの sprites/*.png を URL として取り込む（存在する分だけマッチ）。
+// ⚠️ 絶対パターン('/src/...')は Windows＋非ASCIIパスでキー変換が壊れるため、相対パターンを使う。
+const spriteModules = import.meta.glob('../../characters/*/sprites/*.png', {
   eager: true,
   query: '?url',
   import: 'default',
@@ -20,7 +21,7 @@ function resolveSprite(
   characterId: string,
   expression: FairyExpression,
 ): string | undefined {
-  const base = `/src/characters/${characterId}/sprites`
+  const base = `../../characters/${characterId}/sprites`
   // 指定表情が無ければ neutral にフォールバック
   return spriteModules[`${base}/${expression}.png`] ?? spriteModules[`${base}/neutral.png`]
 }
