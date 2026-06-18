@@ -7,11 +7,14 @@ import type { GeneratedItem } from '../../lib/ai/imageProvider'
 import type { Rarity } from '../../types'
 
 /**
- * カメラモード（STEP3 スパイク）。
- * ライブ撮影 → AI アイテム化 → 結果プレビュー の最短ループ。
+ * カメラモード（STEP3）。
+ * ライブ撮影 → AI アイテム化 → 結果プレビュー（→ リロール）の最短ループ。
  * 目的は「絵柄の統一感」を実際に何枚か生成して目視で詰めること。
- * リロール・確定/図鑑登録・元写真の明示破棄ハンドリングは後続 STEP で肉付けする
- * （現状は永続化しないので、生成後に元写真はメモリから自然に破棄される）。
+ *
+ * リロール: 気に入らなければ「同じ元写真」から作り直す（spec.md「元写真はこの間だけ保持」）。
+ * 元写真は撮影〜プレビュー中だけ capturedPhotoRef にメモリ保持し、
+ * 「もう一回撮る」/アンマウントで明示破棄する（永続保存はしない＝プライバシー方針）。
+ * 確定/図鑑登録は STEP4 で肉付けする。
  */
 
 // 生成画像が大きすぎないよう、撮影フレームの長辺をこのサイズに縮小してから送る。
@@ -69,6 +72,8 @@ export default function CameraMode() {
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  // 撮影フレームをプレビュー〜リロールの間だけメモリ保持する（永続保存しない）。
+  const capturedPhotoRef = useRef<Blob | null>(null)
 
   // カメラ可否は環境で静的に決まるので初期描画時に判定（effect 内 setState を避ける）。
   const [cameraError, setCameraError] = useState<string | null>(() =>
@@ -106,23 +111,56 @@ export default function CameraMode() {
     }
   }, [])
 
+  // アンマウント時に保持中の元写真を明示破棄する（プライバシー方針）。
+  useEffect(
+    () => () => {
+      capturedPhotoRef.current = null
+    },
+    [],
+  )
+
+  // 保持した元写真からアイテムを生成する。撮影直後とリロールで共有する。
+  const generateFrom = useCallback(
+    async (photo: Blob) => {
+      if (generating) return
+      setGenerating(true)
+      setGenError(null)
+      try {
+        const item = await imageGenProvider.generateItem(photo, { personaId: characterId })
+        setResult(item)
+      } catch (err) {
+        setGenError(err instanceof Error ? err.message : 'アイテム化に失敗しました')
+      } finally {
+        setGenerating(false)
+      }
+    },
+    [characterId, generating],
+  )
+
   const handleCapture = useCallback(async () => {
     const video = videoRef.current
     if (!video || generating) return
-    setGenerating(true)
-    setGenError(null)
+    let photo: Blob
     try {
-      const photo = await captureFrame(video)
-      const item = await imageGenProvider.generateItem(photo, { personaId: characterId })
-      setResult(item)
+      photo = await captureFrame(video)
     } catch (err) {
-      setGenError(err instanceof Error ? err.message : 'アイテム化に失敗しました')
-    } finally {
-      setGenerating(false)
+      setGenError(err instanceof Error ? err.message : '画像の取り出しに失敗しました')
+      return
     }
-  }, [characterId, generating])
+    capturedPhotoRef.current = photo
+    await generateFrom(photo)
+  }, [generating, generateFrom])
 
+  // リロール: 同じ元写真から作り直す（新しく撮り直さない）。
+  const handleReroll = useCallback(() => {
+    const photo = capturedPhotoRef.current
+    if (!photo || generating) return
+    void generateFrom(photo)
+  }, [generating, generateFrom])
+
+  // もう一回撮る: 保持中の元写真を破棄してライブに戻る。
   const handleRetry = useCallback(() => {
+    capturedPhotoRef.current = null
     setResult(null)
     setGenError(null)
   }, [])
@@ -188,13 +226,25 @@ export default function CameraMode() {
               {result.description}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleRetry}
-            className="rounded-full bg-mint px-6 py-2 font-bold text-slate-900 shadow-pop transition active:scale-95"
-          >
-            もう一回撮る
-          </button>
+          {genError && (
+            <p className="rounded-full bg-slate-900/80 px-3 py-1 text-xs text-peach">{genError}</p>
+          )}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleReroll}
+              className="rounded-full bg-mint px-6 py-2 font-bold text-slate-900 shadow-pop transition active:scale-95"
+            >
+              描き直す
+            </button>
+            <button
+              type="button"
+              onClick={handleRetry}
+              className="rounded-full border border-white/40 px-6 py-2 font-bold text-white transition active:scale-95"
+            >
+              もう一回撮る
+            </button>
+          </div>
         </div>
       )}
 
