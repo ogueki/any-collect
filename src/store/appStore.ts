@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type AppMode = 'home' | 'camera'
+export type AppMode = 'home' | 'camera' | 'codex'
 
 interface AppState {
   /** 現在のモード */

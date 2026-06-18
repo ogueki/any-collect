@@ -4,7 +4,8 @@ import Sprite2DRenderer from '../../lib/character/Sprite2DRenderer'
 import type { FairyExpression } from '../../lib/character/CharacterRenderer'
 import { imageGenProvider } from '../../lib/ai/imageGen'
 import type { GeneratedItem } from '../../lib/ai/imageProvider'
-import type { Rarity } from '../../types'
+import { useCodexStore } from '../../store/codexStore'
+import { RARITY_CLASS, RARITY_LABEL } from '../../lib/rarity'
 
 /**
  * カメラモード（STEP3）。
@@ -13,28 +14,12 @@ import type { Rarity } from '../../types'
  *
  * リロール: 気に入らなければ「同じ元写真」から作り直す（spec.md「元写真はこの間だけ保持」）。
  * 元写真は撮影〜プレビュー中だけ capturedPhotoRef にメモリ保持し、
- * 「もう一回撮る」/アンマウントで明示破棄する（永続保存はしない＝プライバシー方針）。
- * 確定/図鑑登録は STEP4 で肉付けする。
+ * 「もう一回撮る」/確定/アンマウントで明示破棄する（永続保存はしない＝プライバシー方針）。
+ * 確定（図鑑にしまう）で codexStore 経由で永続化し、元写真を破棄してライブに戻る（STEP4a）。
  */
 
 // 生成画像が大きすぎないよう、撮影フレームの長辺をこのサイズに縮小してから送る。
 const MAX_DIMENSION = 1024
-
-const RARITY_LABEL: Record<Rarity, string> = {
-  common: 'コモン',
-  uncommon: 'アンコモン',
-  rare: 'レア',
-  epic: 'エピック',
-  legendary: 'レジェンダリー',
-}
-
-const RARITY_CLASS: Record<Rarity, string> = {
-  common: 'bg-slate-200 text-slate-600',
-  uncommon: 'bg-mint/30 text-emerald-700',
-  rare: 'bg-sky-200 text-sky-700',
-  epic: 'bg-lavender/40 text-violet-700',
-  legendary: 'bg-lemon/60 text-amber-700',
-}
 
 /**
  * 利用可能なら getUserMedia を返す（無ければ undefined）。
@@ -69,6 +54,7 @@ function captureFrame(video: HTMLVideoElement): Promise<Blob> {
 
 export default function CameraMode() {
   const characterId = useAppStore((s) => s.characterId)
+  const addToCodex = useCodexStore((s) => s.addFromGenerated)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -82,6 +68,9 @@ export default function CameraMode() {
   const [generating, setGenerating] = useState(false)
   const [genError, setGenError] = useState<string | null>(null)
   const [result, setResult] = useState<GeneratedItem | null>(null)
+  const [saving, setSaving] = useState(false)
+  // 確定後にライブへ戻った直後だけ出す「しまったよ」フィードバック。
+  const [savedFlash, setSavedFlash] = useState(false)
 
   // マウント時にライブカメラを開始（背面カメラ優先）。アンマウントで停止。
   useEffect(() => {
@@ -165,6 +154,31 @@ export default function CameraMode() {
     setGenError(null)
   }, [])
 
+  // 図鑑にしまう: 生成結果を永続化し、元写真を破棄してライブに戻る（連続撮影できる）。
+  const handleConfirm = useCallback(async () => {
+    if (!result || saving) return
+    setSaving(true)
+    setGenError(null)
+    try {
+      await addToCodex(result)
+      // 確定したので元写真を破棄（spec.md「確定すると元写真は破棄」）。
+      capturedPhotoRef.current = null
+      setResult(null)
+      setSavedFlash(true)
+    } catch (err) {
+      setGenError(err instanceof Error ? err.message : '図鑑への登録に失敗しました')
+    } finally {
+      setSaving(false)
+    }
+  }, [result, saving, addToCodex])
+
+  // 「しまったよ」表示は数秒で自然に消す。
+  useEffect(() => {
+    if (!savedFlash) return
+    const timer = setTimeout(() => setSavedFlash(false), 2000)
+    return () => clearTimeout(timer)
+  }, [savedFlash])
+
   const expression: FairyExpression = generating
     ? 'thinking'
     : result
@@ -229,21 +243,33 @@ export default function CameraMode() {
           {genError && (
             <p className="rounded-full bg-slate-900/80 px-3 py-1 text-xs text-peach">{genError}</p>
           )}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col items-center gap-3">
             <button
               type="button"
-              onClick={handleReroll}
-              className="rounded-full bg-mint px-6 py-2 font-bold text-slate-900 shadow-pop transition active:scale-95"
+              onClick={() => void handleConfirm()}
+              disabled={saving}
+              className="rounded-full bg-mint px-8 py-2.5 font-bold text-slate-900 shadow-pop transition active:scale-95 disabled:opacity-50"
             >
-              描き直す
+              {saving ? '登録中…' : '図鑑にしまう'}
             </button>
-            <button
-              type="button"
-              onClick={handleRetry}
-              className="rounded-full border border-white/40 px-6 py-2 font-bold text-white transition active:scale-95"
-            >
-              もう一回撮る
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleReroll}
+                disabled={saving}
+                className="rounded-full border border-white/40 px-6 py-2 font-bold text-white transition active:scale-95 disabled:opacity-50"
+              >
+                描き直す
+              </button>
+              <button
+                type="button"
+                onClick={handleRetry}
+                disabled={saving}
+                className="rounded-full border border-white/40 px-6 py-2 font-bold text-white transition active:scale-95 disabled:opacity-50"
+              >
+                もう一回撮る
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -251,6 +277,11 @@ export default function CameraMode() {
       {/* 撮影ボタン（ライブ表示中のみ） */}
       {!cameraError && !result && (
         <div className="absolute inset-x-0 bottom-8 flex flex-col items-center gap-2">
+          {savedFlash && (
+            <p className="rounded-full bg-mint/90 px-4 py-1 text-sm font-bold text-slate-900 shadow-pop">
+              ✓ 図鑑にしまったよ
+            </p>
+          )}
           {genError && (
             <p className="rounded-full bg-slate-900/80 px-3 py-1 text-xs text-peach">{genError}</p>
           )}
