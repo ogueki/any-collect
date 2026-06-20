@@ -18,11 +18,13 @@ interface CodexState {
   load: () => Promise<void>
   /** 生成結果を図鑑に登録して保存する。保存済み Item を返す */
   addFromGenerated: (generated: GeneratedItem) => Promise<Item>
+  /** そのカテゴリの初取得かどうか（登録前に評価する。リアクション判定用） */
+  isNewCategory: (category?: string) => boolean
   /** アイテムを削除する */
   remove: (id: string) => Promise<void>
 }
 
-export const useCodexStore = create<CodexState>((set) => ({
+export const useCodexStore = create<CodexState>((set, get) => ({
   items: [],
   status: 'idle',
   error: null,
@@ -50,6 +52,12 @@ export const useCodexStore = create<CodexState>((set) => ({
     // list() と同じ「新しい順」を保つため先頭に積む。
     set((s) => ({ items: [saved, ...s.items] }))
     return saved
+  },
+
+  isNewCategory: (category) => {
+    // カテゴリ未設定は「初取得扱いしない」（無印で大興奮させない）。
+    if (!category) return false
+    return !get().items.some((it) => it.category === category)
   },
 
   remove: async (id) => {

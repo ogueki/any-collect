@@ -6,6 +6,7 @@ import { imageGenProvider } from '../../lib/ai/imageGen'
 import type { GeneratedItem } from '../../lib/ai/imageProvider'
 import { useCodexStore } from '../../store/codexStore'
 import { RARITY_CLASS, RARITY_LABEL } from '../../lib/rarity'
+import { emotionForConfirm, emotionForGenerated } from '../../lib/character/reaction'
 
 /**
  * カメラモード（STEP3）。
@@ -55,6 +56,7 @@ function captureFrame(video: HTMLVideoElement): Promise<Blob> {
 export default function CameraMode() {
   const characterId = useAppStore((s) => s.characterId)
   const addToCodex = useCodexStore((s) => s.addFromGenerated)
+  const isNewCategory = useCodexStore((s) => s.isNewCategory)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -71,6 +73,14 @@ export default function CameraMode() {
   const [saving, setSaving] = useState(false)
   // 確定後にライブへ戻った直後だけ出す「しまったよ」フィードバック。
   const [savedFlash, setSavedFlash] = useState(false)
+  // 収集体験に対する妖精の一時リアクション（数秒で消えてベース表情へ戻る）。
+  // nonce が変わるたびにポーズを引き直し、一発アニメをリスタートする。
+  const [reaction, setReaction] = useState<{ expression: FairyExpression; nonce: number } | null>(
+    null,
+  )
+  const fireReaction = useCallback((expr: FairyExpression) => {
+    setReaction((prev) => ({ expression: expr, nonce: (prev?.nonce ?? 0) + 1 }))
+  }, [])
 
   // マウント時にライブカメラを開始（背面カメラ優先）。アンマウントで停止。
   useEffect(() => {
@@ -117,13 +127,15 @@ export default function CameraMode() {
       try {
         const item = await imageGenProvider.generateItem(photo, { personaId: characterId })
         setResult(item)
+        // 生成成功＝最初のリビール。レア度に応じて妖精が喜ぶ／驚く。
+        fireReaction(emotionForGenerated(item))
       } catch (err) {
         setGenError(err instanceof Error ? err.message : 'アイテム化に失敗しました')
       } finally {
         setGenerating(false)
       }
     },
-    [characterId, generating],
+    [characterId, generating, fireReaction],
   )
 
   const handleCapture = useCallback(async () => {
@@ -160,17 +172,21 @@ export default function CameraMode() {
     setSaving(true)
     setGenError(null)
     try {
+      // 登録前に判定（addToCodex で items に積まれる前でないと常に false になる）。
+      const isNew = isNewCategory(result.category)
       await addToCodex(result)
       // 確定したので元写真を破棄（spec.md「確定すると元写真は破棄」）。
       capturedPhotoRef.current = null
       setResult(null)
       setSavedFlash(true)
+      // 新カテゴリ初取得なら大興奮、それ以外は素直に喜ぶ（ライブ戻り後の右下妖精に出る）。
+      fireReaction(emotionForConfirm(isNew))
     } catch (err) {
       setGenError(err instanceof Error ? err.message : '図鑑への登録に失敗しました')
     } finally {
       setSaving(false)
     }
-  }, [result, saving, addToCodex])
+  }, [result, saving, addToCodex, isNewCategory, fireReaction])
 
   // 「しまったよ」表示は数秒で自然に消す。
   useEffect(() => {
@@ -179,13 +195,23 @@ export default function CameraMode() {
     return () => clearTimeout(timer)
   }, [savedFlash])
 
-  const expression: FairyExpression = generating
+  // リアクションは数秒で消えてベース表情に戻る。
+  useEffect(() => {
+    if (!reaction) return
+    const timer = setTimeout(() => setReaction(null), 2500)
+    return () => clearTimeout(timer)
+  }, [reaction])
+
+  // ベース表情（状態由来）。リアクション中はそれを一時的に上書きする。
+  const baseExpression: FairyExpression = generating
     ? 'thinking'
     : result
       ? 'happy'
       : cameraError
         ? 'sad'
         : 'neutral'
+  const expression = reaction?.expression ?? baseExpression
+  const animateKey = reaction?.nonce
 
   return (
     <div className="relative flex h-full flex-col bg-slate-900 text-white">
@@ -217,6 +243,13 @@ export default function CameraMode() {
       {/* 生成結果プレビュー */}
       {result && !generating && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-slate-900/85 px-6 text-center">
+          {/* リビールに合わせて妖精がリアクション（レア度で喜ぶ／驚く） */}
+          <Sprite2DRenderer
+            characterId={characterId}
+            expression={expression}
+            size="sm"
+            animateKey={animateKey}
+          />
           <div className="w-full max-w-xs rounded-3xl bg-white p-4 text-slate-800 shadow-pop">
             <img
               src={result.imageUrl}
@@ -299,7 +332,12 @@ export default function CameraMode() {
 
       {/* 妖精は画面右下に小さく */}
       <div className="absolute bottom-4 right-4">
-        <Sprite2DRenderer characterId={characterId} expression={expression} size="sm" />
+        <Sprite2DRenderer
+          characterId={characterId}
+          expression={expression}
+          size="sm"
+          animateKey={animateKey}
+        />
       </div>
     </div>
   )
