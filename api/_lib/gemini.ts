@@ -106,7 +106,8 @@ export async function generateChatReply({
             emotion: {
               type: 'STRING',
               enum: [...CHAT_EMOTIONS],
-              description: '今の返事の口調・気持ちに最も合う感情を1つ選ぶ',
+              description:
+                'ペルソナの「感情の出し方」を参考に、返事の気持ちに最も合う感情を1つだけ選ぶ',
             },
           },
           required: ['text', 'emotion'],

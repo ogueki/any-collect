@@ -43,7 +43,7 @@
 ### 4.2 ホームモード
 1. **会話（メイン）**
    - 中央に大きな妖精。テキスト入力で会話（初期は **Gemini**、将来 **Claude** に切替可）。キャラ定義ファイルに沿った口調・性格を維持。
-   - **会話の返事ごとに表情が切り替わる**：AI が返事と一緒に感情を1つ選び（`responseSchema` で `text`＋`emotion` を出力）、その emotion を立ち絵の表情にする。返信のたびに §4.1.3 と同じ一発アニメが走る。エラー=sad は会話状態由来。送信中は表情を変えない（考え中の合図は ChatPanel のテキストで表示）。未取得/不正な emotion は neutral へフォールバック。会話で AI が選べる感情（`CHAT_EMOTIONS`）＝neutral/happy/surprised/sad/excited/shy/confused/exasperated/angry/salute/thinking（`searching` はカメラ鑑定中専用なので会話では除外）。
+   - **会話の返事ごとに表情が切り替わる**：AI が返事と一緒に感情を1つ選び（`responseSchema` で `text`＋`emotion` を出力）、その emotion を立ち絵の表情にする。返信のたびに §4.1.3 と同じ一発アニメが走る。エラー=sad は会話状態由来。送信中は表情を変えない（考え中の合図は ChatPanel のテキストで表示）。未取得/不正な emotion は neutral へフォールバック。会話で AI が選べる感情（`CHAT_EMOTIONS`）＝neutral/happy/surprised/sad/excited/shy/confused/exasperated/angry/salute/thinking（`searching` はカメラ鑑定中専用なので会話では除外）。**どの返事でどの感情を選ぶかの基準は、各キャラの `persona.md` の「感情の出し方」セクション**（非コーダーでも編集可、システムプロンプトに自動で乗る）。
    - 将来 Fish Audio 音声。会話履歴は保存（任意でローカル/クラウド）。
 2. **図鑑**
    - 収集アイテムを一覧・詳細表示。名前・説明・取得日時などを閲覧。並び替え/検索/カテゴリ絞り込み。
