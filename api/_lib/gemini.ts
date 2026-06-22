@@ -53,8 +53,14 @@ interface GeminiContent {
 }
 
 interface GeminiResponse {
-  candidates?: { content?: { parts?: { text?: string }[] } }[]
+  candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[]
   promptFeedback?: { blockReason?: string }
+}
+
+/** Gemini が稀に ```json ... ``` で包むことがあるので剥がす（responseMimeType 指定時は通常不要だが保険）。 */
+function stripCodeFence(raw: string): string {
+  const fenced = raw.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/)
+  return fenced ? fenced[1].trim() : raw
 }
 
 /**
@@ -87,7 +93,10 @@ export async function generateChatReply({
       generationConfig: {
         temperature: 0.9,
         topP: 0.95,
-        maxOutputTokens: 256,
+        // 会話は推論不要なので thinking を無効化（トークン浪費＝JSON途中切れ・コスト/遅延の元）。
+        thinkingConfig: { thinkingBudget: 0 },
+        // JSON 構造ぶんの余裕を持たせる（小さすぎると返事が途中で切れて JSON が壊れる）。
+        maxOutputTokens: 512,
         responseMimeType: 'application/json',
         responseSchema: {
           type: 'OBJECT',
@@ -111,8 +120,8 @@ export async function generateChatReply({
   }
 
   const data = (await res.json()) as GeminiResponse
-  const raw =
-    data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('').trim() ?? ''
+  const candidate = data.candidates?.[0]
+  const raw = candidate?.content?.parts?.map((p) => p.text ?? '').join('').trim() ?? ''
 
   if (!raw) {
     const reason = data.promptFeedback?.blockReason
@@ -123,9 +132,15 @@ export async function generateChatReply({
 
   let parsed: Partial<ChatReply>
   try {
-    parsed = JSON.parse(raw) as Partial<ChatReply>
+    parsed = JSON.parse(stripCodeFence(raw)) as Partial<ChatReply>
   } catch {
-    throw new Error('妖精の返事の JSON 解析に失敗しました')
+    // MAX_TOKENS で JSON が途中で切れたケースを区別して伝える。
+    const truncated = candidate?.finishReason === 'MAX_TOKENS'
+    throw new Error(
+      truncated
+        ? '妖精の返事が長すぎて途切れました（もう一度試してね）'
+        : '妖精の返事の JSON 解析に失敗しました',
+    )
   }
 
   const text = typeof parsed.text === 'string' ? parsed.text.trim() : ''
