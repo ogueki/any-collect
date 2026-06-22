@@ -14,9 +14,10 @@ import type { FairyExpression, FairyViewProps } from './CharacterRenderer'
  * 将来は同じ FairyViewProps で Live2D / 3D 実装に差し替え可能。
  */
 
-// 全キャラの sprites 配下 *.png を URL として取り込む（存在する分だけマッチ）。
+// 全キャラの sprites 配下の画像を URL として取り込む（存在する分だけマッチ）。
+// 本番素材は webp（`npm run sprites:optimize` で生成）。未最適化の png/jpg もそのまま映る。
 // ⚠️ 絶対パターン('/src/...')は Windows＋非ASCIIパスでキー変換が壊れるため、相対パターンを使う。
-const spriteModules = import.meta.glob('../../characters/*/sprites/**/*.png', {
+const spriteModules = import.meta.glob('../../characters/*/sprites/**/*.{webp,png,jpg,jpeg}', {
   eager: true,
   query: '?url',
   import: 'default',
@@ -31,7 +32,7 @@ type SpriteIndex = Record<string, Record<string, Record<string, string[]>>>
 const spriteIndex: SpriteIndex = (() => {
   const index: SpriteIndex = {}
   for (const [path, url] of Object.entries(spriteModules)) {
-    const m = path.match(/\/characters\/([^/]+)\/sprites\/(.+)\.png$/)
+    const m = path.match(/\/characters\/([^/]+)\/sprites\/(.+)\.(?:webp|png|jpe?g)$/)
     if (!m) continue
     const characterId = m[1]
     const segs = m[2].split('/')
@@ -137,10 +138,21 @@ export default function Sprite2DRenderer({
     const el = imgRef.current
     const anim = REACTION_ANIMATION[expression]
     if (!el || !anim) return
-    el.classList.remove(anim)
-    void el.offsetWidth // reflow して CSS アニメを最初から再生
-    el.classList.add(anim)
-    return () => el.classList.remove(anim)
+    let cancelled = false
+    const play = () => {
+      if (cancelled) return
+      el.classList.remove(anim)
+      void el.offsetWidth // reflow して CSS アニメを最初から再生
+      el.classList.add(anim)
+    }
+    // 新スプライトが decode 完了＝表示に切り替わってからアニメを再生する。
+    // src 差し替え直後は前の絵が出たままなので、待たずに再生すると「前の表情のまま動いて
+    // から切り替わる」ように見える。decode 済み画像なら即時 resolve するので遅延はない。
+    void el.decode().then(play, play)
+    return () => {
+      cancelled = true
+      el.classList.remove(anim)
+    }
     // expression は animateKey と同時に変わるので、再生トリガーは animateKey のみで十分。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animateKey])

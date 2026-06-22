@@ -24,7 +24,8 @@
 - `src/lib/character/` … キャラ表示の抽象化（今は2Dスプライト、将来3D/Live2D差し替え）
 - `src/lib/storage/` … Repositoryパターン。現状は IndexedDB 実装のみ稼働、Supabase は同一抽象（`ItemRepository`）の裏に後続追加。
 - `src/store/` … Zustand ストア（`appStore` / `chatStore` / `codexStore`）。`src/components/` … モード横断の共有UI。`src/types/` … 共有型。
-- `src/characters/<id>/` … キャラ定義一式。現状 `persona.md` ＋ `sprites/<感情>/*.png`（感情フォルダ式・好感度 level-aware）。`voice.json`（音声設定）は TTS STEP で追加。
+- `src/characters/<id>/` … キャラ定義一式。現状 `persona.md` ＋ `sprites/<感情>/*.webp`（感情フォルダ式・好感度 level-aware）。`voice.json`（音声設定）は TTS STEP で追加。
+  - **スプライト画像のルール**：本番素材は **WebP・最大1024px**。`sprites/` に png/jpg を追加したら **`npm run sprites:optimize` を実行してから commit**（`scripts/optimize-sprites.mjs` が WebP 化＝1枚~1MB→~120KB、冪等）。大きい元 png をそのままコミットしない。
 
 ## アーキテクチャ原則（重要）
 1. **シークレットをクライアントに出さない。** APIキーを使う処理はすべて `api/`（Vercel Functions）経由。フロントから直接 Gemini/Claude/Fish Audio を叩かない。

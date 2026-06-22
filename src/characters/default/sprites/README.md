@@ -1,8 +1,12 @@
 # sprites — 妖精の表情/ポーズ差分イラスト置き場
 
-`Sprite2DRenderer` はこのフォルダの PNG を自動で読み込みます（`src/lib/character/Sprite2DRenderer.tsx`）。
+`Sprite2DRenderer` はこのフォルダの画像（webp/png/jpg）を自動で読み込みます（`src/lib/character/Sprite2DRenderer.tsx`）。
 ファイルを置いて dev サーバを再読込すれば反映されます。画像が無い感情は `neutral` に、
 `neutral` も無ければ絵文字プレースホルダーにフォールバックします。
+
+> **追加したら最適化**：本番素材は **WebP・最大1024px**。png/jpg を置いたら
+> **`npm run sprites:optimize`** を実行してから commit（自動で WebP 化＝1枚 ~1MB→~120KB、何度実行してもOK）。
+> 重い png をそのまま置きっぱなしにしない。下の例の `.png` も実体は最適化後 `.webp`。
 
 ## 置き方（2通り・どちらでも可）
 
