@@ -28,14 +28,11 @@ export default function HomeMode() {
     fire(lastFairyEmotion)
   }, [replyNonce, lastFairyEmotion, fire])
 
-  // ベース表情（sustained）：送信中/エラーは状態由来、それ以外は直近の妖精 emotion を保持。
-  // リアクション発火中はフックの表情で一時的に上書きされる（通常はベースと一致）。
+  // ベース表情（sustained）：エラー時のみ sad、それ以外は直近の妖精 emotion を保持。
+  // 送信中はあえて表情を変えない（毎回「考えポーズ」を挟むとテンポが悪い。考え中の合図は
+  // ChatPanel のテキストで出している）。リアクション発火中はフックの表情で一時上書きされる。
   const baseExpression: FairyExpression =
-    status === 'sending'
-      ? 'thinking'
-      : status === 'error'
-        ? 'sad'
-        : (lastFairyEmotion ?? (lastFairy ? 'happy' : 'neutral'))
+    status === 'error' ? 'sad' : (lastFairyEmotion ?? (lastFairy ? 'happy' : 'neutral'))
   const expression = reactionExpression ?? baseExpression
 
   return (

@@ -30,25 +30,24 @@ export interface FairyReaction {
 }
 
 export function useFairyReaction(durationMs: number = DEFAULT_DURATION_MS): FairyReaction {
-  // nonce が変わるたびにポーズを引き直し、一発アニメをリスタートする。
-  const [reaction, setReaction] = useState<{ expression: FairyExpression; nonce: number } | null>(
-    null,
-  )
+  // 一時的な表情オーバーレイ。durationMs 後に消えてベース表情へ戻る。
+  const [expression, setExpression] = useState<FairyExpression | undefined>(undefined)
+  // 発火ごとに単調増加するキー（アニメ再生＆ポーズ選び直しのトリガー）。
+  // 重要: リアクション終了時に undefined へ戻さない。戻すと「同じ表情のまま別ポーズへ
+  // 引き直し」が起きてしまう（バグ：surprised が時間経過で別の絵に切り替わる）。
+  const [animateKey, setAnimateKey] = useState<number | undefined>(undefined)
 
-  const fire = useCallback((expression: FairyExpression) => {
-    setReaction((prev) => ({ expression, nonce: (prev?.nonce ?? 0) + 1 }))
+  const fire = useCallback((next: FairyExpression) => {
+    setExpression(next)
+    setAnimateKey((k) => (k ?? 0) + 1)
   }, [])
 
-  // リアクションは一定時間で消えてベース表情に戻る。
+  // 発火から durationMs 後に表情オーバーレイだけ消す（animateKey は据え置き）。
   useEffect(() => {
-    if (!reaction) return
-    const timer = setTimeout(() => setReaction(null), durationMs)
+    if (animateKey === undefined) return
+    const timer = setTimeout(() => setExpression(undefined), durationMs)
     return () => clearTimeout(timer)
-  }, [reaction, durationMs])
+  }, [animateKey, durationMs])
 
-  return {
-    expression: reaction?.expression,
-    animateKey: reaction?.nonce,
-    fire,
-  }
+  return { expression, animateKey, fire }
 }

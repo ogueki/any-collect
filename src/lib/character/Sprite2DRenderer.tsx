@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import type { FairyExpression, FairyViewProps } from './CharacterRenderer'
 
 /**
@@ -128,24 +128,38 @@ export default function Sprite2DRenderer({
     return urls.length > 0 ? pickSprite(urls, `${characterId}/${expression}`) : undefined
   }, [characterId, expression, level, animateKey])
 
-  // 一発アニメはリアクション発火時（animateKey 指定時）のみ。key で毎回リスタート。
-  const reactionAnim = animateKey !== undefined ? REACTION_ANIMATION[expression] : undefined
+  // 一発リアクションアニメ：animateKey が変わった時だけ再生する。
+  // img は再マウントせず src を差し替えるだけにして、ポーズ切替時に画像が一瞬消えるのを防ぐ
+  // （key による再マウントだと新しい <img> が読み込み完了まで空フレームになる）。
+  const imgRef = useRef<HTMLImageElement>(null)
+  useEffect(() => {
+    if (animateKey === undefined) return
+    const el = imgRef.current
+    const anim = REACTION_ANIMATION[expression]
+    if (!el || !anim) return
+    el.classList.remove(anim)
+    void el.offsetWidth // reflow して CSS アニメを最初から再生
+    el.classList.add(anim)
+    return () => el.classList.remove(anim)
+    // expression は animateKey と同時に変わるので、再生トリガーは animateKey のみで十分。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [animateKey])
 
   return (
     // 外側ラッパは常時フワフワ浮遊（idle の生命感）。
     <div className={`${SIZE_CLASS[size]} animate-float`}>
       {url ? (
         <img
-          key={animateKey}
+          ref={imgRef}
           src={url}
           alt="妖精"
           draggable={false}
-          className={`h-full w-full select-none object-contain drop-shadow-[0_8px_16px_rgba(196,181,253,0.5)] ${reactionAnim ?? ''}`}
+          decoding="async"
+          className="h-full w-full select-none object-contain drop-shadow-[0_8px_16px_rgba(196,181,253,0.5)]"
         />
       ) : (
         <div
-          key={animateKey}
-          className={`flex h-full w-full items-center justify-center rounded-full bg-white/70 shadow-pop ${reactionAnim ?? ''}`}
+          className="flex h-full w-full items-center justify-center rounded-full bg-white/70 shadow-pop"
           role="img"
           aria-label="妖精（イラスト準備中）"
         >
