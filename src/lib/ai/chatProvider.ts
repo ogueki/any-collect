@@ -10,7 +10,7 @@ export interface ChatReply {
 
 /**
  * 会話プロバイダの抽象。
- * 実装（ClaudeChatProvider）は STEP2 で追加。API キーは /api/chat 側に置く。
+ * 実装（httpChatProvider, Gemini 経由）は STEP2 で追加済み。将来 Claude へはサーバ側 (api/chat.ts) で切替。API キーは /api/chat 側に置く。
  * いずれの実装も、選択中キャラの persona 定義を参照して口調を統一する。
  */
 export interface ChatProvider {

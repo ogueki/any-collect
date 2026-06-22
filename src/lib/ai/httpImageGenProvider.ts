@@ -48,8 +48,8 @@ export const httpImageGenProvider: ImageGenProvider = {
     }
   },
 
-  // 合成（妖精の窯）は STEP7 で実装する。IF を満たすためのプレースホルダ。
+  // 合成（妖精の窯）は STEP8 で実装する。IF を満たすためのプレースホルダ。
   async synthesize() {
-    throw new Error('アイテム合成（妖精の窯）は STEP7 で実装予定です')
+    throw new Error('アイテム合成（妖精の窯）は STEP8 で実装予定です')
   },
 }

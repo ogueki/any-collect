@@ -3,7 +3,7 @@ import type { ItemRepository } from './itemRepository'
 
 /**
  * `ItemRepository` の IndexedDB 実装（STEP4a）。
- * 端末ローカルに図鑑を永続化する。Supabase 実装は STEP4b で追加し、
+ * 端末ローカルに図鑑を永続化する。Supabase 実装は STEP9 で追加し、
  * `repository.ts` の差し替え1点で切り替える（IF・呼び出し側は無改修）。
  *
  * 依存追加はせず、必要最小限の promisified ヘルパだけをこのファイル内に持つ。
@@ -11,7 +11,7 @@ import type { ItemRepository } from './itemRepository'
  */
 
 const DB_NAME = 'any-collect'
-// items / syntheses を初回 upgrade でまとめて作成し、STEP7（合成）で version を上げずに済むようにする。
+// items / syntheses を初回 upgrade でまとめて作成し、STEP8（合成）で version を上げずに済むようにする。
 const DB_VERSION = 1
 const ITEMS_STORE = 'items'
 const SYNTHESES_STORE = 'syntheses'

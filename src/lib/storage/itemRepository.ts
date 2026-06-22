@@ -3,7 +3,7 @@ import type { Item, Synthesis } from '../../types'
 /**
  * 永続化の抽象（Repository パターン）。
  * 実装は IndexedDB / Supabase を差し替え可能にし、オフライン対応・
- * ネイティブ移行を容易にする。Supabase 実装は STEP4 で追加。
+ * ネイティブ移行を容易にする。Supabase 実装は STEP9 で追加。
  */
 export interface ItemRepository {
   list(): Promise<Item[]>

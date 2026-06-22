@@ -33,7 +33,7 @@
    - 撮影画像から風景・状況を認識し、**Gemini** で妖精のひとことコメントを生成して表示（図鑑には登録しない、その場の演出）。
 3. **妖精のリアクション**
    - 画面右下に妖精（2Dイラスト）。撮影・生成成功・レア度・新カテゴリなどに応じて表情/ポーズ差分でリアクション。鑑定中（生成待ち）は **searching**（調べる探偵ポーズ）を表示。
-   - 実装：**感情ごとのフォルダ式スプライト**（`sprites/<emotion>/*.png`、何枚でも置くとランダム候補）＋ **CSSアニメ**（常時の浮遊＋感情別の一発アニメ）の2層。一定時間でベース表情へ戻る。
+   - 実装：**感情ごとのフォルダ式スプライト**（`sprites/<emotion>/*.webp`、何枚でも置くとランダム候補。元 png を置いたら `npm run sprites:optimize` で WebP・最大1024px へ最適化）＋ **CSSアニメ**（常時の浮遊＋感情別の一発アニメ）の2層。一定時間でベース表情へ戻る。
    - 感情語彙の単一ソースは `src/lib/character/CharacterRenderer.ts` の `FAIRY_EXPRESSIONS`（neutral/happy/surprised/thinking/sad/excited/shy/confused/exasperated/angry/salute/searching）。新感情の追加はここへ1行＋同名フォルダで完結。
    - 一時リアクションの**発火**は共有フック `useFairyReaction()`（`fire(emotion)`→数秒でベース表情へ復帰＋`animateKey` で一発アニメ）に集約。カメラ／ホーム会話／将来の風景コメント・妖精の窯が同じフックを使う。「どの感情にするか（選定）」は文脈依存（アイテム=`reaction.ts` の決定ルール／会話=AI が responseSchema で選ぶ）。**場面固有のモーション**（例：鑑定中=searching）は「感情キー追加＋`sprites/<キー>/`＋その場面で描画」の3手で足せる。
    - **好感度レベルでの素材切替（level-aware）に対応**（`sprites/<emotion>/lv1,lv2/`、不足時は下位/共通/neutral へフォールバック）。**好感度の"源"は将来配線**（絆レベルの意味づけは §14 参照）。
@@ -103,7 +103,7 @@ any-collect/
     tts.ts                   # Fish Audio: 音声
     _lib/                    # Function 共通のサーバ内部ユーティリティ（persona/gemini 等・ルート対象外）
   src/
-    features/{camera,home,codex,kiln,fairy}/
+    features/{camera,home,codex,kiln}/   # kiln（合成）は STEP8。妖精リアクションは表示層なので features ではなく lib/character/ 側
     lib/
       ai/{imageProvider,chatProvider,ttsProvider}.ts
       character/{CharacterRenderer.ts,Sprite2DRenderer.tsx}
@@ -142,6 +142,8 @@ any-collect/
 - エラー時：生成失敗・API不通でも妖精のセリフで自然にフォロー。
 
 ## 13. ロードマップ
+> STEP 単位の詳細・最新の進捗は [ROADMAP.md](./ROADMAP.md)（そちらが正）。下記は粗い区分のみ。
+> 実態の進捗：STEP0〜5 完了（会話・撮影アイテム化・IndexedDB図鑑・感情リアクション）。次は STEP6 音声。
 - **MVP**：匿名認証／カメラ撮影→アイコン化＋名前説明→図鑑登録／ホームの会話／妖精2D表示＋音声。
 - **v1**：妖精の窯（合成）／風景コメント／図鑑の検索・絞り込み。
 - **拡張**：キャラ差し替えUI／アップロード解禁オプション／PWA→Capacitorネイティブ化／（必要なら）メール連携でのデータ引き継ぎ。
