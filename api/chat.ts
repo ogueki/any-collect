@@ -72,8 +72,8 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
 
   try {
     const systemPrompt = buildSystemPrompt(loadPersona(body.personaId))
-    const reply = await generateChatReply({ apiKey, systemPrompt, history, userInput })
-    sendJson(res, 200, { reply })
+    const { text, emotion } = await generateChatReply({ apiKey, systemPrompt, history, userInput })
+    sendJson(res, 200, { reply: text, emotion })
   } catch (err) {
     const message = err instanceof Error ? err.message : '会話の生成に失敗しました'
     sendJson(res, 502, { error: message })

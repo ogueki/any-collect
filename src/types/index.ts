@@ -1,5 +1,7 @@
 /** アプリ全体で共有する型定義 */
 
+import type { FairyExpression } from '../lib/character/CharacterRenderer'
+
 export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary'
 
 /** 図鑑に登録されるアイテム */
@@ -30,4 +32,6 @@ export interface ChatMessage {
   role: 'user' | 'fairy'
   content: string
   createdAt: string
+  /** 妖精メッセージに添えられた感情（立ち絵の表情に反映）。user では未使用 */
+  emotion?: FairyExpression
 }

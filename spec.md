@@ -32,8 +32,10 @@
 2. **風景コメント（サブ機能）**
    - 撮影画像から風景・状況を認識し、**Gemini** で妖精のひとことコメントを生成して表示（図鑑には登録しない、その場の演出）。
 3. **妖精のリアクション**
-   - 画面右下に妖精（2Dイラスト）。撮影・生成成功・レア度・新カテゴリなどに応じて表情/ポーズ差分でリアクション。
+   - 画面右下に妖精（2Dイラスト）。撮影・生成成功・レア度・新カテゴリなどに応じて表情/ポーズ差分でリアクション。鑑定中（生成待ち）は **searching**（調べる探偵ポーズ）を表示。
    - 実装：**感情ごとのフォルダ式スプライト**（`sprites/<emotion>/*.png`、何枚でも置くとランダム候補）＋ **CSSアニメ**（常時の浮遊＋感情別の一発アニメ）の2層。一定時間でベース表情へ戻る。
+   - 感情語彙の単一ソースは `src/lib/character/CharacterRenderer.ts` の `FAIRY_EXPRESSIONS`（neutral/happy/surprised/thinking/sad/excited/shy/confused/exasperated/angry/salute/searching）。新感情の追加はここへ1行＋同名フォルダで完結。
+   - 一時リアクションの**発火**は共有フック `useFairyReaction()`（`fire(emotion)`→数秒でベース表情へ復帰＋`animateKey` で一発アニメ）に集約。カメラ／ホーム会話／将来の風景コメント・妖精の窯が同じフックを使う。「どの感情にするか（選定）」は文脈依存（アイテム=`reaction.ts` の決定ルール／会話=AI が responseSchema で選ぶ）。**場面固有のモーション**（例：鑑定中=searching）は「感情キー追加＋`sprites/<キー>/`＋その場面で描画」の3手で足せる。
    - **好感度レベルでの素材切替（level-aware）に対応**（`sprites/<emotion>/lv1,lv2/`、不足時は下位/共通/neutral へフォールバック）。**好感度の"源"は将来配線**（絆レベルの意味づけは §14 参照）。
 4. **音声**
    - 妖精のセリフを **Fish Audio API**（TTS）で読み上げ（ON/OFF切替可）。
@@ -41,7 +43,8 @@
 ### 4.2 ホームモード
 1. **会話（メイン）**
    - 中央に大きな妖精。テキスト入力で会話（初期は **Gemini**、将来 **Claude** に切替可）。キャラ定義ファイルに沿った口調・性格を維持。
-   - 会話に応じた表情差分＋ Fish Audio 音声。会話履歴は保存（任意でローカル/クラウド）。
+   - **会話の返事ごとに表情が切り替わる**：AI が返事と一緒に感情を1つ選び（`responseSchema` で `text`＋`emotion` を出力）、その emotion を立ち絵の表情にする。返信のたびに §4.1.3 と同じ一発アニメが走る。送信中=thinking／エラー=sad は会話状態由来。未取得/不正な emotion は neutral へフォールバック。会話で AI が選べる感情（`CHAT_EMOTIONS`）＝neutral/happy/surprised/sad/excited/shy/confused/exasperated/angry/salute（`thinking` は loading 専用・`searching` はカメラ専用なので会話では除外）。
+   - 将来 Fish Audio 音声。会話履歴は保存（任意でローカル/クラウド）。
 2. **図鑑**
    - 収集アイテムを一覧・詳細表示。名前・説明・取得日時などを閲覧。並び替え/検索/カテゴリ絞り込み。
 3. **妖精の窯（合成）**

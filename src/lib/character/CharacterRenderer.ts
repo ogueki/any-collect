@@ -12,6 +12,12 @@ export const FAIRY_EXPRESSIONS = [
   'thinking',
   'sad',
   'excited',
+  'shy',
+  'confused',
+  'exasperated',
+  'angry',
+  'salute',
+  'searching',
 ] as const
 
 /** 妖精の表情。差分イラストの切り替えに対応 */

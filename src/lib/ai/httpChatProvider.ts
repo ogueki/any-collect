@@ -1,4 +1,5 @@
 import type { ChatProvider } from './chatProvider'
+import { FAIRY_EXPRESSIONS, type FairyExpression } from '../character/CharacterRenderer'
 
 /**
  * /api/chat プロキシ経由で会話する ChatProvider 実装。
@@ -8,7 +9,15 @@ import type { ChatProvider } from './chatProvider'
 
 interface ChatApiResponse {
   reply?: string
+  emotion?: string
   error?: string
+}
+
+/** API が返した emotion を既知の表情だけに絞る（不正/欠落は undefined）。 */
+function toFairyExpression(value: unknown): FairyExpression | undefined {
+  return typeof value === 'string' && (FAIRY_EXPRESSIONS as readonly string[]).includes(value)
+    ? (value as FairyExpression)
+    : undefined
 }
 
 export const httpChatProvider: ChatProvider = {
@@ -27,6 +36,6 @@ export const httpChatProvider: ChatProvider = {
     if (!res.ok || !data.reply) {
       throw new Error(data.error ?? `会話に失敗しました (${res.status})`)
     }
-    return data.reply
+    return { text: data.reply, emotion: toFairyExpression(data.emotion) }
   },
 }

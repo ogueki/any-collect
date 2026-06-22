@@ -16,6 +16,30 @@ export interface ChatTurn {
   content: string
 }
 
+/**
+ * 会話の返事に添える妖精の感情。client の FAIRY_EXPRESSIONS のミラー
+ * （Rarity 同様、api/client で二重定義する前例に倣う）。
+ * `thinking`（送信中の loading 専用）と `searching`（カメラ鑑定中専用）は会話では使わないので除く。
+ */
+export const CHAT_EMOTIONS = [
+  'neutral',
+  'happy',
+  'surprised',
+  'sad',
+  'excited',
+  'shy',
+  'confused',
+  'exasperated',
+  'angry',
+  'salute',
+] as const
+export type ChatEmotion = (typeof CHAT_EMOTIONS)[number]
+
+export interface ChatReply {
+  text: string
+  emotion: ChatEmotion
+}
+
 interface GenerateArgs {
   apiKey: string
   systemPrompt: string
@@ -33,13 +57,16 @@ interface GeminiResponse {
   promptFeedback?: { blockReason?: string }
 }
 
-/** 会話履歴＋ユーザー入力から妖精の応答テキストを生成する。 */
+/**
+ * 会話履歴＋ユーザー入力から、妖精の応答テキストと感情を生成する。
+ * responseSchema で「返事文＋自分の口調に合う感情」を1度に出させる（generateItemMeta と同方式）。
+ */
 export async function generateChatReply({
   apiKey,
   systemPrompt,
   history,
   userInput,
-}: GenerateArgs): Promise<string> {
+}: GenerateArgs): Promise<ChatReply> {
   const model = process.env.GEMINI_TEXT_MODEL || DEFAULT_MODEL
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
 
@@ -57,7 +84,24 @@ export async function generateChatReply({
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: systemPrompt }] },
       contents,
-      generationConfig: { temperature: 0.9, topP: 0.95, maxOutputTokens: 256 },
+      generationConfig: {
+        temperature: 0.9,
+        topP: 0.95,
+        maxOutputTokens: 256,
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: 'OBJECT',
+          properties: {
+            text: { type: 'STRING', description: '妖精としての返事（口調はペルソナに従う）' },
+            emotion: {
+              type: 'STRING',
+              enum: [...CHAT_EMOTIONS],
+              description: '今の返事の口調・気持ちに最も合う感情を1つ選ぶ',
+            },
+          },
+          required: ['text', 'emotion'],
+        },
+      },
     }),
   })
 
@@ -67,17 +111,35 @@ export async function generateChatReply({
   }
 
   const data = (await res.json()) as GeminiResponse
-  const text =
+  const raw =
     data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('').trim() ?? ''
 
-  if (!text) {
+  if (!raw) {
     const reason = data.promptFeedback?.blockReason
     throw new Error(
       reason ? `応答がブロックされました (${reason})` : '妖精の返事を取得できませんでした',
     )
   }
 
-  return text
+  let parsed: Partial<ChatReply>
+  try {
+    parsed = JSON.parse(raw) as Partial<ChatReply>
+  } catch {
+    throw new Error('妖精の返事の JSON 解析に失敗しました')
+  }
+
+  const text = typeof parsed.text === 'string' ? parsed.text.trim() : ''
+  if (!text) {
+    throw new Error('妖精の返事が空でした')
+  }
+
+  // 不正/欠落な emotion は neutral にフォールバック（表示は壊さない）。
+  const emotion =
+    typeof parsed.emotion === 'string' && (CHAT_EMOTIONS as readonly string[]).includes(parsed.emotion)
+      ? (parsed.emotion as ChatEmotion)
+      : 'neutral'
+
+  return { text, emotion }
 }
 
 export interface ItemMeta {

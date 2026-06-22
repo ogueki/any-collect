@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAppStore } from '../../store/appStore'
 import Sprite2DRenderer from '../../lib/character/Sprite2DRenderer'
 import type { FairyExpression } from '../../lib/character/CharacterRenderer'
+import { useFairyReaction } from '../../lib/character/useFairyReaction'
 import { imageGenProvider } from '../../lib/ai/imageGen'
 import type { GeneratedItem } from '../../lib/ai/imageProvider'
 import { useCodexStore } from '../../store/codexStore'
@@ -73,14 +74,8 @@ export default function CameraMode() {
   const [saving, setSaving] = useState(false)
   // 確定後にライブへ戻った直後だけ出す「しまったよ」フィードバック。
   const [savedFlash, setSavedFlash] = useState(false)
-  // 収集体験に対する妖精の一時リアクション（数秒で消えてベース表情へ戻る）。
-  // nonce が変わるたびにポーズを引き直し、一発アニメをリスタートする。
-  const [reaction, setReaction] = useState<{ expression: FairyExpression; nonce: number } | null>(
-    null,
-  )
-  const fireReaction = useCallback((expr: FairyExpression) => {
-    setReaction((prev) => ({ expression: expr, nonce: (prev?.nonce ?? 0) + 1 }))
-  }, [])
+  // 収集体験に対する妖精の一時リアクション（数秒で消えてベース表情へ戻る）。共有フックに集約。
+  const { expression: reactionExpression, animateKey, fire: fireReaction } = useFairyReaction()
 
   // マウント時にライブカメラを開始（背面カメラ優先）。アンマウントで停止。
   useEffect(() => {
@@ -195,13 +190,6 @@ export default function CameraMode() {
     return () => clearTimeout(timer)
   }, [savedFlash])
 
-  // リアクションは数秒で消えてベース表情に戻る。
-  useEffect(() => {
-    if (!reaction) return
-    const timer = setTimeout(() => setReaction(null), 2500)
-    return () => clearTimeout(timer)
-  }, [reaction])
-
   // ベース表情（状態由来）。リアクション中はそれを一時的に上書きする。
   const baseExpression: FairyExpression = generating
     ? 'thinking'
@@ -210,8 +198,7 @@ export default function CameraMode() {
       : cameraError
         ? 'sad'
         : 'neutral'
-  const expression = reaction?.expression ?? baseExpression
-  const animateKey = reaction?.nonce
+  const expression = reactionExpression ?? baseExpression
 
   return (
     <div className="relative flex h-full flex-col bg-slate-900 text-white">
@@ -235,7 +222,7 @@ export default function CameraMode() {
       {/* 鑑定中オーバーレイ */}
       {generating && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-900/70 backdrop-blur-sm">
-          <Sprite2DRenderer characterId={characterId} expression="thinking" size="lg" />
+          <Sprite2DRenderer characterId={characterId} expression="searching" size="lg" />
           <p className="animate-pulse font-display text-lg text-mint">鑑定中…</p>
         </div>
       )}
