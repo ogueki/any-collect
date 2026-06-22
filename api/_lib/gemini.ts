@@ -19,7 +19,7 @@ export interface ChatTurn {
 /**
  * 会話の返事に添える妖精の感情。client の FAIRY_EXPRESSIONS のミラー
  * （Rarity 同様、api/client で二重定義する前例に倣う）。
- * `thinking`（送信中の loading 専用）と `searching`（カメラ鑑定中専用）は会話では使わないので除く。
+ * `searching`（カメラ鑑定中専用）だけは会話では使わないので除く。
  */
 export const CHAT_EMOTIONS = [
   'neutral',
@@ -32,6 +32,7 @@ export const CHAT_EMOTIONS = [
   'exasperated',
   'angry',
   'salute',
+  'thinking',
 ] as const
 export type ChatEmotion = (typeof CHAT_EMOTIONS)[number]
 

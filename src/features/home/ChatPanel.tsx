@@ -60,6 +60,7 @@ export default function ChatPanel() {
       {error && <p className="px-1 text-xs text-peach">{error}</p>}
 
       <div className="flex gap-2">
+        {/* 文字サイズは text-base(16px) 以上。iOS Safari は 16px 未満の input にフォーカスすると自動ズームしてしまう。 */}
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -73,7 +74,7 @@ export default function ChatPanel() {
           disabled={sending}
           placeholder="メッセージを入力"
           aria-label="メッセージ入力"
-          className="flex-1 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm outline-none focus:border-lavender disabled:opacity-60"
+          className="flex-1 rounded-full border border-slate-200 bg-white px-4 py-2 text-base outline-none focus:border-lavender disabled:opacity-60"
         />
         <button
           type="button"
