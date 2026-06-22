@@ -254,3 +254,100 @@ export async function generateItemMeta({
 
   return { name, description, category, rarity }
 }
+
+export interface SceneComment {
+  comment: string
+  emotion: ChatEmotion
+}
+
+interface GenerateSceneArgs {
+  apiKey: string
+  /** persona を前置きした風景コメント用 system prompt（buildSceneSystemPrompt） */
+  systemPrompt: string
+  /** いま見せている景色の撮影画像 */
+  image: InlineImage
+}
+
+/** 撮影画像（＋persona）から、妖精のひとこと風景コメントと感情を JSON で生成する（図鑑には残さない）。 */
+export async function generateSceneComment({
+  apiKey,
+  systemPrompt,
+  image,
+}: GenerateSceneArgs): Promise<SceneComment> {
+  const model = process.env.GEMINI_TEXT_MODEL || DEFAULT_MODEL
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            { text: 'この景色を見て、相棒としてひとことコメントして。スキーマ通りの JSON で答えて。' },
+            { inlineData: { mimeType: image.mimeType, data: image.data } },
+          ],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.9,
+        // 推論不要。短いひとことなので出力も小さめでよい。
+        thinkingConfig: { thinkingBudget: 0 },
+        maxOutputTokens: 256,
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: 'OBJECT',
+          properties: {
+            comment: { type: 'STRING', description: '景色へのひとこと（口調はペルソナに従う・1文）' },
+            emotion: {
+              type: 'STRING',
+              enum: [...CHAT_EMOTIONS],
+              description: 'ペルソナの「感情の出し方」を参考に、コメントに最も合う感情を1つだけ選ぶ',
+            },
+          },
+          required: ['comment', 'emotion'],
+        },
+      },
+    }),
+  })
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '')
+    throw new Error(`Gemini API エラー (${res.status})${detail ? `: ${detail.slice(0, 300)}` : ''}`)
+  }
+
+  const data = (await res.json()) as GeminiResponse
+  const candidate = data.candidates?.[0]
+  const raw = candidate?.content?.parts?.map((p) => p.text ?? '').join('').trim() ?? ''
+
+  if (!raw) {
+    const reason = data.promptFeedback?.blockReason
+    throw new Error(
+      reason ? `コメントがブロックされました (${reason})` : '風景コメントを取得できませんでした',
+    )
+  }
+
+  let parsed: Partial<SceneComment>
+  try {
+    parsed = JSON.parse(stripCodeFence(raw)) as Partial<SceneComment>
+  } catch {
+    const truncated = candidate?.finishReason === 'MAX_TOKENS'
+    throw new Error(
+      truncated ? 'コメントが長すぎて途切れました（もう一度試してね）' : '風景コメントの JSON 解析に失敗しました',
+    )
+  }
+
+  const comment = typeof parsed.comment === 'string' ? parsed.comment.trim() : ''
+  if (!comment) {
+    throw new Error('風景コメントが空でした')
+  }
+
+  const emotion =
+    typeof parsed.emotion === 'string' && (CHAT_EMOTIONS as readonly string[]).includes(parsed.emotion)
+      ? (parsed.emotion as ChatEmotion)
+      : 'neutral'
+
+  return { comment, emotion }
+}

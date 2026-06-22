@@ -45,3 +45,23 @@ export function buildSystemPrompt(personaText: string): string {
     personaText.trim(),
   ].join('\n')
 }
+
+/**
+ * 風景コメント（STEP7）用の system prompt。
+ * ユーザーがカメラで見せた「今いる場所・景色」に、相棒として短くひとこと反応する。
+ * 会話より一段短い1文のつぶやきにする（その場の演出。図鑑には残さない）。
+ */
+export function buildSceneSystemPrompt(personaText: string): string {
+  return [
+    'あなたは以下のペルソナを持つ妖精キャラクターです。',
+    'ユーザーがカメラで見せた「いまいる場所・景色」に対して、隣にいる相棒として短くひとことコメントします。',
+    '次のルールを必ず守ってください。',
+    '- ペルソナの口調・性格・一人称/二人称を厳密に守る。',
+    '- コメントは1文の短いつぶやき（おおむね30文字以内）。',
+    '- 写っているものを断定しすぎず、見えたものに素直に反応する。',
+    '- 絵文字・Markdownは使わない。キャラクターを崩さない（AIやシステムに言及しない）。',
+    '',
+    '# ペルソナ定義',
+    personaText.trim(),
+  ].join('\n')
+}

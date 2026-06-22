@@ -30,7 +30,8 @@
    - 確定すると図鑑に登録。**元写真は破棄**（保存しない）。
    - 絵柄統一は、全生成で共通の**アートスタイル指定（プロンプト＋アイコン枠/構図のテンプレ）**で担保する。
 2. **風景コメント（サブ機能）**
-   - 撮影画像から風景・状況を認識し、**Gemini** で妖精のひとことコメントを生成して表示（図鑑には登録しない、その場の演出）。
+   - **画面右下の妖精をタップ**すると、いまの景色を1フレーム撮って **Gemini** で妖精のひとことコメント＋感情を生成し、吹き出しで表示（数秒で消える）。図鑑には登録しない・元写真は破棄＝その場の演出。新ボタンは足さず「相棒に話しかける」操作にする。
+   - 経路：`SceneProvider`（`describeScene`）→ `/api/describe-scene` → `generateSceneComment`（persona参照・`responseSchema` で `comment`＋`emotion`）。感情は §4.1.3 の `useFairyReaction` でモーション/表情に反映。
 3. **妖精のリアクション**
    - 画面右下に妖精（2Dイラスト）。撮影・生成成功・レア度・新カテゴリなどに応じて表情/ポーズ差分でリアクション。鑑定中（生成待ち）は **searching**（調べる探偵ポーズ）を表示。
    - 実装：**感情ごとのフォルダ式スプライト**（`sprites/<emotion>/*.webp`、何枚でも置くとランダム候補。元 png を置いたら `npm run sprites:optimize` で WebP・最大1024px へ最適化）＋ **CSSアニメ**（常時の浮遊＋感情別の一発アニメ）の2層。一定時間でベース表情へ戻る。
@@ -87,7 +88,7 @@
 
 ## 8. アーキテクチャ / 拡張性
 拡張・ネイティブ化を見据え、以下を**インターフェースで抽象化**する：
-- **AIプロバイダ**：`ImageGenProvider` / `ChatProvider` / `TtsProvider` を定義し、実装（Gemini/Claude/FishAudio）を差し替え可能に。
+- **AIプロバイダ**：`ImageGenProvider` / `ChatProvider` / `SceneProvider`（風景コメント）/ `TtsProvider` を定義し、実装（Gemini/Claude/FishAudio）を差し替え可能に。
 - **キャラレンダラ**：`CharacterRenderer`（今は2Dスプライト実装、将来3D/Live2D実装を追加）。
 - **ストレージ**：Repository パターン（`ItemRepository` 等）で IndexedDB ↔ Supabase を抽象化（オフライン対応・ネイティブ移行を容易に）。**現状は IndexedDB 実装のみ稼働**、Supabase 実装は後続で同じ抽象の裏に追加（ROADMAP STEP9）。
 - **キャラクター定義**：`characters/<id>/` 配下にペルソナ・差分・音声をまとめ、ディレクトリ単位で差し替え。
@@ -105,7 +106,7 @@ any-collect/
   src/
     features/{camera,home,codex,kiln}/   # kiln（合成）は STEP8。妖精リアクションは表示層なので features ではなく lib/character/ 側
     lib/
-      ai/{imageProvider,chatProvider,ttsProvider}.ts
+      ai/{imageProvider,chatProvider,sceneProvider,ttsProvider}.ts
       character/{CharacterRenderer.ts,Sprite2DRenderer.tsx}
       storage/{itemRepository.ts,...}
       supabase/client.ts
@@ -143,7 +144,7 @@ any-collect/
 
 ## 13. ロードマップ
 > STEP 単位の詳細・最新の進捗は [ROADMAP.md](./ROADMAP.md)（そちらが正）。下記は粗い区分のみ。
-> 実態の進捗：STEP0〜5 完了（会話・撮影アイテム化・IndexedDB図鑑・感情リアクション）。次は STEP6 音声。
+> 実態の進捗：STEP0〜5＋STEP7 完了（会話・撮影アイテム化・IndexedDB図鑑・感情リアクション・風景コメント）。STEP6 音声は⏸保留（TTSサービス選定中）。
 - **MVP**：匿名認証／カメラ撮影→アイコン化＋名前説明→図鑑登録／ホームの会話／妖精2D表示＋音声。
 - **v1**：妖精の窯（合成）／風景コメント／図鑑の検索・絞り込み。
 - **拡張**：キャラ差し替えUI／アップロード解禁オプション／PWA→Capacitorネイティブ化／（必要なら）メール連携でのデータ引き継ぎ。

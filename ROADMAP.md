@@ -11,8 +11,8 @@
 | **3. 撮影→アイテム化（Gemini）** ⚠️核 | ライブ撮影、`api/generate-item.ts`、`ImageGenProvider`、リロール、元写真破棄 | 撮影→統一絵柄のアイコン＋名前説明が出る（絵柄統一をここで詰める） | ✅ 完了（絵柄統一を実機チューニング合格） |
 | **4. 永続化（IndexedDB先行）** | `ItemRepository`＋`indexedDbItemRepository`、確定保存、図鑑UI（`CodexView`） | 集めたアイテムが保存され図鑑に並ぶ | ✅ 完了（STEP4a）。Supabase 移行は後続（下記）に分離 |
 | **5. 妖精の感情リアクション** | 感情フォルダ式スプライト（`sprites/<emotion>/`）＋CSSアニメ、生成/確定で発火、好感度 level-aware 表示、**会話の返事ごとに emotion で表情切替（AIが返事と一緒に感情を選ぶ／responseSchema）**、感情12種（shy/confused/exasperated/angry/salute/searching を追加。鑑定中=searching） | 撮影・確定・**会話**で妖精が表情/ポーズで反応する | ✅ 完了（実機目視チューニング・ポーズ絵量産は残） |
-| **6. 音声（Fish Audio）** | `api/tts.ts`＋`TtsProvider`、ON/OFF | 妖精が喋る | ⬜ |
-| **7. 風景コメント** | `api/describe-scene.ts` | カメラで風景にひとこと | ⬜ |
+| **6. 音声（TTS）** | `api/tts.ts`＋`TtsProvider`、ON/OFF | 妖精が喋る | ⏸ 保留（TTSサービス選定中。`TtsProvider` IF は用意済み・後続に依存なし） |
+| **7. 風景コメント** | `api/describe-scene.ts`＋`SceneProvider`。**カメラ右下の妖精タップ**で発動→ひとこと吹き出し＋表情（図鑑には残さない・元写真破棄） | カメラで風景にひとこと | ✅ 完了（実機目視はデプロイ後） |
 | **8. 妖精の窯（合成）** | `api/synthesize.ts`、`syntheses`、合成UI | アイテム2つ→新アイテム | ⬜ |
 | **9. Supabase 永続化への移行** | 匿名認証、`items`＋RLS、Storage、同一 `ItemRepository` 裏に Supabase 実装を追加 | 端末を跨いでアイテムが保存される（抽象は不変、IndexedDB↔Supabase） | ⬜ |
 | **10. 仕上げ** | PWA・レート制限・ローディング演出・エラー対応・アニメ | 公開＆将来Capacitor化の準備 | ⬜ |

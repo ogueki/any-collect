@@ -4,6 +4,7 @@ import Sprite2DRenderer from '../../lib/character/Sprite2DRenderer'
 import type { FairyExpression } from '../../lib/character/CharacterRenderer'
 import { useFairyReaction } from '../../lib/character/useFairyReaction'
 import { imageGenProvider } from '../../lib/ai/imageGen'
+import { sceneProvider } from '../../lib/ai/scene'
 import type { GeneratedItem } from '../../lib/ai/imageProvider'
 import { useCodexStore } from '../../store/codexStore'
 import { RARITY_CLASS, RARITY_LABEL } from '../../lib/rarity'
@@ -74,6 +75,9 @@ export default function CameraMode() {
   const [saving, setSaving] = useState(false)
   // 確定後にライブへ戻った直後だけ出す「しまったよ」フィードバック。
   const [savedFlash, setSavedFlash] = useState(false)
+  // 風景コメント（右下の妖精タップで発動・その場かぎり、図鑑には残さない）。
+  const [sceneComment, setSceneComment] = useState<string | null>(null)
+  const [sceneLoading, setSceneLoading] = useState(false)
   // 収集体験に対する妖精の一時リアクション（数秒で消えてベース表情へ戻る）。共有フックに集約。
   const { expression: reactionExpression, animateKey, fire: fireReaction } = useFairyReaction()
 
@@ -189,6 +193,33 @@ export default function CameraMode() {
     const timer = setTimeout(() => setSavedFlash(false), 2000)
     return () => clearTimeout(timer)
   }, [savedFlash])
+
+  // 右下の妖精をタップ → いまの景色に妖精がひとこと反応する（風景コメント／STEP7）。
+  // アイテム化とは別。図鑑には登録せず、撮影フレームは即破棄する（プライバシー方針）。
+  const handleSceneComment = useCallback(async () => {
+    const video = videoRef.current
+    if (!video || generating || sceneLoading) return
+    setSceneLoading(true)
+    setSceneComment(null)
+    fireReaction('thinking') // 「見てる…」の即時フィードバック
+    try {
+      const photo = await captureFrame(video)
+      const { comment, emotion } = await sceneProvider.describeScene(photo, { personaId: characterId })
+      setSceneComment(comment)
+      fireReaction(emotion ?? 'happy')
+    } catch {
+      // 風景コメントは演出なので、失敗は静かに無視（収集体験を邪魔しない）。
+    } finally {
+      setSceneLoading(false)
+    }
+  }, [characterId, generating, sceneLoading, fireReaction])
+
+  // 風景コメントの吹き出しは数秒で自然に消す。
+  useEffect(() => {
+    if (!sceneComment) return
+    const timer = setTimeout(() => setSceneComment(null), 6000)
+    return () => clearTimeout(timer)
+  }, [sceneComment])
 
   // ベース表情（状態由来）。リアクション中はそれを一時的に上書きする。
   const baseExpression: FairyExpression = generating
@@ -317,14 +348,27 @@ export default function CameraMode() {
         </div>
       )}
 
-      {/* 妖精は画面右下に小さく */}
-      <div className="absolute bottom-4 right-4">
-        <Sprite2DRenderer
-          characterId={characterId}
-          expression={expression}
-          size="sm"
-          animateKey={animateKey}
-        />
+      {/* 妖精は画面右下に小さく。タップで「いまの景色」にひとこと反応する（風景コメント） */}
+      <div className="absolute bottom-4 right-4 flex flex-col items-end gap-1">
+        {sceneComment && (
+          <div className="max-w-[60vw] rounded-2xl rounded-br-sm bg-white/95 px-3 py-1.5 text-right text-xs text-slate-700 shadow-pop">
+            {sceneComment}
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={() => void handleSceneComment()}
+          disabled={sceneLoading || generating}
+          aria-label="コレットに話しかける（この景色にひとこと）"
+          className="transition active:scale-95 disabled:opacity-80"
+        >
+          <Sprite2DRenderer
+            characterId={characterId}
+            expression={expression}
+            size="sm"
+            animateKey={animateKey}
+          />
+        </button>
       </div>
     </div>
   )
