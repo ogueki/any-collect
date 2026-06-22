@@ -29,6 +29,12 @@ export interface FairyViewProps {
    * 未指定なら expression の変化に追従する従来挙動。
    */
   animateKey?: number
+  /**
+   * 好感度レベル（1 始まり、既定 1）。同じ感情でも `sprites/<emotion>/lv{level}/`
+   * を優先参照し、無ければ下位レベル→tierなし素材へフォールバックする。
+   * この値の「源」（収集数や専用スコア）は呼び出し側で決め、表示側は数値だけ受け取る。
+   */
+  level?: number
 }
 
 /**

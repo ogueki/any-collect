@@ -17,12 +17,14 @@
 - `npm run lint` … ESLint
 
 ## ディレクトリ方針
-- `api/` … 外部API呼び出し（鍵を使う処理は必ずここ）
-- `src/features/{camera,home,codex,kiln,fairy}/` … 機能単位
+> 「現状」＝実在するもの、「将来/後続」＝対応STEPで追加予定（最終形の案は `spec.md §8`）。
+- `api/` … 外部API呼び出し（鍵を使う処理は必ずここ）。現状 `chat.ts` / `generate-item.ts` ＋ `_lib/`（persona/gemini など共通処理・ルート対象外）。`tts.ts` / `describe-scene.ts` / `synthesize.ts` は後続STEPで追加。
+- `src/features/<機能>/` … 機能単位。現状 `camera/` `home/` `codex/`。`kiln/`（合成）等は対応STEPで追加（妖精リアクションは表示層なので `src/lib/character/` 側）。
 - `src/lib/ai/` … AIプロバイダの抽象化（`ImageGenProvider`/`ChatProvider`/`TtsProvider`）
-- `src/lib/character/` … キャラ表示の抽象化（今は2D、将来3D差し替え）
-- `src/lib/storage/` … Repositoryパターン（IndexedDB ↔ Supabase）
-- `src/characters/<id>/` … キャラ定義一式（`persona.md` / `sprites/` / `voice.json`）
+- `src/lib/character/` … キャラ表示の抽象化（今は2Dスプライト、将来3D/Live2D差し替え）
+- `src/lib/storage/` … Repositoryパターン。現状は IndexedDB 実装のみ稼働、Supabase は同一抽象（`ItemRepository`）の裏に後続追加。
+- `src/store/` … Zustand ストア（`appStore` / `chatStore` / `codexStore`）。`src/components/` … モード横断の共有UI。`src/types/` … 共有型。
+- `src/characters/<id>/` … キャラ定義一式。現状 `persona.md` ＋ `sprites/<感情>/*.png`（感情フォルダ式・好感度 level-aware）。`voice.json`（音声設定）は TTS STEP で追加。
 
 ## アーキテクチャ原則（重要）
 1. **シークレットをクライアントに出さない。** APIキーを使う処理はすべて `api/`（Vercel Functions）経由。フロントから直接 Gemini/Claude/Fish Audio を叩かない。

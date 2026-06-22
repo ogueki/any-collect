@@ -4,10 +4,12 @@ import type { FairyExpression, FairyViewProps } from './CharacterRenderer'
 /**
  * 2D スプライトによる妖精表示（CharacterRenderer 実装）。
  *
- * 各キャラの画像は以下のどちらの置き方でも読み込める：
- *   - `src/characters/<id>/sprites/<emotion>/<任意>.png` … 1感情に何枚でも（推奨）
- *   - `src/characters/<id>/sprites/<emotion>.png`        … 1感情1枚（後方互換）
- * 同一感情に複数あれば毎回ランダムに選び、連続で同じ絵は出さない（飽き対策）。
+ * 画像は以下の置き方を混在できる：
+ *   - `sprites/<emotion>/lv1/<任意>.png` … 好感度レベル別（lv1, lv2, …）
+ *   - `sprites/<emotion>/<任意>.png`     … レベル共通（1感情に何枚でも・推奨）
+ *   - `sprites/<emotion>.png`            … 1感情1枚（後方互換）
+ * 同一バケツに複数あれば毎回ランダムに選び、連続で同じ絵は出さない（飽き対策）。
+ * レベル指定時は lv{level} を優先し、無ければ下位レベル→共通→neutral へフォールバック。
  * 画像が未配置でもプレースホルダー（絵文字）で動く。
  * 将来は同じ FairyViewProps で Live2D / 3D 実装に差し替え可能。
  */
@@ -20,32 +22,64 @@ const spriteModules = import.meta.glob('../../characters/*/sprites/**/*.png', {
   import: 'default',
 }) as Record<string, string>
 
-// characterId → emotion → 候補URL配列 の索引を一度だけ構築する。
-type SpriteIndex = Record<string, Record<string, string[]>>
+// レベルサブフォルダを持たない素材を入れる既定 tier キー。
+const NO_TIER = '_'
+
+// characterId → emotion → tier → 候補URL配列 の索引を一度だけ構築する。
+type SpriteIndex = Record<string, Record<string, Record<string, string[]>>>
 
 const spriteIndex: SpriteIndex = (() => {
   const index: SpriteIndex = {}
   for (const [path, url] of Object.entries(spriteModules)) {
-    // 例: ../../characters/default/sprites/happy/a.png → id=default, rest=happy/a
-    //     ../../characters/default/sprites/neutral.png → id=default, rest=neutral
     const m = path.match(/\/characters\/([^/]+)\/sprites\/(.+)\.png$/)
     if (!m) continue
     const characterId = m[1]
-    const rest = m[2]
-    const slash = rest.indexOf('/')
-    // フォルダ配下ならフォルダ名が感情、直置きならファイル名（末尾の -1 等は除く）が感情。
-    const emotion = slash >= 0 ? rest.slice(0, slash) : rest.replace(/-\d+$/, '')
+    const segs = m[2].split('/')
+    // セグメント数で (emotion, tier) を判定：
+    //   neutral                → emotion=neutral(末尾-N除去), tier=共通
+    //   happy/a                → emotion=happy,               tier=共通
+    //   embarrassed/lv1/a      → emotion=embarrassed,         tier=lv1
+    let emotion: string
+    let tier: string
+    if (segs.length === 1) {
+      emotion = segs[0].replace(/-\d+$/, '')
+      tier = NO_TIER
+    } else if (segs.length === 2) {
+      emotion = segs[0]
+      tier = NO_TIER
+    } else {
+      emotion = segs[0]
+      tier = segs[1]
+    }
     const byEmotion = (index[characterId] ??= {})
-    ;(byEmotion[emotion] ??= []).push(url)
+    const byTier = (byEmotion[emotion] ??= {})
+    ;(byTier[tier] ??= []).push(url)
   }
   return index
 })()
 
-/** 指定キャラ・感情の候補URL配列。無ければ neutral にフォールバック。 */
-function resolveSprites(characterId: string, expression: FairyExpression): string[] {
+/**
+ * 指定キャラ・感情・好感度レベルの候補URL配列を返す。
+ * lv{level} → 下位レベル → 共通(tierなし) → neutral の順にフォールバックする。
+ */
+function resolveSprites(
+  characterId: string,
+  expression: FairyExpression,
+  level: number,
+): string[] {
   const byEmotion = spriteIndex[characterId]
   if (!byEmotion) return []
-  return byEmotion[expression] ?? byEmotion.neutral ?? []
+
+  const pickFromTiers = (byTier: Record<string, string[]> | undefined): string[] | undefined => {
+    if (!byTier) return undefined
+    for (let l = level; l >= 1; l--) {
+      const t = byTier[`lv${l}`]
+      if (t?.length) return t
+    }
+    return byTier[NO_TIER]?.length ? byTier[NO_TIER] : undefined
+  }
+
+  return pickFromTiers(byEmotion[expression]) ?? pickFromTiers(byEmotion.neutral) ?? []
 }
 
 // 「直前に出したindex」を感情ごとに記憶し、連続で同じ絵を出さない（シャッフルバッグ的）。
@@ -79,13 +113,14 @@ export default function Sprite2DRenderer({
   expression,
   size = 'lg',
   animateKey,
+  level = 1,
 }: FairyViewProps) {
   // animateKey が変わるたびに引き直す（リアクション発火ごとに別ポーズ）。
   const url = useMemo(() => {
     void animateKey
-    const urls = resolveSprites(characterId, expression)
+    const urls = resolveSprites(characterId, expression, level)
     return urls.length > 0 ? pickSprite(urls, `${characterId}/${expression}`) : undefined
-  }, [characterId, expression, animateKey])
+  }, [characterId, expression, level, animateKey])
 
   // 一発アニメはリアクション発火時（animateKey 指定時）のみ。key で毎回リスタート。
   const reactionAnim = animateKey !== undefined ? REACTION_ANIMATION[expression] : undefined
