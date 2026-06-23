@@ -20,3 +20,13 @@ export const RARITY_CLASS: Record<Rarity, string> = {
   epic: 'bg-lavender/40 text-violet-700',
   legendary: 'bg-lemon/60 text-amber-700',
 }
+
+/**
+ * リビール時の“当たり”グロー。rare 以上だけアイコンの背後をレア度カラーで光らせる
+ * （common/uncommon は通常演出のみ）。配色は RARITY_CLASS と揃える。
+ */
+export const RARITY_GLOW: Partial<Record<Rarity, string>> = {
+  rare: 'bg-sky-300/50',
+  epic: 'bg-lavender/60',
+  legendary: 'bg-lemon/70',
+}
