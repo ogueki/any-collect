@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAppStore } from '../../store/appStore'
 import Sprite2DRenderer from '../../lib/character/Sprite2DRenderer'
 import type { FairyExpression } from '../../lib/character/CharacterRenderer'
 import { useFairyReaction } from '../../lib/character/useFairyReaction'
-import { getWaitLines } from '../../lib/character/waitLines'
+import GeneratingOverlay from '../../components/GeneratingOverlay'
 import { imageGenProvider } from '../../lib/ai/imageGen'
 import { sceneProvider } from '../../lib/ai/scene'
 import type { GeneratedItem } from '../../lib/ai/imageProvider'
@@ -81,19 +81,6 @@ export default function CameraMode() {
   const [sceneLoading, setSceneLoading] = useState(false)
   // 収集体験に対する妖精の一時リアクション（数秒で消えてベース表情へ戻る）。共有フックに集約。
   const { expression: reactionExpression, animateKey, fire: fireReaction } = useFairyReaction()
-
-  // 鑑定中に妖精がつぶやくひとこと。待ち時間を「生きてる」演出に変える（口調は persona 準拠）。
-  const searchingLines = useMemo(() => getWaitLines(characterId, 'searching'), [characterId])
-  const [searchingLineIdx, setSearchingLineIdx] = useState(0)
-  useEffect(() => {
-    if (!generating) return
-    // 生成のたびに出だしをランダム化（毎回同じ順番だと飽きるため）。
-    setSearchingLineIdx(Math.floor(Math.random() * searchingLines.length))
-    const timer = setInterval(() => {
-      setSearchingLineIdx((i) => (i + 1) % searchingLines.length)
-    }, 1900)
-    return () => clearInterval(timer)
-  }, [generating, searchingLines])
 
   // マウント時にライブカメラを開始（背面カメラ優先）。アンマウントで停止。
   useEffect(() => {
@@ -264,27 +251,8 @@ export default function CameraMode() {
         </div>
       )}
 
-      {/* 鑑定中オーバーレイ（妖精が“調べてる”演出＋つぶやきで待ち時間を生かす） */}
-      {generating && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-slate-900/70 px-6 backdrop-blur-sm">
-          <div className="relative flex items-center justify-center">
-            {/* 鑑定の魔法グロー（じんわり明滅） */}
-            <span
-              className="absolute h-36 w-36 rounded-full bg-mint/30 blur-2xl animate-pulse"
-              aria-hidden
-            />
-            <Sprite2DRenderer characterId={characterId} expression="searching" size="lg" />
-          </div>
-          {/* コレットのひとこと（数秒ごとに切り替わる。key で入場アニメを再生） */}
-          <p
-            key={searchingLineIdx}
-            className="animate-pop max-w-[16rem] text-center font-display text-base text-white/90"
-          >
-            {searchingLines[searchingLineIdx]}
-          </p>
-          <p className="animate-pulse font-display text-sm tracking-[0.3em] text-mint">鑑定中…</p>
-        </div>
-      )}
+      {/* 鑑定中オーバーレイ（進捗バー＋状況＋コレットの豆知識。STEP8 合成でも流用可） */}
+      {generating && <GeneratingOverlay characterId={characterId} />}
 
       {/* 生成結果プレビュー */}
       {result && !generating && (
