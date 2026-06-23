@@ -61,12 +61,13 @@
 ## 5. AI構成
 | 用途 | サービス | 概算コスト | 備考 |
 |---|---|---|---|
-| アイテムアイコン化・合成 | Gemini 2.5 Flash Image | 約 $0.04/枚 | 画像編集・画風/キャラ一貫性に強い |
+| アイテムアイコン化・合成 | Gemini 2.5 Flash Image（既定）／fal 高速モデル（検証中） | 約 $0.04/枚（fal は ~1/10〜同等） | 画像編集・画風/キャラ一貫性に強い。スキャンの体感 ~9–11s はこの画像生成が律速 |
 | アイテム名・説明・風景コメント | Gemini（テキスト） | 低コスト | 画像と同一API |
 | 妖精の会話 | **Gemini（初期）→ Claude（将来切替可）** | 低〜中 | `ChatProvider` 抽象で差し替え。口調は persona.md で統一するためモデル非依存 |
 | 音声合成 | Fish Audio | 従量 | キャラごとに音声設定 |
 
 ※価格は変動するため実装時に最新を確認。
+※**画像生成の高速化検証**：撮影アイテム化の画像生成はサーバ env `IMAGE_PROVIDER`（`gemini` 既定／`fal`）で差し替え可能（メタ生成は常に Gemini）。fal は `FAL_KEY` ＋ `FAL_IMAGE_MODEL`/`FAL_IMG2IMG_STRENGTH` でモデル・忠実度を調整。未設定なら現行 Gemini のまま＝完全可逆。本採用は速度・コスト・忠実度の目視判断後。
 
 ## 6. データモデル（Supabase / Postgres）
 > **現状（実装ステータス）：永続化は IndexedDB 先行**で図鑑が稼働中（`ItemRepository` の IndexedDB 実装）。下記 Supabase スキーマは**最終形**であり、同じ `ItemRepository` 抽象の裏に後続 STEP で追加する（抽象は不変）。ROADMAP STEP9 参照。

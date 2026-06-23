@@ -45,6 +45,11 @@ export default defineConfig(({ mode }) => {
     'GEMINI_TEXT_MODEL',
     'GEMINI_IMAGE_MODEL',
     'ANTHROPIC_API_KEY',
+    // 画像生成プロバイダ切替（スキャン高速化の検証用）。fal を使うときだけ要設定。
+    'IMAGE_PROVIDER',
+    'FAL_KEY',
+    'FAL_IMAGE_MODEL',
+    'FAL_IMG2IMG_STRENGTH',
   ] as const) {
     if (env[key]) process.env[key] = env[key]
   }

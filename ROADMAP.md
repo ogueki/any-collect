@@ -21,6 +21,7 @@
 - **STEP0〜3でMVPの背骨**（妖精・会話・収集）が立つ。STEP4（IndexedDB図鑑）で「集めた実感」、STEP5（リアクション）で「相棒が反応する手応え」が出る。
 - ⚠️ **STEP3が最大の不確実性**（絵柄の統一感）→ 実機チューニングで合格済み。
 - 永続化は**IndexedDB 先行**で図鑑を即動かし、Supabase は後で同じ `ItemRepository` 裏に追加する方針（最終形＝spec §8 の IndexedDB↔Supabase 抽象は不変）。
+- **スキャン高速化の検証（実験中）**：撮影アイテム化の ~9–11s は Gemini 2.5 Flash Image の生成時間が律速。サーバ env `IMAGE_PROVIDER=fal` で高速 img2img に差し替えて速度・コスト・忠実度を A/B 評価できる（既定は Gemini ＝完全可逆、新 STEP 化はせず評価結果次第）。詳細は spec §5。
 - 各STEP区切りでコミットする。
 
 ## バックログ（将来 STEP 化を検討）

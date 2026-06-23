@@ -33,6 +33,18 @@ COMPOSITION (icon template, IDENTICAL every time):
 - No watermarks, borders, UI, or hands. Keep only the text/logos physically printed on the object; do NOT add any new text, letters, or numbers.`
 
 /**
+ * SDXL / Lightning 系（fal の高速 img2img）で効くネガティブプロンプト。
+ * ART_STYLE_BLOCK の「足すな」系ルールを、自然文追従の弱いモデル向けに語句で補強する。
+ * 自然文追従の良い FLUX 系では空でも構わない（generate-item.ts のプロバイダ次第で渡す）。
+ */
+export const ITEM_NEGATIVE_PROMPT =
+  'text, letters, numbers, watermark, signature, border, frame, UI, hands, ' +
+  'extra objects, multiple objects, background scenery, environment, props, ' +
+  'person, face, eyes, character, creature, mascot, ' +
+  'added ornaments, jewels, ribbons, swirls, glow, ' +
+  'chibi, deformed, distorted proportions, blurry, lowres, jpeg artifacts'
+
+/**
  * 撮影写真 → 統一絵柄アイテムアイコン の画像生成プロンプト。
  * 「写真の実物を、見分けはつくまま、このアプリのアイテムに作り変える」よう指示する。
  */
