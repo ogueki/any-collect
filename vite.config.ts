@@ -10,7 +10,7 @@ type ApiHandler = (req: IncomingMessage, res: ServerResponse) => Promise<void>
  * ハンドラは ssrLoadModule で都度ロードするため HMR が効き、型結合も生まない。
  */
 // dev で配信する API。本番では Vercel が api/*.ts を直接実行する。
-const API_ROUTES = ['chat', 'generate-item', 'describe-scene'] as const
+const API_ROUTES = ['chat', 'generate-item', 'describe-scene', 'synthesize'] as const
 
 function apiDevServer(): PluginOption {
   return {

@@ -20,6 +20,8 @@ interface CodexState {
   addFromGenerated: (generated: GeneratedItem) => Promise<Item>
   /** そのカテゴリの初取得かどうか（登録前に評価する。リアクション判定用） */
   isNewCategory: (category?: string) => boolean
+  /** 合成結果を図鑑に登録し、系譜を記録する。素材は消費しない。保存済み Item を返す */
+  addFromSynthesis: (generated: GeneratedItem, parentAId: string, parentBId: string) => Promise<Item>
   /** アイテムを削除する */
   remove: (id: string) => Promise<void>
 }
@@ -50,6 +52,23 @@ export const useCodexStore = create<CodexState>((set, get) => ({
       iconUrl: generated.imageUrl,
     })
     // list() と同じ「新しい順」を保つため先頭に積む。
+    set((s) => ({ items: [saved, ...s.items] }))
+    return saved
+  },
+
+  addFromSynthesis: async (generated, parentAId, parentBId) => {
+    const saved = await itemRepository.add({
+      name: generated.name,
+      description: generated.description,
+      category: generated.category,
+      rarity: generated.rarity,
+      iconUrl: generated.imageUrl,
+    })
+    await itemRepository.recordSynthesis({
+      resultItemId: saved.id,
+      parentAId,
+      parentBId,
+    })
     set((s) => ({ items: [saved, ...s.items] }))
     return saved
   },

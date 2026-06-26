@@ -9,11 +9,12 @@
  * `synthesizing` を足せば同じ仕組み（GeneratingOverlay）で使い回せる。
  */
 
-export type WaitContext = 'searching'
+export type WaitContext = 'searching' | 'synthesizing'
 
 /** 進捗に連動して切り替わる「状況ステータス」（短い状況説明・前半→中盤→終盤）。 */
 const STATUS_STAGES: Record<WaitContext, string[]> = {
   searching: ['鑑定中…', 'アイテムにしているよ…', 'もうすぐできるよ…'],
+  synthesizing: ['窯に火を入れてるよ…', 'ふたつを混ぜ合わせてるよ…', 'もうすぐできあがり…'],
 }
 
 /** 待ち時間にローテーション表示するコレットの豆知識／ひとこと（遊び方＋世界観の混在）。 */
@@ -26,6 +27,16 @@ const TIPS: Record<WaitContext, Record<string, string[]>> = {
       '気に入らなかったら「描き直す」でもう一回つくれるよ',
       'おなじモノでも、撮るたびにちがう仕上がりになるの、おもしろいね',
       'ふむふむ…どんなアイテムになるか、たのしみだね',
+    ],
+  },
+  synthesizing: {
+    default: [
+      'ふたつのアイテムが出会うと、なにが生まれるかな',
+      '窯の温度がだいじなんだよ…って、わたしが調節してるの',
+      'おなじ組み合わせでも、毎回ちがうものができるかも',
+      'レアなアイテム同士だと、すごいのができやすいんだって',
+      'どきどき…うまく混ざるといいね',
+      'むかしの妖精は、窯でお星さまも作れたんだって',
     ],
   },
 }

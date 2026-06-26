@@ -48,8 +48,28 @@ export const httpImageGenProvider: ImageGenProvider = {
     }
   },
 
-  // 合成（妖精の窯）は STEP8 で実装する。IF を満たすためのプレースホルダ。
-  async synthesize() {
-    throw new Error('アイテム合成（妖精の窯）は STEP8 で実装予定です')
+  async synthesize(a, b, opts) {
+    const res = await fetch('/api/synthesize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        itemA: { imageUrl: a.imageUrl, name: a.name, description: a.description ?? '' },
+        itemB: { imageUrl: b.imageUrl, name: b.name, description: b.description ?? '' },
+        personaId: opts?.personaId ?? 'default',
+      }),
+    })
+
+    const data: GenerateItemApiResponse = await res.json().catch(() => ({}))
+    if (!res.ok || !data.imageUrl || !data.name || !data.description) {
+      throw new Error(data.error ?? `アイテム合成に失敗しました (${res.status})`)
+    }
+
+    return {
+      imageUrl: data.imageUrl,
+      name: data.name,
+      description: data.description,
+      category: data.category,
+      rarity: data.rarity,
+    }
   },
 }

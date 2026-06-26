@@ -63,6 +63,52 @@ export function buildItemImagePrompt(): string {
 }
 
 /**
+ * 合成（妖精の窯）：2つのアイテムアイコンを融合して新アイテムアイコンを作る画像生成プロンプト。
+ * 両方の視覚的特徴を取り入れつつ、1つの新しいアイテムにまとめる。
+ */
+export function buildSynthesisImagePrompt(nameA: string, nameB: string): string {
+  return [
+    `Fuse the two provided item icons ("${nameA}" and "${nameB}") into ONE brand-new collectible game item icon.`,
+    '',
+    'FUSION RULES:',
+    '- Combine recognizable visual elements from BOTH parent items into a single cohesive new object.',
+    '- The result should look like a believable new item — not a collage, overlay, or split composition.',
+    '- Favor creative and surprising combinations (e.g. a candle + a seashell might become a shell-shaped lantern).',
+    '- Keep the overall silhouette simple and icon-readable.',
+    '',
+    ART_STYLE_BLOCK,
+  ].join('\n')
+}
+
+/**
+ * 合成（妖精の窯）：2つのアイテムの名前+説明から、融合した新アイテムの名前/説明/カテゴリ/レア度を生成する system prompt。
+ */
+export function buildSynthesisMetaPrompt(
+  personaText: string,
+  itemA: { name: string; description: string },
+  itemB: { name: string; description: string },
+): string {
+  return [
+    'あなたは以下のペルソナを持つ妖精です。',
+    '2つのアイテムを「妖精の窯」で合成して生まれた、まったく新しいアイテムの名前と説明を考えます。',
+    '',
+    '素材アイテム:',
+    `- 素材A「${itemA.name}」: ${itemA.description}`,
+    `- 素材B「${itemB.name}」: ${itemB.description}`,
+    '',
+    '出力ルール:',
+    '- name: 合成で生まれた新アイテムの名前。日本語、12文字以内。両方の特徴が感じられるファンタジーな固有名にする。',
+    '- description: 妖精がその合成アイテムを紹介するひとこと。ペルソナの口調で1〜2文、絵文字なし、プレーンテキスト。',
+    '- category: 大まかな種類を1語で（例: 道具 / 植物 / 食べ物 / 鉱石 / 生き物 / 衣類 / その他）。',
+    `- rarity: ${RARITIES.join(' / ')} から、合成の創造性・珍しさで主観的に1つ選ぶ。素材より高くなりやすい。`,
+    '- 必ず指定の JSON スキーマだけで答える（前置き・コードブロックなし）。',
+    '',
+    '# ペルソナ定義',
+    personaText.trim(),
+  ].join('\n')
+}
+
+/**
  * 写真 → アイテム名/説明/カテゴリ/レア度 を作る際の system prompt。
  * 口調・世界観は選択中キャラの persona を唯一の基準にする（claude.md 原則3）。
  */

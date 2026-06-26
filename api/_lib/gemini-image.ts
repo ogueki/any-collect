@@ -32,6 +32,65 @@ interface GeminiImageResponse {
   promptFeedback?: { blockReason?: string }
 }
 
+interface GenerateSynthesisImageArgs {
+  apiKey: string
+  prompt: string
+  imageA: InlineImage
+  imageB: InlineImage
+}
+
+/** 2つのアイテムアイコンを融合して新アイテムアイコンを生成する（妖精の窯）。 */
+export async function generateSynthesisImage({
+  apiKey,
+  prompt,
+  imageA,
+  imageB,
+}: GenerateSynthesisImageArgs): Promise<string> {
+  const model = process.env.GEMINI_IMAGE_MODEL || DEFAULT_IMAGE_MODEL
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            { text: prompt },
+            { inlineData: { mimeType: imageA.mimeType, data: imageA.data } },
+            { inlineData: { mimeType: imageB.mimeType, data: imageB.data } },
+          ],
+        },
+      ],
+      generationConfig: { responseModalities: ['TEXT', 'IMAGE'], temperature: 0.5 },
+    }),
+  })
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '')
+    throw new Error(
+      `Gemini 画像API エラー (${res.status})${detail ? `: ${detail.slice(0, 300)}` : ''}`,
+    )
+  }
+
+  const data = (await res.json()) as GeminiImageResponse
+  const parts = data.candidates?.[0]?.content?.parts ?? []
+  const imagePart = parts.find((p) => p.inlineData?.data)
+
+  if (!imagePart?.inlineData?.data) {
+    const reason = data.promptFeedback?.blockReason
+    throw new Error(
+      reason
+        ? `合成アイコン生成がブロックされました (${reason})`
+        : '合成アイコン画像を生成できませんでした',
+    )
+  }
+
+  const mimeType = imagePart.inlineData.mimeType || 'image/png'
+  return `data:${mimeType};base64,${imagePart.inlineData.data}`
+}
+
 /** 撮影画像＋プロンプトから、統一絵柄のアイテムアイコンを生成して data URL で返す。 */
 export async function generateItemImage({
   apiKey,

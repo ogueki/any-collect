@@ -19,6 +19,7 @@ export interface GeneratedItem {
 export interface ItemRef {
   imageUrl: string
   name: string
+  description?: string
 }
 
 export interface ImageGenProvider {
