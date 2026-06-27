@@ -1,4 +1,4 @@
-import type { Rarity } from '../../types'
+import type { ItemCategory, Rarity } from '../../types'
 
 /**
  * 画像生成プロバイダの抽象。
@@ -12,7 +12,7 @@ export interface GeneratedItem {
   imageUrl: string
   name: string
   description: string
-  category?: string
+  category?: ItemCategory
   rarity?: Rarity
 }
 

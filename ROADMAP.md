@@ -14,6 +14,7 @@
 | **6. 音声（TTS）** | `api/tts.ts`＋`TtsProvider`、ON/OFF | 妖精が喋る | ⏸ 保留（TTSサービス選定中。`TtsProvider` IF は用意済み・後続に依存なし） |
 | **7. 風景コメント** | `api/describe-scene.ts`＋`SceneProvider`。**カメラ右下の妖精タップ**で発動→ひとこと吹き出し＋表情（図鑑には残さない・元写真破棄） | カメラで風景にひとこと | ✅ 完了（実機目視はデプロイ後） |
 | **8. 妖精の窯（合成）** | `api/synthesize.ts`、`syntheses`、合成UI（ホーム内サブビュー）。素材は消費しない | アイテム2つ→新アイテム | ✅ 完了 |
+| **8.5. 図鑑のカテゴリ分類** | `category` を固定キー enum 化（`item-prompt.ts`/`gemini.ts` で enum+required・未知は other に正規化＝`src/lib/category.ts`）、図鑑に並び替え（新しい順/カテゴリ順）＋カテゴリ絞り込みチップ。カードは無装飾のまま | 図鑑をカテゴリで並べ替え/絞り込みでき、生成カテゴリが7キーに揃う | ✅ 完了 |
 | **9. Supabase 永続化への移行** | 匿名認証、`items`＋RLS、Storage、同一 `ItemRepository` 裏に Supabase 実装を追加 | 端末を跨いでアイテムが保存される（抽象は不変、IndexedDB↔Supabase） | ⬜ |
 | **10. 仕上げ** | PWA・レート制限・ローディング演出・エラー対応・アニメ | 公開＆将来Capacitor化の準備 | ⬜ |
 

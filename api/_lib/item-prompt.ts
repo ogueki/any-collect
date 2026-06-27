@@ -16,6 +16,27 @@ export type Rarity = (typeof RARITIES)[number]
 export const RARITY_VALUES: readonly Rarity[] = RARITIES
 
 /**
+ * アイテム分類（図鑑のソート/絞り込み用の裏方データ）。
+ * Rarity と同様に api/client で二重定義する前例に倣う（client 側ミラーは
+ * src/types の ItemCategory ＋ src/lib/category.ts）。
+ * 先頭がキー（＝保存値）、後ろの日本語はモデルに正しく選ばせるためのグロス。
+ */
+const CATEGORIES = [
+  ['food', '食べ物・飲み物・お菓子'],
+  ['creature', '生き物・動物・虫'],
+  ['nature', '植物・花・石・自然物'],
+  ['gear', '道具・機械・電子機器・文具・日用品'],
+  ['toy', 'おもちゃ・ぬいぐるみ・フィギュア・ゲーム'],
+  ['wear', '服・くつ・アクセサリー'],
+  ['other', '上記に当てはまらないもの・正体不明'],
+] as const
+export type ItemCategoryKey = (typeof CATEGORIES)[number][0]
+export const CATEGORY_VALUES: readonly ItemCategoryKey[] = CATEGORIES.map(([key]) => key)
+
+/** プロンプトに展開する category 選択肢（`key(グロス) / …` 形式）。 */
+const CATEGORY_CHOICES = CATEGORIES.map(([key, gloss]) => `${key}(${gloss})`).join(' / ')
+
+/**
  * 全アイテム共通のアートスタイル＆構図テンプレ。英語で書くのは画像モデルの追従が良いため。
  * 「同じ1セットのゲームアイコンに見える」ことを最優先に、毎回同じ枠・同じ画風を強制する。
  */
@@ -99,7 +120,7 @@ export function buildSynthesisMetaPrompt(
     '出力ルール:',
     '- name: 合成で生まれた新アイテムの名前。日本語、12文字以内。両方の特徴が感じられるファンタジーな固有名にする。',
     '- description: 妖精がその合成アイテムを紹介するひとこと。ペルソナの口調で1〜2文、絵文字なし、プレーンテキスト。',
-    '- category: 大まかな種類を1語で（例: 道具 / 植物 / 食べ物 / 鉱石 / 生き物 / 衣類 / その他）。',
+    `- category: 次のキーから最も近いものを1つだけ選ぶ（必ず英字キーで答える）: ${CATEGORY_CHOICES}`,
     `- rarity: ${RARITIES.join(' / ')} から、合成の創造性・珍しさで主観的に1つ選ぶ。素材より高くなりやすい。`,
     '- 必ず指定の JSON スキーマだけで答える（前置き・コードブロックなし）。',
     '',
@@ -120,7 +141,7 @@ export function buildItemMetaPrompt(personaText: string): string {
     '出力ルール:',
     '- name: アイテムの名前。日本語、12文字以内。世界観のあるかわいい固有名にする（実物の一般名そのままにしない）。',
     '- description: 妖精がそのアイテムを紹介するひとこと。ペルソナの口調で1〜2文、絵文字なし、プレーンテキスト。',
-    '- category: 大まかな種類を1語で（例: 道具 / 植物 / 食べ物 / 鉱石 / 生き物 / 衣類 / その他）。',
+    `- category: 次のキーから最も近いものを1つだけ選ぶ（必ず英字キーで答える）: ${CATEGORY_CHOICES}`,
     `- rarity: ${RARITIES.join(' / ')} から、見た目の珍しさ・特別感で主観的に1つ選ぶ。`,
     '- 必ず指定の JSON スキーマだけで答える（前置き・コードブロックなし）。',
     '',

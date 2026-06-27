@@ -4,6 +4,7 @@ import { useCodexStore } from '../../store/codexStore'
 import { imageGenProvider } from '../../lib/ai/imageGen'
 import { emotionForConfirm, emotionForGenerated } from '../../lib/character/reaction'
 import { RARITY_CLASS, RARITY_GLOW, RARITY_LABEL } from '../../lib/rarity'
+import { CATEGORY_LABEL, toCategory } from '../../lib/category'
 import GeneratingOverlay from '../../components/GeneratingOverlay'
 import type { GeneratedItem } from '../../lib/ai/imageProvider'
 import type { FairyExpression } from '../../lib/character/CharacterRenderer'
@@ -215,7 +216,9 @@ export default function KilnView({ onReaction }: KilnViewProps) {
               )}
             </div>
             {result.category && (
-              <p className="mt-0.5 text-center text-xs text-slate-400">{result.category}</p>
+              <p className="mt-0.5 text-center text-xs text-slate-400">
+                {CATEGORY_LABEL[toCategory(result.category)]}
+              </p>
             )}
             <p className="mt-2 whitespace-pre-wrap text-center text-sm text-slate-600">
               {result.description}

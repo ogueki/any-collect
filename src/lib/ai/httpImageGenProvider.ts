@@ -1,4 +1,5 @@
 import type { GeneratedItem, ImageGenProvider } from './imageProvider'
+import { toCategory } from '../category'
 
 /**
  * /api/generate-item プロキシ経由でアイテムを生成する ImageGenProvider 実装。
@@ -43,7 +44,8 @@ export const httpImageGenProvider: ImageGenProvider = {
       imageUrl: data.imageUrl,
       name: data.name,
       description: data.description,
-      category: data.category,
+      // wire 越しは生 string なので既知キーに正規化（旧/想定外の値は other に倒す）。
+      category: toCategory(data.category),
       rarity: data.rarity,
     }
   },
@@ -68,7 +70,8 @@ export const httpImageGenProvider: ImageGenProvider = {
       imageUrl: data.imageUrl,
       name: data.name,
       description: data.description,
-      category: data.category,
+      // wire 越しは生 string なので既知キーに正規化（旧/想定外の値は other に倒す）。
+      category: toCategory(data.category),
       rarity: data.rarity,
     }
   },

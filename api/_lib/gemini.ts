@@ -7,7 +7,7 @@
  */
 
 import type { InlineImage } from './gemini-image.js'
-import { RARITY_VALUES, type Rarity } from './item-prompt.js'
+import { CATEGORY_VALUES, RARITY_VALUES, type ItemCategoryKey, type Rarity } from './item-prompt.js'
 
 const DEFAULT_MODEL = 'gemini-2.5-flash'
 
@@ -162,7 +162,8 @@ export async function generateChatReply({
 export interface ItemMeta {
   name: string
   description: string
-  category?: string
+  /** 安定キー。enum を強制＋未知は other にフォールバックするので常に有効値が入る。 */
+  category: ItemCategoryKey
   rarity?: Rarity
 }
 
@@ -205,10 +206,10 @@ export async function generateItemMeta({
           properties: {
             name: { type: 'STRING' },
             description: { type: 'STRING' },
-            category: { type: 'STRING' },
+            category: { type: 'STRING', enum: [...CATEGORY_VALUES] },
             rarity: { type: 'STRING', enum: [...RARITY_VALUES] },
           },
-          required: ['name', 'description', 'rarity'],
+          required: ['name', 'description', 'category', 'rarity'],
         },
       },
     }),
@@ -249,8 +250,11 @@ export async function generateItemMeta({
     typeof parsed.rarity === 'string' && (RARITY_VALUES as readonly string[]).includes(parsed.rarity)
       ? (parsed.rarity as Rarity)
       : undefined
-  const category =
-    typeof parsed.category === 'string' && parsed.category.trim() ? parsed.category.trim() : undefined
+  // enum 強制でも保険として検証し、外れていれば other に倒す（rarity と同方式）。
+  const category: ItemCategoryKey =
+    typeof parsed.category === 'string' && (CATEGORY_VALUES as readonly string[]).includes(parsed.category)
+      ? (parsed.category as ItemCategoryKey)
+      : 'other'
 
   return { name, description, category, rarity }
 }
@@ -291,10 +295,10 @@ export async function generateSynthesisMeta({
           properties: {
             name: { type: 'STRING' },
             description: { type: 'STRING' },
-            category: { type: 'STRING' },
+            category: { type: 'STRING', enum: [...CATEGORY_VALUES] },
             rarity: { type: 'STRING', enum: [...RARITY_VALUES] },
           },
-          required: ['name', 'description', 'rarity'],
+          required: ['name', 'description', 'category', 'rarity'],
         },
       },
     }),
@@ -335,8 +339,11 @@ export async function generateSynthesisMeta({
     typeof parsed.rarity === 'string' && (RARITY_VALUES as readonly string[]).includes(parsed.rarity)
       ? (parsed.rarity as Rarity)
       : undefined
-  const category =
-    typeof parsed.category === 'string' && parsed.category.trim() ? parsed.category.trim() : undefined
+  // enum 強制でも保険として検証し、外れていれば other に倒す（rarity と同方式）。
+  const category: ItemCategoryKey =
+    typeof parsed.category === 'string' && (CATEGORY_VALUES as readonly string[]).includes(parsed.category)
+      ? (parsed.category as ItemCategoryKey)
+      : 'other'
 
   return { name, description, category, rarity }
 }

@@ -9,6 +9,7 @@ import { sceneProvider } from '../../lib/ai/scene'
 import type { GeneratedItem } from '../../lib/ai/imageProvider'
 import { useCodexStore } from '../../store/codexStore'
 import { RARITY_CLASS, RARITY_GLOW, RARITY_LABEL } from '../../lib/rarity'
+import { CATEGORY_LABEL, toCategory } from '../../lib/category'
 import { emotionForConfirm, emotionForGenerated } from '../../lib/character/reaction'
 
 /**
@@ -290,7 +291,9 @@ export default function CameraMode() {
               )}
             </div>
             {result.category && (
-              <p className="mt-0.5 text-xs text-slate-400">{result.category}</p>
+              <p className="mt-0.5 text-xs text-slate-400">
+                {CATEGORY_LABEL[toCategory(result.category)]}
+              </p>
             )}
             <p className="mt-2 whitespace-pre-wrap text-sm text-slate-600">
               {result.description}
