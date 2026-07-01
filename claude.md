@@ -3,13 +3,17 @@
 このファイルは Claude Code がプロジェクト作業時に参照する開発規約です。詳細な機能仕様は `spec.md` を参照。
 
 ## プロジェクト概要
-妖精の相棒と現実のモノを「アイテム」に変えて集めるブラウザWEBアプリ。カメラモード（収集）とホームモード（会話・図鑑・合成）の2モード構成。将来ネイティブアプリ化（Capacitor）を見据える。
+妖精の相棒 **コレット** と、いつもの毎日を「ちょっと冒険」に変える寄り添いブラウザWEBアプリ。**カメラモード**（世界を見せる＝撮影→声つき反応→写真をアルバムに保存）と **ホームモード**（会話・アルバム・妖精の窯でアイテム化・妖精界）の2モード構成。
+- **背骨**：コレットの"欲・好奇心"がユーザーを現実へ連れ出す（「行きたいなら行ってみるか」）。
+- **二重構造**：カメラ→写真→**アルバム（あなたの世界）**／アルバム写真→窯→アイテム→**妖精界（コレットの世界）**／窯＝橋。
+- **v2 転換（2026-07-02）**：旧「撮影→即スキャン画像生成で収集」から、**会話＋アルバム＋妖精界コア**へ移行（コスト・リテンション両面）。詳細は `spec.md`、進行は `ROADMAP.md`。
+- 将来ネイティブアプリ化（Capacitor）＝**プッシュ通知で"毎日開く理由"を作る**のが主目的。
 
 ## 技術スタック
 - React 19 + TypeScript + Vite + Tailwind CSS + Zustand
 - API層：Vercel Serverless Functions（`api/`）
 - バックエンド：Supabase（Postgres / Storage / 匿名認証）
-- AI：Gemini 2.5 Flash Image（画像）/ Gemini（定型テキスト・会話）/ Fish Audio（音声）。会話は将来 Claude に切替可（`ChatProvider` 実装の差し替え）
+- AI：Gemini 2.5 Flash Image（**アルバム写真→透過アイテム**・1日1個ゲージ配給）/ Gemini（反応・会話・名前説明・記憶要約）/ **Fish Audio（音声＝稼働。カメラ＝動的TTS／ホーム＝事前収録パートボイス）**。会話は将来 Claude に切替可（`ChatProvider` 差し替え）
 
 ## 開発コマンド
 - `npm run dev` … 開発サーバ
@@ -18,13 +22,13 @@
 
 ## ディレクトリ方針
 > 「現状」＝実在するもの、「将来/後続」＝対応STEPで追加予定（最終形の案は `spec.md §8`）。
-- `api/` … 外部API呼び出し（鍵を使う処理は必ずここ）。現状 `chat.ts` / `generate-item.ts` ＋ `_lib/`（persona/gemini など共通処理・ルート対象外）。`tts.ts` / `describe-scene.ts` / `synthesize.ts` は後続STEPで追加。
-- `src/features/<機能>/` … 機能単位。現状 `camera/` `home/` `codex/`。`kiln/`（合成）等は対応STEPで追加（妖精リアクションは表示層なので `src/lib/character/` 側）。
-- `src/lib/ai/` … AIプロバイダの抽象化（`ImageGenProvider`/`ChatProvider`/`TtsProvider`）
+- `api/` … 外部API呼び出し（鍵を使う処理は必ずここ）。`describe-scene.ts`（カメラ反応）/ `chat.ts`（会話・接地注入）/ `generate-item.ts`（アルバム写真→透過アイテム）/ `tts.ts`（Fish・稼働）/ `memory.ts`（会話要約→保存）＋ `_lib/`（persona/gemini/item-prompt・ルート対象外）。
+- `src/features/<機能>/` … 機能単位。`camera/`（見せる・反応・保存）/ `home/` / `album/`（旧 codex）/ `kiln/`（アイテム化）/ `realm/`（妖精界）/ `onboarding/`。妖精リアクションは表示層なので `src/lib/character/` 側。
+- `src/lib/ai/` … AIプロバイダの抽象化（`ImageGenProvider`/`ChatProvider`/`SceneProvider`/`TtsProvider`）
 - `src/lib/character/` … キャラ表示の抽象化（今は2Dスプライト、将来3D/Live2D差し替え）
-- `src/lib/storage/` … Repositoryパターン。現状は IndexedDB 実装のみ稼働、Supabase は同一抽象（`ItemRepository`）の裏に後続追加。
-- `src/store/` … Zustand ストア（`appStore` / `chatStore` / `codexStore`）。`src/components/` … モード横断の共有UI。`src/types/` … 共有型。
-- `src/characters/<id>/` … キャラ定義一式。現状 `persona.md` ＋ `sprites/<感情>/*.webp`（感情フォルダ式・好感度 level-aware）。`voice.json`（音声設定）は TTS STEP で追加。
+- `src/lib/storage/` … Repositoryパターン。`ItemRepository` ＋ 新規 `PhotoRepository`/`MemoryRepository`/`AffinityRepository`。**インターフェースを先に切って** IndexedDB（先行）↔ Supabase（後続）を同一抽象の裏に吸収。
+- `src/store/` … Zustand ストア（`appStore` / `chatStore` / `albumStore` / `gaugeStore` / `affinityStore` / `memoryStore`）。`src/components/` … モード横断の共有UI。`src/types/` … 共有型。
+- `src/characters/<id>/` … キャラ定義一式。デフォルト＝`colette`。`persona.md`（**好奇心旺盛・冒険好き・欲・決め台詞多め**）＋ `sprites/<感情>/*.webp`（感情フォルダ式・好感度 level-aware）＋ `voice.json`（音声設定・稼働）。
   - **スプライト画像のルール**：本番素材は **WebP・最大1024px**。`sprites/` に png/jpg を追加したら **`npm run sprites:optimize` を実行してから commit**（`scripts/optimize-sprites.mjs` が WebP 化＝1枚~1MB→~120KB、冪等）。大きい元 png をそのままコミットしない。
 
 ## アーキテクチャ原則（重要）
@@ -34,10 +38,13 @@
 4. **キャラは差し替え単位。** 新キャラ追加 = `src/characters/<新id>/` を足すだけで動くこと。
 
 ## プライバシー / セキュリティ（遵守）
-- 匿名認証のみ。メール・氏名等のPIIを収集・保存しない。
-- カメラの元写真を永続保存しない（生成アイコンのみ保存、確定後に元画像破棄）。
-- 入力はライブ撮影のみ（MVP）。アップロード解禁は将来のオプション。
-- Supabase は全テーブル RLS を有効化し、ユーザーは自分の行のみアクセス可。
+> **v2 で方針転換**：アルバム機能のため「元写真を永続保存しない」を反転。製品化＝データ責任を正式にスコープに入れる。詳細は `spec.md §9`。
+- **匿名認証**。引き継ぎは **opt-in メール/パスキー**（本人が選んだ時だけ＝全員から強制的に PII を集めない精神は維持）。
+- **写真は保存する（アルバム）。既定はローカル端末のみ、クラウド保存は opt-in。** ← 旧「元写真を永続保存しない」を廃止。
+- **エクスポート・削除を一級機能**にする（"記憶を人質"にしない自制を設計で明示）。
+- **モデレーション/安全**：写真の安全チェック（NSFW/違法）／顔の扱い（人物同定・不気味コメント禁）／入力の許容範囲（他人の顔/ブランド/版権・ToS 確認）／クライシス層（自傷・危機→ケア+相談先）／キャラ崩れフォールバック（AI 拒否/破綻を捕捉→in-character）。
+- 入力はライブ撮影（アップロード解禁は将来のオプション）。
+- Supabase は全テーブル RLS。**データ2クラス**：関係データ（好感度・記憶要約・アイテムメタ）＝既定クラウド／生写真＝opt-inクラウド（既定ローカル）。
 
 ## 環境変数 / シークレット
 - サーバ側（Vercel Functions）：`GEMINI_API_KEY` / `FISH_AUDIO_API_KEY` / `SUPABASE_SERVICE_ROLE_KEY`（`ANTHROPIC_API_KEY` は将来 Claude で会話する場合のみ）
@@ -62,5 +69,5 @@
 - STEP 区切りでコミットする前に、上記3点と実装のズレがないか確認してから commit する。
 
 ## やること / やらないこと
-- ✅ 鍵処理はサーバ側 ／ 抽象化レイヤー経由 ／ ペルソナ参照 ／ RLS有効 ／ コード変更時にドキュメント追従
-- ❌ フロントから直APIキー使用 ／ 元写真の永続保存 ／ PII収集 ／ 具体AI実装への直接依存 ／ 実態とズレた仕様書の放置
+- ✅ 鍵処理はサーバ側 ／ 抽象化レイヤー経由 ／ ペルソナ参照（反応・会話・アイテム全部） ／ RLS有効 ／ 写真クラウドは opt-in ／ エクスポート・削除・モデレーションを備える ／ 声は全員に届ける ／ コード変更時にドキュメント追従
+- ❌ フロントから直APIキー使用 ／ 写真を無断でクラウド保存（opt-in 必須） ／ 具体AI実装への直接依存 ／ 課金で関係/記憶を人質にする（広告・ゲージ販売も不採用） ／ 実態とズレた仕様書の放置
