@@ -11,15 +11,37 @@ export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary'
  */
 export type ItemCategory = 'food' | 'creature' | 'nature' | 'gear' | 'toy' | 'wear' | 'other'
 
-/** 図鑑に登録されるアイテム */
+/**
+ * アルバムに保存する写真（v2）。カメラで撮ってコレットが反応した1枚。
+ * 画像は Blob で保持する（IndexedDB は Blob を直接保存でき、data URL より軽い）。
+ * 既定ローカル、opt-in でクラウド（§9）。表示側は URL.createObjectURL で描画する。
+ */
+export interface Photo {
+  id: string
+  /** 撮影画像本体（JPEG 等） */
+  blob: Blob
+  /** 撮影時にコレットが返したひとこと（アルバム詳細で見返す） */
+  comment?: string
+  /** ひとことに添えられた感情（立ち絵の表情に使える） */
+  emotion?: FairyExpression
+  /** ISO 8601 */
+  createdAt: string
+}
+
+/** アイテム（窯でアルバム写真から作る透過アイテム／妖精界に出現する） */
 export interface Item {
   id: string
   name: string
   description: string
   category?: ItemCategory
   rarity?: Rarity
-  /** 生成されたアイコン画像の URL（Supabase Storage 等） */
+  /** 生成された透過アイコン画像の URL（Supabase Storage 等） */
   iconUrl: string
+  /** 由来のアルバム写真 ID（v2・窯でのアイテム化元） */
+  sourcePhotoId?: string
+  /** 妖精界での配置（正規化座標 0..1。未配置なら未定義＝コレットが自動配置） */
+  realmX?: number
+  realmY?: number
   /** ISO 8601 */
   createdAt: string
 }
