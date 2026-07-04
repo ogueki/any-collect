@@ -26,6 +26,8 @@ interface CollectionState {
   load: () => Promise<void>
   /** 判定した主役＋クロップ画像を収集する。同種は count+1、新種は新規追加 */
   collect: (subject: IdentifiedSubject, blob: Blob, description: string) => Promise<CollectResult>
+  /** エントリのクロップ写真を差し替える（再発見時に「更新する？」で使う。日付・解説は保つ） */
+  updatePhoto: (id: string, blob: Blob) => Promise<void>
   /** 図鑑エントリを削除する */
   remove: (id: string) => Promise<void>
 }
@@ -86,6 +88,15 @@ export const useCollectionStore = create<CollectionState>((set, get) => ({
     await collectionRepository.put(entry)
     set({ entries: sortEntries([...base, entry]) })
     return { entry, isNew: true }
+  },
+
+  updatePhoto: async (id, blob) => {
+    const target = get().entries.find((e) => e.id === id)
+    if (!target) return
+    // 写真（クロップ）だけ差し替え。firstSeenAt・解説・count は保つ。
+    const updated: CollectionEntry = { ...target, blob }
+    await collectionRepository.put(updated)
+    set((s) => ({ entries: s.entries.map((e) => (e.id === id ? updated : e)) }))
   },
 
   remove: async (id) => {

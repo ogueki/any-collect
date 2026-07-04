@@ -56,6 +56,7 @@ export default function CameraMode() {
   const characterId = useAppStore((s) => s.characterId)
   const addPhoto = useAlbumStore((s) => s.add)
   const collect = useCollectionStore((s) => s.collect)
+  const updatePhoto = useCollectionStore((s) => s.updatePhoto)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -73,7 +74,11 @@ export default function CameraMode() {
   const [savedFlash, setSavedFlash] = useState(false)
   // 初発見の「はじめて見つけた！」演出（クロップ縮小＋名前）。数秒で消える。
   const [discovery, setDiscovery] = useState<{ name: string; url: string } | null>(null)
-  // 既知種を再発見したときの軽いトースト（「○○ ×3」）。
+  // 既知種を再発見したとき、新しいクロップで「写真を更新する？」を選ばせるプロンプト。
+  const [pendingUpdate, setPendingUpdate] = useState<
+    { id: string; name: string; count: number; url: string; blob: Blob } | null
+  >(null)
+  // 軽い通知トースト（「写真を更新したよ」等）。
   const [foundToast, setFoundToast] = useState<string | null>(null)
   // 撮影に対する妖精の一時リアクション（数秒でベース表情へ戻る）。共有フックに集約。
   const { expression: reactionExpression, animateKey, fire: fireReaction } = useFairyReaction()
@@ -114,6 +119,7 @@ export default function CameraMode() {
     setError(null)
     setComment(null)
     setFoundToast(null)
+    setPendingUpdate(null) // 前回の「更新する？」は次の撮影で閉じる
     fireReaction('thinking') // 「見てるね…」の即時フィードバック
     try {
       const photo = await captureFrame(video)
@@ -136,7 +142,14 @@ export default function CameraMode() {
               setDiscovery({ name: entry.name, url: URL.createObjectURL(crop) })
               fireReaction('excited')
             } else {
-              setFoundToast(`「${entry.name}」を見つけた ×${entry.count}`)
+              // 再発見：新しいクロップを見せて「写真を更新する？」を選ばせる（自動では差し替えない）。
+              setPendingUpdate({
+                id: entry.id,
+                name: entry.name,
+                count: entry.count,
+                url: URL.createObjectURL(crop),
+                blob: crop,
+              })
             }
           } catch {
             // クロップ/収集の失敗は演出だけ諦める（アルバム保存は続ける）。
@@ -154,6 +167,20 @@ export default function CameraMode() {
       setBusy(false)
     }
   }, [busy, characterId, fireReaction, addPhoto, collect])
+
+  // 再発見時の「写真を更新する？」への応答。
+  const confirmUpdate = useCallback(async () => {
+    if (!pendingUpdate) return
+    try {
+      await updatePhoto(pendingUpdate.id, pendingUpdate.blob)
+      setFoundToast('写真を更新したよ')
+    } catch {
+      // 更新失敗は黙って諦める（元の写真のまま）。
+    } finally {
+      setPendingUpdate(null)
+    }
+  }, [pendingUpdate, updatePhoto])
+  const dismissUpdate = useCallback(() => setPendingUpdate(null), [])
 
   // 「保存したよ」表示は数秒で自然に消す。
   useEffect(() => {
@@ -189,6 +216,19 @@ export default function CameraMode() {
     }
   }, [discovery])
 
+  // 「写真を更新する？」プロンプトは操作が要るので長めに出し、放置なら閉じる（＝このまま）。
+  useEffect(() => {
+    if (!pendingUpdate) return
+    const timer = setTimeout(() => setPendingUpdate(null), 9000)
+    return () => clearTimeout(timer)
+  }, [pendingUpdate])
+  useEffect(() => {
+    const url = pendingUpdate?.url
+    return () => {
+      if (url) URL.revokeObjectURL(url)
+    }
+  }, [pendingUpdate])
+
   // ベース表情（状態由来）。リアクション中はそれを一時的に上書きする。
   const baseExpression: FairyExpression = busy ? 'thinking' : cameraError ? 'sad' : 'neutral'
   const expression = reactionExpression ?? baseExpression
@@ -218,6 +258,41 @@ export default function CameraMode() {
             <div className="text-left">
               <p className="text-xs font-bold text-lavender">はじめて見つけた！</p>
               <p className="font-display text-lg font-bold leading-tight">{discovery.name}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 再発見：新しいクロップで「写真を更新する？」を選ばせる */}
+      {pendingUpdate && (
+        <div className="absolute inset-x-0 top-10 flex justify-center px-6">
+          <div className="animate-reveal flex items-center gap-3 rounded-3xl bg-white/95 px-4 py-3 text-slate-800 shadow-pop">
+            <img
+              src={pendingUpdate.url}
+              alt={pendingUpdate.name}
+              className="h-14 w-14 rounded-2xl object-cover"
+            />
+            <div className="text-left">
+              <p className="text-xs font-bold text-lavender">
+                また見つけた！ ×{pendingUpdate.count}
+              </p>
+              <p className="font-display text-base font-bold leading-tight">{pendingUpdate.name}</p>
+              <div className="mt-1.5 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => void confirmUpdate()}
+                  className="rounded-full bg-mint px-3 py-1 text-xs font-bold text-slate-900 shadow-pop transition active:scale-95"
+                >
+                  写真を更新
+                </button>
+                <button
+                  type="button"
+                  onClick={dismissUpdate}
+                  className="rounded-full border border-slate-300 px-3 py-1 text-xs font-bold text-slate-500 transition active:scale-95"
+                >
+                  このまま
+                </button>
+              </div>
             </div>
           </div>
         </div>
