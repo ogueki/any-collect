@@ -22,9 +22,9 @@
 
 ## ディレクトリ方針
 > 「現状」＝実在するもの、「将来/後続」＝対応STEPで追加予定（最終形の案は `spec.md §8`）。
-- `api/` … 外部API呼び出し（鍵を使う処理は必ずここ）。`describe-scene.ts`（カメラ反応）/ `chat.ts`（会話・接地注入）/ `generate-item.ts`（アルバム写真→透過アイテム）/ `tts.ts`（Fish・稼働）/ `memory.ts`（会話要約→保存）＋ `_lib/`（persona/gemini/item-prompt・ルート対象外）。
-- `src/features/<機能>/` … 機能単位。`camera/`（見せる・反応・保存）/ `home/` / `album/`（旧 codex）/ `kiln/`（アイテム化）/ `realm/`（妖精界）/ `onboarding/`。妖精リアクションは表示層なので `src/lib/character/` 側。
-- `src/lib/ai/` … AIプロバイダの抽象化（`ImageGenProvider`/`ChatProvider`/`SceneProvider`/`TtsProvider`）
+- `api/` … 外部API呼び出し（鍵を使う処理は必ずここ）。`describe-scene.ts`（景色ひとこと・図鑑に残さない）/ `identify.ts`（図鑑判定＝主役同定＋bbox・Seek型）/ `chat.ts`（会話・接地注入）/ `generate-item.ts`（図鑑エントリ→透過アイテム）/ `tts.ts`（Fish・稼働）/ `memory.ts`（会話要約→保存）＋ `_lib/`（persona/gemini/item-prompt・ルート対象外）。
+- `src/features/<機能>/` … 機能単位。`camera/`（見せる・判定・図鑑収集＋アルバム保存）/ `home/` / `collection/`（図鑑＝実物のクロップ収集・Seek型）/ `album/`（思い出写真・旧 codex を置換）/ `kiln/`（アイテム化）/ `realm/`（妖精界）/ `onboarding/`。妖精リアクションは表示層なので `src/lib/character/` 側。クロップは `src/lib/image/crop.ts`。
+- `src/lib/ai/` … AIプロバイダの抽象化（`ImageGenProvider`/`ChatProvider`/`SceneProvider`/`IdentifyProvider`/`TtsProvider`）
 - `src/lib/character/` … キャラ表示の抽象化（今は2Dスプライト、将来3D/Live2D差し替え）
 - `src/lib/storage/` … Repositoryパターン。`ItemRepository` ＋ 新規 `PhotoRepository`/`MemoryRepository`/`AffinityRepository`。**インターフェースを先に切って** IndexedDB（先行）↔ Supabase（後続）を同一抽象の裏に吸収。
 - `src/store/` … Zustand ストア（`appStore` / `chatStore` / `albumStore` / `gaugeStore` / `affinityStore` / `memoryStore`）。`src/components/` … モード横断の共有UI。`src/types/` … 共有型。

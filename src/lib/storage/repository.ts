@@ -2,6 +2,8 @@ import type { ItemRepository } from './itemRepository'
 import { indexedDbItemRepository } from './indexedDbItemRepository'
 import type { PhotoRepository } from './photoRepository'
 import { indexedDbPhotoRepository } from './indexedDbPhotoRepository'
+import type { CollectionRepository } from './collectionRepository'
+import { indexedDbCollectionRepository } from './indexedDbCollectionRepository'
 
 /**
  * アプリ全体で使う永続化リポジトリ。実装の差し替えはこの1箇所で行う
@@ -12,3 +14,4 @@ import { indexedDbPhotoRepository } from './indexedDbPhotoRepository'
  */
 export const itemRepository: ItemRepository = indexedDbItemRepository
 export const photoRepository: PhotoRepository = indexedDbPhotoRepository
+export const collectionRepository: CollectionRepository = indexedDbCollectionRepository

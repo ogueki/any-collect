@@ -348,6 +348,165 @@ export async function generateSynthesisMeta({
   return { name, description, category, rarity }
 }
 
+/** 図鑑（Seek 型）で同定した写真の主役。bbox はクライアントのクロップに使う。 */
+export interface IdentifiedSubject {
+  name: string
+  /** デデュープ用の安定スラッグ（小文字英字/ローマ字の一般名・単数） */
+  speciesKey: string
+  category: ItemCategoryKey
+  rarity?: Rarity
+  /** 主役を囲む矩形 [ymin, xmin, ymax, xmax]（0–1000 正規化） */
+  bbox: [number, number, number, number]
+}
+
+export interface IdentifyResult {
+  /** 撮った瞬間のコレットのひとこと（図鑑エントリの解説にも流用） */
+  comment: string
+  emotion: ChatEmotion
+  /** 収集対象になる主役。景色だけ・不鮮明・対象なしのときは null */
+  subject: IdentifiedSubject | null
+}
+
+interface GenerateIdentifyArgs {
+  apiKey: string
+  /** persona を前置きした図鑑同定用 system prompt（buildIdentifySystemPrompt） */
+  systemPrompt: string
+  /** カメラで撮った写真 */
+  image: InlineImage
+}
+
+/** raw な subject 候補を検証して IdentifiedSubject | null に正規化する。 */
+function normalizeSubject(raw: unknown): IdentifiedSubject | null {
+  if (!raw || typeof raw !== 'object') return null
+  const s = raw as Record<string, unknown>
+  const name = typeof s.name === 'string' ? s.name.trim() : ''
+  const speciesKey = typeof s.speciesKey === 'string' ? s.speciesKey.trim().toLowerCase() : ''
+  if (!name || !speciesKey) return null
+
+  const bbox = Array.isArray(s.bbox) ? s.bbox.map((n) => Number(n)) : []
+  if (bbox.length !== 4 || bbox.some((n) => !Number.isFinite(n))) return null
+
+  const category: ItemCategoryKey =
+    typeof s.category === 'string' && (CATEGORY_VALUES as readonly string[]).includes(s.category)
+      ? (s.category as ItemCategoryKey)
+      : 'other'
+  const rarity =
+    typeof s.rarity === 'string' && (RARITY_VALUES as readonly string[]).includes(s.rarity)
+      ? (s.rarity as Rarity)
+      : undefined
+
+  return {
+    name,
+    speciesKey,
+    category,
+    rarity,
+    bbox: [bbox[0], bbox[1], bbox[2], bbox[3]],
+  }
+}
+
+/**
+ * 撮影画像（＋persona）から、コレットのひとこと＋感情＋写っている主役（名前/種キー/カテゴリ/レア度/bbox）
+ * を JSON で生成する（図鑑＝Seek 型）。画像生成はしない＝安価な vision 呼び出し。
+ */
+export async function identifySubject({
+  apiKey,
+  systemPrompt,
+  image,
+}: GenerateIdentifyArgs): Promise<IdentifyResult> {
+  const model = process.env.GEMINI_TEXT_MODEL || DEFAULT_MODEL
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            { text: 'この写真を見て、写っている主役を1つ同定して、スキーマ通りの JSON で答えて。' },
+            { inlineData: { mimeType: image.mimeType, data: image.data } },
+          ],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.7,
+        thinkingConfig: { thinkingBudget: 0 },
+        maxOutputTokens: 512,
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: 'OBJECT',
+          properties: {
+            comment: { type: 'STRING', description: '写っているものへのひとこと（口調はペルソナに従う・1文）' },
+            emotion: {
+              type: 'STRING',
+              enum: [...CHAT_EMOTIONS],
+              description: 'ペルソナの「感情の出し方」を参考に、反応に最も合う感情を1つだけ選ぶ',
+            },
+            subject: {
+              type: 'OBJECT',
+              nullable: true,
+              description: '写真の主役。収集対象が無い/不鮮明なら null',
+              properties: {
+                name: { type: 'STRING', description: '分かりやすい日本語の一般名' },
+                speciesKey: { type: 'STRING', description: 'デデュープ用の英字スラッグ（一般名・単数・形容詞なし）' },
+                category: { type: 'STRING', enum: [...CATEGORY_VALUES] },
+                rarity: { type: 'STRING', enum: [...RARITY_VALUES] },
+                bbox: {
+                  type: 'ARRAY',
+                  description: '[ymin, xmin, ymax, xmax]（左上0〜右下1000で正規化）',
+                  items: { type: 'NUMBER' },
+                },
+              },
+              required: ['name', 'speciesKey', 'category', 'bbox'],
+            },
+          },
+          required: ['comment', 'emotion'],
+        },
+      },
+    }),
+  })
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '')
+    throw new Error(`Gemini API エラー (${res.status})${detail ? `: ${detail.slice(0, 300)}` : ''}`)
+  }
+
+  const data = (await res.json()) as GeminiResponse
+  const candidate = data.candidates?.[0]
+  const raw = candidate?.content?.parts?.map((p) => p.text ?? '').join('').trim() ?? ''
+
+  if (!raw) {
+    const reason = data.promptFeedback?.blockReason
+    throw new Error(
+      reason ? `判定がブロックされました (${reason})` : '写真の判定結果を取得できませんでした',
+    )
+  }
+
+  let parsed: { comment?: unknown; emotion?: unknown; subject?: unknown }
+  try {
+    parsed = JSON.parse(stripCodeFence(raw)) as typeof parsed
+  } catch {
+    const truncated = candidate?.finishReason === 'MAX_TOKENS'
+    throw new Error(
+      truncated ? '判定結果が長すぎて途切れました（もう一度試してね）' : '写真の判定結果の JSON 解析に失敗しました',
+    )
+  }
+
+  const comment = typeof parsed.comment === 'string' ? parsed.comment.trim() : ''
+  if (!comment) {
+    throw new Error('コレットのひとことが空でした')
+  }
+
+  const emotion =
+    typeof parsed.emotion === 'string' && (CHAT_EMOTIONS as readonly string[]).includes(parsed.emotion)
+      ? (parsed.emotion as ChatEmotion)
+      : 'neutral'
+
+  return { comment, emotion, subject: normalizeSubject(parsed.subject) }
+}
+
 export interface SceneComment {
   comment: string
   emotion: ChatEmotion

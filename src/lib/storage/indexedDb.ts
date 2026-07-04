@@ -8,12 +8,13 @@
  */
 
 const DB_NAME = 'any-collect'
-// v2: photos ストアを追加（items / syntheses は v1 から）。
-export const DB_VERSION = 2
+// v3: collection ストア（図鑑＝実物のクロップ収集）を追加（items/syntheses=v1・photos=v2）。
+export const DB_VERSION = 3
 
 export const ITEMS_STORE = 'items'
 export const SYNTHESES_STORE = 'syntheses'
 export const PHOTOS_STORE = 'photos'
+export const COLLECTION_STORE = 'collection'
 
 /** DB を開く（必要なら object store を作成）。呼び出しごとに開いて使い捨てる。 */
 export function openDb(): Promise<IDBDatabase> {
@@ -31,6 +32,9 @@ export function openDb(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains(PHOTOS_STORE)) {
         db.createObjectStore(PHOTOS_STORE, { keyPath: 'id' })
+      }
+      if (!db.objectStoreNames.contains(COLLECTION_STORE)) {
+        db.createObjectStore(COLLECTION_STORE, { keyPath: 'id' })
       }
     }
     req.onsuccess = () => resolve(req.result)

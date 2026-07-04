@@ -28,6 +28,34 @@ export interface Photo {
   createdAt: string
 }
 
+/**
+ * 図鑑エントリ（v2・Seek 型）。カメラで撮った写真から主体を判定し、
+ * その部分だけ矩形クロップして収集する「実物のコレクション」。
+ * 窯で生成する妖精アイテム（Item）とは別物：こちらは実写クロップで、種別に集約する。
+ * 同種は 1 エントリにまとめ、`count` に発見回数を積む（speciesKey でデデュープ）。
+ * クロップ画像は Blob で保持（Photo と同様。窯のアイテム化ではこの blob を入力に使う）。
+ */
+export interface CollectionEntry {
+  id: string
+  /** 種の同定キー（デデュープ用の安定スラッグ。小文字英字/ローマ字の一般名・単数、例 "apple"） */
+  speciesKey: string
+  /** 表示名（日本語・コレットが呼ぶ名前） */
+  name: string
+  /** 図鑑の解説文（初発見時のコレットのひとことを流用） */
+  description: string
+  /** 分類（Item と同じ 7 キー。ソート/絞り込みの裏方データ） */
+  category: ItemCategory
+  rarity?: Rarity
+  /** クロップした主体画像（矩形・透過ではない） */
+  blob: Blob
+  /** 見つけた回数（同種を撮るたび +1） */
+  count: number
+  /** ISO 8601・初発見 */
+  firstSeenAt: string
+  /** ISO 8601・最終発見 */
+  lastSeenAt: string
+}
+
 /** アイテム（窯でアルバム写真から作る透過アイテム／妖精界に出現する） */
 export interface Item {
   id: string

@@ -3,17 +3,19 @@ import { useAppStore } from '../../store/appStore'
 import Sprite2DRenderer from '../../lib/character/Sprite2DRenderer'
 import type { FairyExpression } from '../../lib/character/CharacterRenderer'
 import { useFairyReaction } from '../../lib/character/useFairyReaction'
-import { sceneProvider } from '../../lib/ai/scene'
+import { identifyProvider } from '../../lib/ai/identify'
+import { cropToBlob } from '../../lib/image/crop'
 import { useAlbumStore } from '../../store/albumStore'
+import { useCollectionStore } from '../../store/collectionStore'
 
 /**
- * カメラモード（v2）。「見せる → 反応 → アルバム保存」の最短ループ。
- * スキャンして即アイテム化はしない（アイテム化はホームの窯／ゲージ配給）。
+ * カメラモード（v2・STEP1d）。「見せる → 判定 → 図鑑に収集＋アルバムに思い出」の最短ループ。
+ * スキャンして即・透過アイテム化はしない（アイテム化はホームの窯／ゲージ配給）。
  *
- * 撮影フレームを describeScene に渡してコレットのひとこと＋感情を取り、
- * 妖精がリアクションしたうえで写真をアルバムに保存する（§4.1）。
- * 写真はユーザーの思い出として保存する（v1 での方針転換・§9）。
- * テキスト先行で反応を出す（音声＝動的TTSは STEP3）。反応取得に失敗しても写真は保存する。
+ * 撮影フレームを identify に渡し、コレットのひとこと＋感情＋写っている主役（bbox付き）を取る。
+ * 主役が採れたら bbox でクロップして図鑑に収集（無料・無制限＝Seek 型）。同時に全体フレームを
+ * アルバムに思い出として保存する（iNaturalist の「観察ログ×ライフリスト」二層／§4.1）。
+ * テキスト先行で反応を出す（音声＝動的TTSは後続STEP）。判定に失敗しても写真は保存する。
  */
 
 // 送信画像が大きすぎないよう、撮影フレームの長辺をこのサイズに縮小する。
@@ -53,6 +55,7 @@ function captureFrame(video: HTMLVideoElement): Promise<Blob> {
 export default function CameraMode() {
   const characterId = useAppStore((s) => s.characterId)
   const addPhoto = useAlbumStore((s) => s.add)
+  const collect = useCollectionStore((s) => s.collect)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -61,13 +64,17 @@ export default function CameraMode() {
   const [cameraError, setCameraError] = useState<string | null>(() =>
     getCameraApi() ? null : 'このブラウザ/環境ではカメラを利用できません',
   )
-  // 撮影→反応→保存の実行中フラグ。
+  // 撮影→判定→収集/保存の実行中フラグ。
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // 直近の撮影に対するコレットのひとこと（吹き出し・数秒で消える）。
   const [comment, setComment] = useState<string | null>(null)
   // 保存直後だけ出す「アルバムに保存したよ」フィードバック。
   const [savedFlash, setSavedFlash] = useState(false)
+  // 初発見の「はじめて見つけた！」演出（クロップ縮小＋名前）。数秒で消える。
+  const [discovery, setDiscovery] = useState<{ name: string; url: string } | null>(null)
+  // 既知種を再発見したときの軽いトースト（「○○ ×3」）。
+  const [foundToast, setFoundToast] = useState<string | null>(null)
   // 撮影に対する妖精の一時リアクション（数秒でベース表情へ戻る）。共有フックに集約。
   const { expression: reactionExpression, animateKey, fire: fireReaction } = useFairyReaction()
 
@@ -99,27 +106,44 @@ export default function CameraMode() {
     }
   }, [])
 
-  // 撮る → コレットがひとこと反応 → 写真をアルバムに保存する（カメラの主ループ）。
+  // 撮る → コレットが判定＆ひとこと → 主役を図鑑に収集 → 全体をアルバムに保存（カメラの主ループ）。
   const handleCapture = useCallback(async () => {
     const video = videoRef.current
     if (!video || busy) return
     setBusy(true)
     setError(null)
     setComment(null)
+    setFoundToast(null)
     fireReaction('thinking') // 「見てるね…」の即時フィードバック
     try {
       const photo = await captureFrame(video)
-      // テキスト先行：反応（ひとこと＋感情）を取りに行く。演出なので失敗しても写真は残す。
+      // テキスト先行：判定（ひとこと＋感情＋主役）を取りに行く。演出なので失敗しても写真は残す。
       let commentText: string | undefined
       let emotion: FairyExpression | undefined
       try {
-        const reaction = await sceneProvider.describeScene(photo, { personaId: characterId })
-        commentText = reaction.comment
-        emotion = reaction.emotion
-        setComment(reaction.comment)
-        fireReaction(reaction.emotion ?? 'happy')
+        const result = await identifyProvider.identify(photo, { personaId: characterId })
+        commentText = result.comment
+        emotion = result.emotion
+        setComment(result.comment)
+        fireReaction(result.emotion ?? 'happy')
+
+        // 主役が採れたら bbox でクロップして図鑑に収集（無料・無制限）。
+        if (result.subject) {
+          try {
+            const crop = await cropToBlob(photo, result.subject.bbox)
+            const { entry, isNew } = await collect(result.subject, crop, result.comment)
+            if (isNew) {
+              setDiscovery({ name: entry.name, url: URL.createObjectURL(crop) })
+              fireReaction('excited')
+            } else {
+              setFoundToast(`「${entry.name}」を見つけた ×${entry.count}`)
+            }
+          } catch {
+            // クロップ/収集の失敗は演出だけ諦める（アルバム保存は続ける）。
+          }
+        }
       } catch {
-        // 反応取得失敗＝コレットは黙って受け取る（写真の保存は続ける）。
+        // 判定失敗＝コレットは黙って受け取る（写真の保存は続ける）。
         fireReaction('happy')
       }
       await addPhoto({ blob: photo, comment: commentText, emotion })
@@ -129,7 +153,7 @@ export default function CameraMode() {
     } finally {
       setBusy(false)
     }
-  }, [busy, characterId, fireReaction, addPhoto])
+  }, [busy, characterId, fireReaction, addPhoto, collect])
 
   // 「保存したよ」表示は数秒で自然に消す。
   useEffect(() => {
@@ -144,6 +168,26 @@ export default function CameraMode() {
     const timer = setTimeout(() => setComment(null), 6000)
     return () => clearTimeout(timer)
   }, [comment])
+
+  // 既知種の再発見トーストは短めに消す。
+  useEffect(() => {
+    if (!foundToast) return
+    const timer = setTimeout(() => setFoundToast(null), 2500)
+    return () => clearTimeout(timer)
+  }, [foundToast])
+
+  // 初発見バナーは数秒で消す。消えるタイミングでクロップの object URL を解放する。
+  useEffect(() => {
+    if (!discovery) return
+    const timer = setTimeout(() => setDiscovery(null), 3500)
+    return () => clearTimeout(timer)
+  }, [discovery])
+  useEffect(() => {
+    const url = discovery?.url
+    return () => {
+      if (url) URL.revokeObjectURL(url)
+    }
+  }, [discovery])
 
   // ベース表情（状態由来）。リアクション中はそれを一時的に上書きする。
   const baseExpression: FairyExpression = busy ? 'thinking' : cameraError ? 'sad' : 'neutral'
@@ -162,12 +206,34 @@ export default function CameraMode() {
         </div>
       )}
 
+      {/* 初発見の演出：クロップ縮小＋「はじめて見つけた！」 */}
+      {discovery && (
+        <div className="pointer-events-none absolute inset-x-0 top-10 flex justify-center px-6">
+          <div className="animate-reveal flex items-center gap-3 rounded-3xl bg-white/95 px-4 py-3 text-slate-800 shadow-pop">
+            <img
+              src={discovery.url}
+              alt={discovery.name}
+              className="h-14 w-14 rounded-2xl object-cover"
+            />
+            <div className="text-left">
+              <p className="text-xs font-bold text-lavender">はじめて見つけた！</p>
+              <p className="font-display text-lg font-bold leading-tight">{discovery.name}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 撮影ボタン */}
       {!cameraError && (
         <div className="absolute inset-x-0 bottom-8 flex flex-col items-center gap-2">
           {savedFlash && (
             <p className="rounded-full bg-mint/90 px-4 py-1 text-sm font-bold text-slate-900 shadow-pop">
               ✓ アルバムに保存したよ
+            </p>
+          )}
+          {foundToast && (
+            <p className="rounded-full bg-lavender/90 px-4 py-1 text-sm font-bold text-white shadow-pop">
+              {foundToast}
             </p>
           )}
           {error && (
