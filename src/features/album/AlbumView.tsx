@@ -27,6 +27,7 @@ export default function AlbumView() {
   const [selected, setSelected] = useState<Photo | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [sortMode, setSortMode] = useState<'newest' | 'oldest'>('newest')
 
   // マウント時にアルバムを読み込む（ローカルなので軽い）。
   useEffect(() => {
@@ -40,6 +41,15 @@ export default function AlbumView() {
     return map
   }, [photos])
   useEffect(() => () => urls.forEach((u) => URL.revokeObjectURL(u)), [urls])
+
+  // 時系列ソート（新しい順/古い順）。store は新しい順で持つので createdAt で並べ替える。
+  const visiblePhotos = useMemo(() => {
+    return [...photos].sort((a, b) =>
+      sortMode === 'newest'
+        ? b.createdAt.localeCompare(a.createdAt)
+        : a.createdAt.localeCompare(b.createdAt),
+    )
+  }, [photos, sortMode])
 
   const closeDetail = () => {
     setSelected(null)
@@ -76,10 +86,28 @@ export default function AlbumView() {
         </div>
       )}
 
+      {/* 時系列ソート */}
+      {photos.length > 0 && (
+        <div className="mb-3 flex justify-center gap-1.5">
+          {(['newest', 'oldest'] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => setSortMode(mode)}
+              className={`rounded-full px-3 py-1 text-xs font-bold transition active:scale-95 ${
+                sortMode === mode ? 'bg-lavender text-white shadow-pop' : 'bg-white text-slate-500'
+              }`}
+            >
+              {mode === 'newest' ? '新しい順' : '古い順'}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* グリッド */}
       {photos.length > 0 && (
         <div className="grid grid-cols-3 gap-2">
-          {photos.map((photo) => (
+          {visiblePhotos.map((photo) => (
             <button
               key={photo.id}
               type="button"
@@ -111,10 +139,14 @@ export default function AlbumView() {
               alt=""
               className="mx-auto w-full rounded-2xl object-contain"
             />
-            {selected.comment && (
-              <div className="mt-3 rounded-2xl bg-lavender/10 px-3 py-2 text-sm text-slate-600">
-                <span className="mr-1 text-xs font-bold text-lavender">コレット</span>
-                {selected.comment}
+            {(selected.subjectName || selected.caption) && (
+              <div className="mt-3 rounded-2xl bg-mint/10 px-3 py-2 text-left text-sm text-slate-600">
+                {selected.subjectName && (
+                  <p className="font-display text-base font-bold text-slate-700">
+                    {selected.subjectName}
+                  </p>
+                )}
+                {selected.caption && <p className="mt-0.5">{selected.caption}</p>}
               </div>
             )}
             <p className="mt-2 text-center text-xs text-slate-400">

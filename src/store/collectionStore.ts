@@ -24,8 +24,8 @@ interface CollectionState {
   error: string | null
   /** 永続層から図鑑を読み込む */
   load: () => Promise<void>
-  /** 判定した主役＋クロップ画像を収集する。同種は count+1、新種は新規追加 */
-  collect: (subject: IdentifiedSubject, blob: Blob, description: string) => Promise<CollectResult>
+  /** 判定した主役＋クロップ画像を収集する。同種は count+1、新種は新規追加（解説は subject.description） */
+  collect: (subject: IdentifiedSubject, blob: Blob) => Promise<CollectResult>
   /** エントリのクロップ写真を差し替える（再発見時に「更新する？」で使う。日付・解説は保つ） */
   updatePhoto: (id: string, blob: Blob) => Promise<void>
   /** 図鑑エントリを削除する */
@@ -58,7 +58,7 @@ export const useCollectionStore = create<CollectionState>((set, get) => ({
     }
   },
 
-  collect: async (subject, blob, description) => {
+  collect: async (subject, blob) => {
     const now = new Date().toISOString()
     // カメラは図鑑をロードせずに collect しうる。未ロードでも重複を作らないよう、
     // メモリが空なら永続層を基準にデデュープする（データは小さい）。
@@ -77,7 +77,7 @@ export const useCollectionStore = create<CollectionState>((set, get) => ({
       id: crypto.randomUUID(),
       speciesKey: subject.speciesKey,
       name: subject.name,
-      description,
+      description: subject.description,
       category: subject.category,
       rarity: subject.rarity,
       blob,

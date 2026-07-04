@@ -16,6 +16,7 @@ interface IdentifyApiResponse {
   subject?: {
     name?: string
     speciesKey?: string
+    description?: string
     category?: string
     rarity?: string
     bbox?: unknown
@@ -52,6 +53,7 @@ function toSubject(raw: IdentifyApiResponse['subject']): IdentifiedSubject | nul
   return {
     name,
     speciesKey,
+    description: typeof raw.description === 'string' ? raw.description.trim() : '',
     category: toCategory(raw.category),
     rarity: toRarity(raw.rarity),
     bbox,

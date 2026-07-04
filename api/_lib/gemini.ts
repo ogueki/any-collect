@@ -353,6 +353,8 @@ export interface IdentifiedSubject {
   name: string
   /** デデュープ用の安定スラッグ（小文字英字/ローマ字の一般名・単数） */
   speciesKey: string
+  /** その被写体そのものの一般的・客観的な図鑑的説明（1〜2文・写真の状況には触れない） */
+  description: string
   category: ItemCategoryKey
   rarity?: Rarity
   /** 主役を囲む矩形 [ymin, xmin, ymax, xmax]（0–1000 正規化） */
@@ -386,6 +388,7 @@ function normalizeSubject(raw: unknown): IdentifiedSubject | null {
   const bbox = Array.isArray(s.bbox) ? s.bbox.map((n) => Number(n)) : []
   if (bbox.length !== 4 || bbox.some((n) => !Number.isFinite(n))) return null
 
+  const description = typeof s.description === 'string' ? s.description.trim() : ''
   const category: ItemCategoryKey =
     typeof s.category === 'string' && (CATEGORY_VALUES as readonly string[]).includes(s.category)
       ? (s.category as ItemCategoryKey)
@@ -398,6 +401,7 @@ function normalizeSubject(raw: unknown): IdentifiedSubject | null {
   return {
     name,
     speciesKey,
+    description,
     category,
     rarity,
     bbox: [bbox[0], bbox[1], bbox[2], bbox[3]],
@@ -450,6 +454,10 @@ export async function identifySubject({
               description: '写真の主役。収集対象が無い/不鮮明なら null',
               properties: {
                 name: { type: 'STRING', description: '分かりやすい日本語の一般名' },
+                description: {
+                  type: 'STRING',
+                  description: 'その被写体そのものの一般的・客観的な説明を1〜2文（写真の状況には触れない・ペルソナ口調にしない）',
+                },
                 speciesKey: { type: 'STRING', description: 'デデュープ用の英字スラッグ（一般名・単数・形容詞なし）' },
                 category: { type: 'STRING', enum: [...CATEGORY_VALUES] },
                 rarity: { type: 'STRING', enum: [...RARITY_VALUES] },
@@ -459,7 +467,7 @@ export async function identifySubject({
                   items: { type: 'NUMBER' },
                 },
               },
-              required: ['name', 'speciesKey', 'category', 'bbox'],
+              required: ['name', 'description', 'speciesKey', 'category', 'bbox'],
             },
           },
           required: ['comment', 'emotion'],

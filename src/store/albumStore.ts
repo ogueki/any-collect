@@ -18,7 +18,13 @@ interface AlbumState {
   /** 永続層からアルバムを読み込む（新しい順） */
   load: () => Promise<void>
   /** 撮影した写真を保存する。保存済み Photo を返す */
-  add: (input: { blob: Blob; comment?: string; emotion?: FairyExpression }) => Promise<Photo>
+  add: (input: {
+    blob: Blob
+    subjectName?: string
+    caption?: string
+    comment?: string
+    emotion?: FairyExpression
+  }) => Promise<Photo>
   /** 写真を削除する */
   remove: (id: string) => Promise<void>
 }

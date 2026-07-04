@@ -13,6 +13,8 @@ export interface IdentifiedSubject {
   name: string
   /** デデュープ用の安定キー（小文字英字/ローマ字の一般名・単数） */
   speciesKey: string
+  /** その被写体そのものの一般的・客観的な図鑑的説明（1〜2文・写真の状況には触れない） */
+  description: string
   category: ItemCategory
   rarity?: Rarity
   /** 主役を囲む矩形 [ymin, xmin, ymax, xmax]（0–1000 正規化） */

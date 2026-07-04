@@ -126,6 +126,8 @@ export default function CameraMode() {
       // テキスト先行：判定（ひとこと＋感情＋主役）を取りに行く。演出なので失敗しても写真は残す。
       let commentText: string | undefined
       let emotion: FairyExpression | undefined
+      let subjectName: string | undefined // アルバムの図鑑的キャプション用（被写体名）
+      let caption: string | undefined // 同・被写体そのものの客観的な説明
       try {
         const result = await identifyProvider.identify(photo, { personaId: characterId })
         commentText = result.comment
@@ -135,9 +137,11 @@ export default function CameraMode() {
 
         // 主役が採れたら bbox でクロップして図鑑に収集（無料・無制限）。
         if (result.subject) {
+          subjectName = result.subject.name
+          caption = result.subject.description || undefined
           try {
             const crop = await cropToBlob(photo, result.subject.bbox)
-            const { entry, isNew } = await collect(result.subject, crop, result.comment)
+            const { entry, isNew } = await collect(result.subject, crop)
             if (isNew) {
               setDiscovery({ name: entry.name, url: URL.createObjectURL(crop) })
               fireReaction('excited')
@@ -159,7 +163,7 @@ export default function CameraMode() {
         // 判定失敗＝コレットは黙って受け取る（写真の保存は続ける）。
         fireReaction('happy')
       }
-      await addPhoto({ blob: photo, comment: commentText, emotion })
+      await addPhoto({ blob: photo, comment: commentText, emotion, subjectName, caption })
       setSavedFlash(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存に失敗しました')

@@ -2,21 +2,45 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAppStore } from '../../store/appStore'
 import { useCollectionStore } from '../../store/collectionStore'
 import Sprite2DRenderer from '../../lib/character/Sprite2DRenderer'
-import { CATEGORY_EMOJI, CATEGORY_LABEL } from '../../lib/category'
+import { CATEGORY_EMOJI, CATEGORY_LABEL, CATEGORY_ORDER } from '../../lib/category'
 import { RARITY_CLASS, RARITY_GLOW, RARITY_LABEL } from '../../lib/rarity'
-import type { CollectionEntry } from '../../types'
+import type { CollectionEntry, ItemCategory } from '../../types'
 
 /**
  * 図鑑（Seek 型・v2）。カメラで判定・クロップした「実物」を種別に集めて見返す。
  * 同種は 1 マスにまとまり、発見回数が積まれる（albumStore の写真一覧に対して、
  * こちらは種別デデュープ済みのコレクション）。永続層は collectionStore 越し。
  * 画像は Blob なので object URL を作って表示・解放する。
+ * 並び替え（カテゴリ順/新しい順）＋カテゴリ絞り込みは旧 CodexView のパターンを踏襲。
  */
 
 /** ISO 8601 を「2026/7/2」形式に。 */
 function formatDate(iso: string): string {
   const d = new Date(iso)
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('ja-JP')
+}
+
+/** 並び替え/絞り込みのチップ（横スクロールで縮まないよう shrink-0）。 */
+function FilterChip({
+  active,
+  onClick,
+  label,
+}: {
+  active: boolean
+  onClick: () => void
+  label: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold transition active:scale-95 ${
+        active ? 'bg-violet-500 text-white shadow-pop' : 'bg-white text-slate-500'
+      }`}
+    >
+      {label}
+    </button>
+  )
 }
 
 export default function CollectionView() {
@@ -30,11 +54,36 @@ export default function CollectionView() {
   const [selected, setSelected] = useState<CollectionEntry | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [filter, setFilter] = useState<ItemCategory | 'all'>('all')
+  const [sortMode, setSortMode] = useState<'category' | 'recent'>('category')
 
   // マウント時に図鑑を読み込む（ローカルなので軽い）。
   useEffect(() => {
     void load()
   }, [load])
+
+  // チップに出すのは「実際に1件以上あるカテゴリ」だけ（CATEGORY_ORDER 順）。
+  const availableCategories = useMemo(() => {
+    const present = new Set(entries.map((e) => e.category))
+    return CATEGORY_ORDER.filter((c) => present.has(c))
+  }, [entries])
+
+  // 絞り込み中のカテゴリが（削除などで）消えたら実質「すべて」に倒す。
+  const effectiveFilter: ItemCategory | 'all' =
+    filter === 'all' || availableCategories.includes(filter) ? filter : 'all'
+
+  // 絞り込み → 並び替え。カテゴリ順は CATEGORY_ORDER→初発見の昇順（安定）、新しい順は初発見の降順。
+  const visibleEntries = useMemo(() => {
+    const filtered =
+      effectiveFilter === 'all' ? entries : entries.filter((e) => e.category === effectiveFilter)
+    return [...filtered].sort((a, b) => {
+      if (sortMode === 'recent') return b.firstSeenAt.localeCompare(a.firstSeenAt)
+      const ca = CATEGORY_ORDER.indexOf(a.category)
+      const cb = CATEGORY_ORDER.indexOf(b.category)
+      if (ca !== cb) return ca - cb
+      return a.firstSeenAt.localeCompare(b.firstSeenAt)
+    })
+  }, [entries, effectiveFilter, sortMode])
 
   // Blob → object URL（エントリごと）。entries が変わるたび作り直し、前回分は cleanup で解放する。
   const urls = useMemo(() => {
@@ -82,10 +131,47 @@ export default function CollectionView() {
         </div>
       )}
 
+      {/* 並び替え＋カテゴリ絞り込み */}
+      {entries.length > 0 && (
+        <div className="mb-3 flex flex-col gap-2">
+          <div className="flex justify-center gap-1.5">
+            {(['category', 'recent'] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setSortMode(mode)}
+                className={`rounded-full px-3 py-1 text-xs font-bold transition active:scale-95 ${
+                  sortMode === mode ? 'bg-violet-500 text-white shadow-pop' : 'bg-white text-slate-500'
+                }`}
+              >
+                {mode === 'category' ? 'カテゴリ順' : '新しい順'}
+              </button>
+            ))}
+          </div>
+          {availableCategories.length > 1 && (
+            <div className="flex gap-1.5 overflow-x-auto pb-1">
+              <FilterChip
+                active={effectiveFilter === 'all'}
+                onClick={() => setFilter('all')}
+                label="すべて"
+              />
+              {availableCategories.map((cat) => (
+                <FilterChip
+                  key={cat}
+                  active={effectiveFilter === cat}
+                  onClick={() => setFilter(cat)}
+                  label={`${CATEGORY_EMOJI[cat]} ${CATEGORY_LABEL[cat]}`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* グリッド */}
       {entries.length > 0 && (
         <div className="grid grid-cols-3 gap-2">
-          {entries.map((entry) => (
+          {visibleEntries.map((entry) => (
             <button
               key={entry.id}
               type="button"

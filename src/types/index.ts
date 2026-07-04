@@ -20,7 +20,11 @@ export interface Photo {
   id: string
   /** 撮影画像本体（JPEG 等） */
   blob: Blob
-  /** 撮影時にコレットが返したひとこと（アルバム詳細で見返す） */
+  /** 判定した被写体の名前（アルバムの図鑑的キャプション見出し。景色など未同定なら未設定） */
+  subjectName?: string
+  /** 被写体そのものの客観的な説明（図鑑的キャプション本文。コレットのセリフではない） */
+  caption?: string
+  /** 撮影時にコレットが返したひとこと（会話接地の燃料。アルバム表示には使わない） */
   comment?: string
   /** ひとことに添えられた感情（立ち絵の表情に使える） */
   emotion?: FairyExpression
