@@ -6,8 +6,9 @@ import type { FairyExpression } from '../../lib/character/CharacterRenderer'
 import { useFairyReaction } from '../../lib/character/useFairyReaction'
 import ChatPanel from './ChatPanel'
 import KilnView from '../kiln/KilnView'
+import AlbumView from '../album/AlbumView'
 
-type HomeSubView = 'chat' | 'kiln'
+type HomeSubView = 'chat' | 'album' | 'kiln'
 
 export default function HomeMode() {
   const characterId = useAppStore((s) => s.characterId)
@@ -47,6 +48,11 @@ export default function HomeMode() {
           onClick={() => setSubView('chat')}
         />
         <SubViewTab
+          label="アルバム"
+          active={subView === 'album'}
+          onClick={() => setSubView('album')}
+        />
+        <SubViewTab
           label="妖精の窯"
           active={subView === 'kiln'}
           onClick={() => setSubView('kiln')}
@@ -61,6 +67,7 @@ export default function HomeMode() {
       />
 
       {subView === 'chat' && <ChatPanel />}
+      {subView === 'album' && <AlbumView />}
       {subView === 'kiln' && <KilnView onReaction={handleKilnReaction} />}
     </div>
   )

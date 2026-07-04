@@ -1,7 +1,6 @@
 import { useAppStore } from './store/appStore'
 import HomeMode from './features/home/HomeMode'
 import CameraMode from './features/camera/CameraMode'
-import CodexView from './features/codex/CodexView'
 import ModeSwitcher from './components/ModeSwitcher'
 
 export default function App() {
@@ -12,7 +11,6 @@ export default function App() {
       <main className="relative flex-1 overflow-hidden">
         {mode === 'home' && <HomeMode />}
         {mode === 'camera' && <CameraMode />}
-        {mode === 'codex' && <CodexView />}
       </main>
       <ModeSwitcher />
     </div>

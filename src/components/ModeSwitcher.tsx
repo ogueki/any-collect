@@ -3,7 +3,6 @@ import { useAppStore, type AppMode } from '../store/appStore'
 const TABS: { mode: AppMode; label: string; icon: string }[] = [
   { mode: 'home', label: 'ホーム', icon: '🏠' },
   { mode: 'camera', label: 'カメラ', icon: '📷' },
-  { mode: 'codex', label: '図鑑', icon: '📖' },
 ]
 
 export default function ModeSwitcher() {
