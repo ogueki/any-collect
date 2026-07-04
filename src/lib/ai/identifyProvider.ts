@@ -1,5 +1,5 @@
 import type { FairyExpression } from '../character/CharacterRenderer'
-import type { ItemCategory, Rarity } from '../../types'
+import type { ItemCategory } from '../../types'
 
 /**
  * 図鑑（Seek 型）判定プロバイダの抽象（STEP1d）。
@@ -16,7 +16,6 @@ export interface IdentifiedSubject {
   /** その被写体そのものの一般的・客観的な図鑑的説明（1〜2文・写真の状況には触れない） */
   description: string
   category: ItemCategory
-  rarity?: Rarity
   /** 主役を囲む矩形 [ymin, xmin, ymax, xmax]（0–1000 正規化） */
   bbox: [number, number, number, number]
 }

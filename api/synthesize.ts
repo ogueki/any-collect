@@ -126,7 +126,6 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
       name: meta.name,
       description: meta.description,
       category: meta.category,
-      rarity: meta.rarity,
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'アイテムの合成に失敗しました'

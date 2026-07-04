@@ -3,7 +3,6 @@ import { useAppStore } from '../../store/appStore'
 import { useCollectionStore } from '../../store/collectionStore'
 import Sprite2DRenderer from '../../lib/character/Sprite2DRenderer'
 import { CATEGORY_EMOJI, CATEGORY_LABEL, CATEGORY_ORDER } from '../../lib/category'
-import { RARITY_CLASS, RARITY_GLOW, RARITY_LABEL } from '../../lib/rarity'
 import type { CollectionEntry, ItemCategory } from '../../types'
 
 /**
@@ -179,12 +178,6 @@ export default function CollectionView() {
               className="relative flex flex-col items-center overflow-hidden rounded-2xl bg-white p-1.5 shadow-pop transition active:scale-95"
             >
               <div className="relative w-full">
-                {entry.rarity && RARITY_GLOW[entry.rarity] && (
-                  <span
-                    className={`absolute inset-3 rounded-full blur-xl ${RARITY_GLOW[entry.rarity]}`}
-                    aria-hidden
-                  />
-                )}
                 <img
                   src={urls.get(entry.id)}
                   alt={entry.name}
@@ -215,12 +208,6 @@ export default function CollectionView() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="relative mx-auto aspect-square w-full max-w-[15rem]">
-              {selectedLive.rarity && RARITY_GLOW[selectedLive.rarity] && (
-                <span
-                  className={`absolute inset-2 rounded-full blur-2xl ${RARITY_GLOW[selectedLive.rarity]}`}
-                  aria-hidden
-                />
-              )}
               <img
                 src={urls.get(selectedLive.id)}
                 alt={selectedLive.name}
@@ -230,13 +217,6 @@ export default function CollectionView() {
 
             <div className="mt-3 flex items-center justify-center gap-2">
               <h2 className="font-display text-xl font-bold">{selectedLive.name}</h2>
-              {selectedLive.rarity && (
-                <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-bold ${RARITY_CLASS[selectedLive.rarity]}`}
-                >
-                  {RARITY_LABEL[selectedLive.rarity]}
-                </span>
-              )}
             </div>
             <p className="mt-0.5 text-center text-xs text-slate-400">
               {CATEGORY_EMOJI[selectedLive.category]} {CATEGORY_LABEL[selectedLive.category]}

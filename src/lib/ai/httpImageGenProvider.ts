@@ -1,4 +1,4 @@
-import type { GeneratedItem, ImageGenProvider } from './imageProvider'
+import type { ImageGenProvider } from './imageProvider'
 import { toCategory } from '../category'
 
 /**
@@ -12,7 +12,6 @@ interface GenerateItemApiResponse {
   name?: string
   description?: string
   category?: string
-  rarity?: GeneratedItem['rarity']
   error?: string
 }
 
@@ -46,7 +45,6 @@ export const httpImageGenProvider: ImageGenProvider = {
       description: data.description,
       // wire 越しは生 string なので既知キーに正規化（旧/想定外の値は other に倒す）。
       category: toCategory(data.category),
-      rarity: data.rarity,
     }
   },
 
@@ -72,7 +70,6 @@ export const httpImageGenProvider: ImageGenProvider = {
       description: data.description,
       // wire 越しは生 string なので既知キーに正規化（旧/想定外の値は other に倒す）。
       category: toCategory(data.category),
-      rarity: data.rarity,
     }
   },
 }

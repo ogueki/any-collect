@@ -79,7 +79,6 @@ export const useCollectionStore = create<CollectionState>((set, get) => ({
       name: subject.name,
       description: subject.description,
       category: subject.category,
-      rarity: subject.rarity,
       blob,
       count: 1,
       firstSeenAt: now,

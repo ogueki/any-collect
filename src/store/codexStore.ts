@@ -48,7 +48,6 @@ export const useCodexStore = create<CodexState>((set, get) => ({
       name: generated.name,
       description: generated.description,
       category: generated.category,
-      rarity: generated.rarity,
       iconUrl: generated.imageUrl,
     })
     // list() と同じ「新しい順」を保つため先頭に積む。
@@ -61,7 +60,6 @@ export const useCodexStore = create<CodexState>((set, get) => ({
       name: generated.name,
       description: generated.description,
       category: generated.category,
-      rarity: generated.rarity,
       iconUrl: generated.imageUrl,
     })
     await itemRepository.recordSynthesis({

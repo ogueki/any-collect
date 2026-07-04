@@ -11,14 +11,9 @@
  * `_` 接頭辞ディレクトリは Vercel のルーティング対象外（＝import 専用）。
  */
 
-const RARITIES = ['common', 'uncommon', 'rare', 'epic', 'legendary'] as const
-export type Rarity = (typeof RARITIES)[number]
-export const RARITY_VALUES: readonly Rarity[] = RARITIES
-
 /**
  * アイテム分類（図鑑のソート/絞り込み用の裏方データ）。
- * Rarity と同様に api/client で二重定義する前例に倣う（client 側ミラーは
- * src/types の ItemCategory ＋ src/lib/category.ts）。
+ * api/client で二重定義する（client 側ミラーは src/types の ItemCategory ＋ src/lib/category.ts）。
  * 先頭がキー（＝保存値）、後ろの日本語はモデルに正しく選ばせるためのグロス。
  */
 const CATEGORIES = [
@@ -121,7 +116,6 @@ export function buildSynthesisMetaPrompt(
     '- name: 合成で生まれた新アイテムの名前。日本語、12文字以内。両方の特徴が感じられるファンタジーな固有名にする。',
     '- description: 妖精がその合成アイテムを紹介するひとこと。ペルソナの口調で1〜2文、絵文字なし、プレーンテキスト。',
     `- category: 次のキーから最も近いものを1つだけ選ぶ（必ず英字キーで答える）: ${CATEGORY_CHOICES}`,
-    `- rarity: ${RARITIES.join(' / ')} から、合成の創造性・珍しさで主観的に1つ選ぶ。素材より高くなりやすい。`,
     '- 必ず指定の JSON スキーマだけで答える（前置き・コードブロックなし）。',
     '',
     '# ペルソナ定義',
@@ -149,7 +143,6 @@ export function buildIdentifySystemPrompt(personaText: string): string {
     '    【安全上の注意】きのこ・野草・木の実・見分けの難しい植物や生き物・薬品など、誤同定や口にすることで危険がありうる対象では、食用可否・毒性・薬効・「食べられる」「安全」といった判断を書かない（断定しない）。一般的な特徴だけ述べ、必要なら「見た目での同定や食用可否は判断しないでね」と一言添える。りんご・コップのような明らかに安全な日常物には、この注意書きは不要。',
     '  - speciesKey: デデュープ用の安定キー。小文字の英字（またはローマ字）スラッグで、最も一般的な種名・物名を単数・形容詞なしで表す（例: apple, cat, dandelion, vending_machine）。同じ種類なら毎回同じキーになるようにする。',
     `  - category: 次のキーから最も近いものを1つだけ選ぶ（必ず英字キー）: ${CATEGORY_CHOICES}`,
-    `  - rarity: ${RARITIES.join(' / ')} から、見た目の珍しさ・特別感で主観的に1つ選ぶ。`,
     '  - bbox: 主役を囲む矩形を [ymin, xmin, ymax, xmax] の順で、画像の左上を0・右下を1000として正規化した整数で返す。',
     '- 必ず指定の JSON スキーマだけで答える（前置き・コードブロックなし）。キャラクターを崩さない（AIやシステムに言及しない）。',
     '',
@@ -171,7 +164,6 @@ export function buildItemMetaPrompt(personaText: string): string {
     '- name: アイテムの名前。日本語、12文字以内。世界観のあるかわいい固有名にする（実物の一般名そのままにしない）。',
     '- description: 妖精がそのアイテムを紹介するひとこと。ペルソナの口調で1〜2文、絵文字なし、プレーンテキスト。',
     `- category: 次のキーから最も近いものを1つだけ選ぶ（必ず英字キーで答える）: ${CATEGORY_CHOICES}`,
-    `- rarity: ${RARITIES.join(' / ')} から、見た目の珍しさ・特別感で主観的に1つ選ぶ。`,
     '- 必ず指定の JSON スキーマだけで答える（前置き・コードブロックなし）。',
     '',
     '# ペルソナ定義',

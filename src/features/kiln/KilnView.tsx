@@ -3,7 +3,6 @@ import { useAppStore } from '../../store/appStore'
 import { useCodexStore } from '../../store/codexStore'
 import { imageGenProvider } from '../../lib/ai/imageGen'
 import { emotionForConfirm, emotionForGenerated } from '../../lib/character/reaction'
-import { RARITY_CLASS, RARITY_GLOW, RARITY_LABEL } from '../../lib/rarity'
 import { CATEGORY_LABEL, toCategory } from '../../lib/category'
 import GeneratingOverlay from '../../components/GeneratingOverlay'
 import type { GeneratedItem } from '../../lib/ai/imageProvider'
@@ -64,7 +63,7 @@ export default function KilnView({ onReaction }: KilnViewProps) {
       )
       setResult(generated)
       setPhase('result')
-      onReaction(emotionForGenerated(generated))
+      onReaction(emotionForGenerated())
     } catch (err) {
       setError(err instanceof Error ? err.message : '合成に失敗しました')
       setPhase('select')
@@ -110,7 +109,7 @@ export default function KilnView({ onReaction }: KilnViewProps) {
       )
       setResult(generated)
       setPhase('result')
-      onReaction(emotionForGenerated(generated))
+      onReaction(emotionForGenerated())
     } catch (err) {
       setError(err instanceof Error ? err.message : '合成に失敗しました')
       setPhase('result')
@@ -193,12 +192,6 @@ export default function KilnView({ onReaction }: KilnViewProps) {
         <div className="flex flex-col items-center gap-3">
           <div className="animate-reveal w-full max-w-xs rounded-3xl bg-white p-4 text-slate-800 shadow-pop">
             <div className="relative mx-auto aspect-square w-full max-w-[15rem]">
-              {result.rarity && RARITY_GLOW[result.rarity] && (
-                <span
-                  className={`absolute inset-2 rounded-full blur-2xl animate-pulse ${RARITY_GLOW[result.rarity]}`}
-                  aria-hidden
-                />
-              )}
               <img
                 src={result.imageUrl}
                 alt={result.name}
@@ -207,13 +200,6 @@ export default function KilnView({ onReaction }: KilnViewProps) {
             </div>
             <div className="mt-3 flex items-center justify-center gap-2">
               <h2 className="font-display text-xl font-bold">{result.name}</h2>
-              {result.rarity && (
-                <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-bold ${RARITY_CLASS[result.rarity]}`}
-                >
-                  {RARITY_LABEL[result.rarity]}
-                </span>
-              )}
             </div>
             {result.category && (
               <p className="mt-0.5 text-center text-xs text-slate-400">

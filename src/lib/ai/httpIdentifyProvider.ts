@@ -1,8 +1,6 @@
 import type { IdentifiedSubject, IdentifyProvider, IdentifyResult } from './identifyProvider'
 import { FAIRY_EXPRESSIONS, type FairyExpression } from '../character/CharacterRenderer'
 import { toCategory } from '../category'
-import { RARITY_LABEL } from '../rarity'
-import type { Rarity } from '../../types'
 
 /**
  * /api/identify プロキシ経由で図鑑判定を得る IdentifyProvider 実装。
@@ -18,7 +16,6 @@ interface IdentifyApiResponse {
     speciesKey?: string
     description?: string
     category?: string
-    rarity?: string
     bbox?: unknown
   } | null
   error?: string
@@ -29,11 +26,6 @@ function toFairyExpression(value: unknown): FairyExpression | undefined {
   return typeof value === 'string' && (FAIRY_EXPRESSIONS as readonly string[]).includes(value)
     ? (value as FairyExpression)
     : undefined
-}
-
-/** rarity を既知キーだけに絞る（不正/欠落は undefined）。 */
-function toRarity(value: unknown): Rarity | undefined {
-  return typeof value === 'string' && value in RARITY_LABEL ? (value as Rarity) : undefined
 }
 
 /** 4 要素の有限数値配列なら bbox として受け取る（それ以外は null）。 */
@@ -55,7 +47,6 @@ function toSubject(raw: IdentifyApiResponse['subject']): IdentifiedSubject | nul
     speciesKey,
     description: typeof raw.description === 'string' ? raw.description.trim() : '',
     category: toCategory(raw.category),
-    rarity: toRarity(raw.rarity),
     bbox,
   }
 }

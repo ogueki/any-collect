@@ -2,11 +2,9 @@
 
 import type { FairyExpression } from '../lib/character/CharacterRenderer'
 
-export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary'
-
 /**
  * アイテムの分類（図鑑のソート/絞り込み用の裏方データ）。
- * Rarity と同様に「安定キー」を保存し、表示カタカナは src/lib/category.ts の
+ * 「安定キー」を保存し、表示カタカナは src/lib/category.ts の
  * CATEGORY_LABEL で変換する（ラベルを変えてもデータ移行が要らない）。
  */
 export type ItemCategory = 'food' | 'creature' | 'nature' | 'gear' | 'toy' | 'wear' | 'other'
@@ -45,11 +43,10 @@ export interface CollectionEntry {
   speciesKey: string
   /** 表示名（日本語・コレットが呼ぶ名前） */
   name: string
-  /** 図鑑の解説文（初発見時のコレットのひとことを流用） */
+  /** 図鑑の解説文（被写体そのものの客観的な説明＝identify の subject.description） */
   description: string
   /** 分類（Item と同じ 7 キー。ソート/絞り込みの裏方データ） */
   category: ItemCategory
-  rarity?: Rarity
   /** クロップした主体画像（矩形・透過ではない） */
   blob: Blob
   /** 見つけた回数（同種を撮るたび +1） */
@@ -66,7 +63,6 @@ export interface Item {
   name: string
   description: string
   category?: ItemCategory
-  rarity?: Rarity
   /** 生成された透過アイコン画像の URL（Supabase Storage 等） */
   iconUrl: string
   /** 由来のアルバム写真 ID（v2・窯でのアイテム化元） */

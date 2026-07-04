@@ -7,7 +7,7 @@
  */
 
 import type { InlineImage } from './gemini-image.js'
-import { CATEGORY_VALUES, RARITY_VALUES, type ItemCategoryKey, type Rarity } from './item-prompt.js'
+import { CATEGORY_VALUES, type ItemCategoryKey } from './item-prompt.js'
 
 const DEFAULT_MODEL = 'gemini-2.5-flash'
 
@@ -18,7 +18,7 @@ export interface ChatTurn {
 
 /**
  * 会話の返事に添える妖精の感情。client の FAIRY_EXPRESSIONS のミラー
- * （Rarity 同様、api/client で二重定義する前例に倣う）。
+ * （api/client で二重定義する前例に倣う）。
  * `searching`（カメラ鑑定中専用）だけは会話では使わないので除く。
  */
 export const CHAT_EMOTIONS = [
@@ -164,7 +164,6 @@ export interface ItemMeta {
   description: string
   /** 安定キー。enum を強制＋未知は other にフォールバックするので常に有効値が入る。 */
   category: ItemCategoryKey
-  rarity?: Rarity
 }
 
 interface GenerateMetaArgs {
@@ -207,9 +206,8 @@ export async function generateItemMeta({
             name: { type: 'STRING' },
             description: { type: 'STRING' },
             category: { type: 'STRING', enum: [...CATEGORY_VALUES] },
-            rarity: { type: 'STRING', enum: [...RARITY_VALUES] },
           },
-          required: ['name', 'description', 'category', 'rarity'],
+          required: ['name', 'description', 'category'],
         },
       },
     }),
@@ -246,17 +244,13 @@ export async function generateItemMeta({
     throw new Error('アイテムの名前または説明が空でした')
   }
 
-  const rarity =
-    typeof parsed.rarity === 'string' && (RARITY_VALUES as readonly string[]).includes(parsed.rarity)
-      ? (parsed.rarity as Rarity)
-      : undefined
-  // enum 強制でも保険として検証し、外れていれば other に倒す（rarity と同方式）。
+  // enum 強制でも保険として検証し、外れていれば other に倒す。
   const category: ItemCategoryKey =
     typeof parsed.category === 'string' && (CATEGORY_VALUES as readonly string[]).includes(parsed.category)
       ? (parsed.category as ItemCategoryKey)
       : 'other'
 
-  return { name, description, category, rarity }
+  return { name, description, category }
 }
 
 interface GenerateSynthesisMetaArgs {
@@ -296,9 +290,8 @@ export async function generateSynthesisMeta({
             name: { type: 'STRING' },
             description: { type: 'STRING' },
             category: { type: 'STRING', enum: [...CATEGORY_VALUES] },
-            rarity: { type: 'STRING', enum: [...RARITY_VALUES] },
           },
-          required: ['name', 'description', 'category', 'rarity'],
+          required: ['name', 'description', 'category'],
         },
       },
     }),
@@ -335,17 +328,13 @@ export async function generateSynthesisMeta({
     throw new Error('合成アイテムの名前または説明が空でした')
   }
 
-  const rarity =
-    typeof parsed.rarity === 'string' && (RARITY_VALUES as readonly string[]).includes(parsed.rarity)
-      ? (parsed.rarity as Rarity)
-      : undefined
-  // enum 強制でも保険として検証し、外れていれば other に倒す（rarity と同方式）。
+  // enum 強制でも保険として検証し、外れていれば other に倒す。
   const category: ItemCategoryKey =
     typeof parsed.category === 'string' && (CATEGORY_VALUES as readonly string[]).includes(parsed.category)
       ? (parsed.category as ItemCategoryKey)
       : 'other'
 
-  return { name, description, category, rarity }
+  return { name, description, category }
 }
 
 /** 図鑑（Seek 型）で同定した写真の主役。bbox はクライアントのクロップに使う。 */
@@ -356,7 +345,6 @@ export interface IdentifiedSubject {
   /** その被写体そのものの一般的・客観的な図鑑的説明（1〜2文・写真の状況には触れない） */
   description: string
   category: ItemCategoryKey
-  rarity?: Rarity
   /** 主役を囲む矩形 [ymin, xmin, ymax, xmax]（0–1000 正規化） */
   bbox: [number, number, number, number]
 }
@@ -393,17 +381,12 @@ function normalizeSubject(raw: unknown): IdentifiedSubject | null {
     typeof s.category === 'string' && (CATEGORY_VALUES as readonly string[]).includes(s.category)
       ? (s.category as ItemCategoryKey)
       : 'other'
-  const rarity =
-    typeof s.rarity === 'string' && (RARITY_VALUES as readonly string[]).includes(s.rarity)
-      ? (s.rarity as Rarity)
-      : undefined
 
   return {
     name,
     speciesKey,
     description,
     category,
-    rarity,
     bbox: [bbox[0], bbox[1], bbox[2], bbox[3]],
   }
 }
@@ -460,7 +443,6 @@ export async function identifySubject({
                 },
                 speciesKey: { type: 'STRING', description: 'デデュープ用の英字スラッグ（一般名・単数・形容詞なし）' },
                 category: { type: 'STRING', enum: [...CATEGORY_VALUES] },
-                rarity: { type: 'STRING', enum: [...RARITY_VALUES] },
                 bbox: {
                   type: 'ARRAY',
                   description: '[ymin, xmin, ymax, xmax]（左上0〜右下1000で正規化）',
