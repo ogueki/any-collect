@@ -48,7 +48,7 @@ export default function HomeMode() {
   return (
     <div className="flex h-full flex-col items-center gap-4 overflow-y-auto px-6 py-6 text-center">
       {/* コレットの元気ゲージ（会話・撮影で貯まり、満タンで妖精の窯を解禁） */}
-      <div className="w-full max-w-xs">
+      <div className="w-full max-w-xs shrink-0">
         <div className="mb-1 flex items-center justify-between text-xs font-bold text-slate-500">
           <span>💛 コレットの元気</span>
           <span>{gaugeFull ? '満タン！' : `${gaugePct}%`}</span>
@@ -66,8 +66,9 @@ export default function HomeMode() {
         )}
       </div>
 
-      {/* サブビュー切替（5タブ・狭い画面では横スクロール） */}
-      <div className="flex max-w-full gap-1 overflow-x-auto rounded-full bg-white/60 p-1 shadow-pop backdrop-blur">
+      {/* サブビュー切替（5タブ・狭い画面では横スクロール）。shrink-0＝縦に長い
+          サブビューでも flex に高さを潰されない（overflow-x で min-height:0 になる回避）。 */}
+      <div className="flex w-full max-w-full shrink-0 justify-start gap-1 overflow-x-auto rounded-full bg-white/60 p-1 shadow-pop backdrop-blur sm:justify-center">
         <SubViewTab
           label="おしゃべり"
           active={subView === 'chat'}
