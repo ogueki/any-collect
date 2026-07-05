@@ -1,21 +1,24 @@
 /**
- * クロマキー除去（v2・STEP1e 透過フォールバック）。
+ * クロマキー除去（v2・STEP1e 透過）。
  * Gemini はネイティブ透過が苦手（「透過」を市松模様として描き込む）ため、サーバには
  * 単色フラットのマゼンタ背景（#FF00FF）で描かせ（`api/_lib/item-prompt.ts` の
- * `ITEM_SOLID_BG`）、ここでそのマゼンタをアルファに抜いて透過 PNG を作る。
+ * `ITEM_SOLID_BG`）、ここでその背景をアルファに抜いて透過 PNG を作る。
  * 画像生成を伴わないクライアント側 canvas 処理＝無料（crop.ts と同じ路線）。
  *
- * マゼンタ判定は「緑が赤・青より十分低い」量（spill = min(r,b) - g）で行う。
- * 赤(青が低い)・緑(緑が高い)・青(赤が低い)などの一般色は spill が小さく残り、
- * マゼンタ/濃ピンク/紫だけが抜ける（＝被写体にその色があると穴＝既知の割り切り）。
+ * マゼンタ判定は「緑が赤・青より十分低い」量 spill = min(r,b) - g で行う（grey/skin/red は
+ * spill≒0 で安全に残り、マゼンタ/ピンク/紫だけ spill が高い）。ただし Gemini が返す
+ * マゼンタの濃さは一定しない（純マゼンタ〜ラズベリー系ピンク）ので、**四隅から実際の
+ * 背景 spill をサンプルして閾値を自動調整**する（固定閾値だと薄めのピンクを取りこぼす）。
+ *
+ * 既知の割り切り：被写体にマゼンタ/濃ピンク/紫があると、そこも抜けて穴になる。
  */
 
-/** spill(=min(r,b)-g) がこの値以上なら背景（完全に抜く）。 */
-const SPILL_FULL = 90
-/** spill がこの値以下なら被写体（残す）。中間はフェザー＋despill。 */
-const SPILL_KEEP = 20
-/** 四隅の平均 spill がこれ未満なら「マゼンタ背景でない」と見なし無加工で返す（安全弁）。 */
-const CORNER_MIN = 100
+/** 背景の spill がこれ未満なら「マゼンタ背景ではない」と見なし無加工で返す（安全弁）。 */
+const MIN_BG_SPILL = 35
+/** 背景 spill に対し、これ以上を完全透過にする比率。 */
+const FULL_RATIO = 0.5
+/** 背景 spill に対し、これ以下を被写体として残す比率（中間はフェザー＋despill）。 */
+const KEEP_RATIO = 0.2
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -26,8 +29,23 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   })
 }
 
-function spillAt(d: Uint8ClampedArray, i: number): number {
-  return Math.min(d[i], d[i + 2]) - d[i + 1]
+/** (x0,y0) から n×n ブロックの平均色をサンプルして spill を返す。 */
+function cornerSpill(d: Uint8ClampedArray, w: number, x0: number, y0: number, n: number): number {
+  let r = 0
+  let g = 0
+  let b = 0
+  let c = 0
+  for (let y = y0; y < y0 + n; y++) {
+    for (let x = x0; x < x0 + n; x++) {
+      const i = (y * w + x) * 4
+      r += d[i]
+      g += d[i + 1]
+      b += d[i + 2]
+      c++
+    }
+  }
+  if (c === 0) return -Infinity
+  return Math.min(r / c, b / c) - g / c
 }
 
 /**
@@ -55,24 +73,34 @@ export async function removeMagentaToPng(dataUrl: string): Promise<string> {
   }
   const d = image.data
 
-  // 安全弁：四隅がマゼンタでなければ（モデルが指示を無視した等）無加工で返す。
-  const corners = [0, (w - 1) * 4, (h - 1) * w * 4, ((h - 1) * w + (w - 1)) * 4]
-  const cornerAvg = corners.reduce((s, i) => s + spillAt(d, i), 0) / corners.length
-  if (cornerAvg < CORNER_MIN) return dataUrl
+  // 四隅の背景をサンプルし、最も「マゼンタらしい」隅を背景基準にする
+  // （被写体が1隅に掛かっても、他の隅で拾える）。
+  const n = Math.max(4, Math.floor(Math.min(w, h) * 0.04))
+  const bgSpill = Math.max(
+    cornerSpill(d, w, 0, 0, n),
+    cornerSpill(d, w, w - n, 0, n),
+    cornerSpill(d, w, 0, h - n, n),
+    cornerSpill(d, w, w - n, h - n, n),
+  )
+  if (bgSpill < MIN_BG_SPILL) return dataUrl // マゼンタ背景でなければ無加工
+
+  const full = bgSpill * FULL_RATIO
+  const keep = bgSpill * KEEP_RATIO
+  const span = full - keep || 1
 
   for (let i = 0; i < d.length; i += 4) {
     const r = d[i]
     const g = d[i + 1]
     const b = d[i + 2]
     const spill = Math.min(r, b) - g
-    if (spill <= SPILL_KEEP) continue // 被写体：そのまま
+    if (spill <= keep) continue // 被写体：そのまま
 
-    if (spill >= SPILL_FULL) {
+    if (spill >= full) {
       d[i + 3] = 0 // 背景：完全透過
       continue
     }
     // 縁（中間）：フェザーで半透明にしつつ、マゼンタのにじみ（赤・青の過剰）を殺す。
-    d[i + 3] = Math.round((255 * (SPILL_FULL - spill)) / (SPILL_FULL - SPILL_KEEP))
+    d[i + 3] = Math.round((255 * (full - spill)) / span)
     d[i] = r - spill // despill: 赤を緑に寄せる
     d[i + 2] = b - spill // despill: 青を緑に寄せる
   }

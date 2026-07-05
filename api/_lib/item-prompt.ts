@@ -56,7 +56,8 @@ COMPOSITION (icon template, IDENTICAL every time):
  * 妖精界にアクセントとして重ねて置くための切り抜き。
  */
 const ITEM_SOLID_BG = `BACKGROUND (solid flat chroma color for clean cutout — very important):
-- Fill the ENTIRE background with a single, uniform, perfectly flat pure magenta color (hex #FF00FF, rgb(255,0,255)).
+- Fill the ENTIRE background with a single, uniform, perfectly flat PURE MAGENTA color: EXACTLY hex #FF00FF (rgb 255,0,255). The green channel must be 0.
+- Do NOT use a darker, duller, pinker or raspberry variant — it must be the brightest, most saturated pure magenta, identical in every corner.
 - It must be a plain solid magenta fill: NO checkerboard or transparency pattern, NO gradient, NO badge, NO scenery, NO environment, NO drop shadow and NO ground shadow.
 - Do NOT use magenta, pink or purple anywhere on the object itself — only the background is magenta — so the object can be keyed out cleanly.
 - Keep a clean, crisp edge between the object and the magenta background.`
