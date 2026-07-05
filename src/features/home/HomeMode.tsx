@@ -9,8 +9,9 @@ import ChatPanel from './ChatPanel'
 import KilnView from '../kiln/KilnView'
 import AlbumView from '../album/AlbumView'
 import CollectionView from '../collection/CollectionView'
+import RealmView from '../realm/RealmView'
 
-type HomeSubView = 'chat' | 'collection' | 'album' | 'kiln'
+type HomeSubView = 'chat' | 'collection' | 'album' | 'kiln' | 'realm'
 
 export default function HomeMode() {
   const characterId = useAppStore((s) => s.characterId)
@@ -65,8 +66,8 @@ export default function HomeMode() {
         )}
       </div>
 
-      {/* サブビュー切替 */}
-      <div className="flex gap-1 rounded-full bg-white/60 p-1 shadow-pop backdrop-blur">
+      {/* サブビュー切替（5タブ・狭い画面では横スクロール） */}
+      <div className="flex max-w-full gap-1 overflow-x-auto rounded-full bg-white/60 p-1 shadow-pop backdrop-blur">
         <SubViewTab
           label="おしゃべり"
           active={subView === 'chat'}
@@ -87,6 +88,11 @@ export default function HomeMode() {
           active={subView === 'kiln'}
           onClick={() => setSubView('kiln')}
         />
+        <SubViewTab
+          label="妖精界"
+          active={subView === 'realm'}
+          onClick={() => setSubView('realm')}
+        />
       </div>
 
       <Sprite2DRenderer
@@ -99,7 +105,10 @@ export default function HomeMode() {
       {subView === 'chat' && <ChatPanel />}
       {subView === 'collection' && <CollectionView />}
       {subView === 'album' && <AlbumView />}
-      {subView === 'kiln' && <KilnView onReaction={handleKilnReaction} />}
+      {subView === 'kiln' && (
+        <KilnView onReaction={handleKilnReaction} onGoRealm={() => setSubView('realm')} />
+      )}
+      {subView === 'realm' && <RealmView />}
     </div>
   )
 }
@@ -117,7 +126,7 @@ function SubViewTab({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full px-4 py-1.5 text-sm font-bold transition ${
+      className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold transition ${
         active ? 'bg-lavender text-white' : 'text-slate-500 hover:bg-lavender/20'
       }`}
     >

@@ -22,6 +22,8 @@ interface CodexState {
   isNewCategory: (category?: string) => boolean
   /** 合成結果を図鑑に登録し、系譜を記録する。素材は消費しない。保存済み Item を返す */
   addFromSynthesis: (generated: GeneratedItem, parentAId: string, parentBId: string) => Promise<Item>
+  /** 妖精界での配置（正規化座標 0..1）を更新して永続化する（ドラッグ移動・自動配置） */
+  updatePlacement: (id: string, realmX: number, realmY: number) => Promise<void>
   /** アイテムを削除する */
   remove: (id: string) => Promise<void>
 }
@@ -71,6 +73,11 @@ export const useCodexStore = create<CodexState>((set, get) => ({
     })
     set((s) => ({ items: [saved, ...s.items] }))
     return saved
+  },
+
+  updatePlacement: async (id, realmX, realmY) => {
+    const updated = await itemRepository.update(id, { realmX, realmY })
+    set((s) => ({ items: s.items.map((it) => (it.id === id ? updated : it)) }))
   },
 
   isNewCategory: (category) => {
