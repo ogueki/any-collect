@@ -18,6 +18,6 @@ export interface ChatProvider {
   sendMessage(
     history: ChatMessage[],
     userInput: string,
-    opts?: { personaId?: string },
+    opts?: { personaId?: string; affinityLevel?: number },
   ): Promise<ChatReply>
 }

@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { ChatMessage } from '../types'
 import { chatProvider } from '../lib/ai/chat'
 import { useGaugeStore, GAUGE_PER_CHAT } from './gaugeStore'
+import { useAffinityStore, AFFINITY_PER_CHAT } from './affinityStore'
 
 export type ChatStatus = 'idle' | 'sending' | 'error'
 
@@ -46,15 +47,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({ messages: [...history, createMessage('user', text)], status: 'sending', error: null })
 
     try {
-      const reply = await chatProvider.sendMessage(history, text, { personaId })
+      // 現在の好感度レベルを会話に載せる（サーバの system prompt で口調 tier に反映）。
+      const affinityLevel = useAffinityStore.getState().level()
+      const reply = await chatProvider.sendMessage(history, text, { personaId, affinityLevel })
       set((s) => ({
         messages: [...s.messages, createMessage('fairy', reply.text, reply.emotion)],
         status: 'idle',
         replyNonce: s.replyNonce + 1,
       }))
-      // 会話は「安い日常行動」＝コレットの元気ゲージを少し貯める（返事が来たときだけ）。
+      // 会話は「安い日常行動」＝コレットの元気ゲージ＋絆を少し貯める（返事が来たときだけ）。
       // ライフサイクルでなくイベント側で加算し、タブ再マウントでの二重加算を避ける。
       useGaugeStore.getState().add(GAUGE_PER_CHAT)
+      useAffinityStore.getState().add(AFFINITY_PER_CHAT)
     } catch (err) {
       const message = err instanceof Error ? err.message : '会話に失敗しました'
       set({ status: 'error', error: message })

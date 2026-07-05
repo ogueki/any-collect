@@ -29,6 +29,7 @@ export const httpChatProvider: ChatProvider = {
         history: history.map((m) => ({ role: m.role, content: m.content })),
         userInput,
         personaId: opts?.personaId ?? 'default',
+        affinityLevel: opts?.affinityLevel,
       }),
     })
 

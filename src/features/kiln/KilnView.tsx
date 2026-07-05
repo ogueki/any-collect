@@ -3,6 +3,7 @@ import { useAppStore } from '../../store/appStore'
 import { useCollectionStore } from '../../store/collectionStore'
 import { useCodexStore } from '../../store/codexStore'
 import { useGaugeStore, GAUGE_MAX } from '../../store/gaugeStore'
+import { useAffinityStore, AFFINITY_PER_ITEM } from '../../store/affinityStore'
 import { imageGenProvider } from '../../lib/ai/imageGen'
 import { emotionForGenerated } from '../../lib/character/reaction'
 import { CATEGORY_LABEL, toCategory } from '../../lib/category'
@@ -37,6 +38,7 @@ export default function KilnView({ onReaction, onGoRealm }: KilnViewProps) {
   const addFromGenerated = useCodexStore((s) => s.addFromGenerated)
   const gaugeValue = useGaugeStore((s) => s.value)
   const spendGauge = useGaugeStore((s) => s.spend)
+  const addAffinity = useAffinityStore((s) => s.add)
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [phase, setPhase] = useState<KilnPhase>('select')
@@ -71,6 +73,8 @@ export default function KilnView({ onReaction, onGoRealm }: KilnViewProps) {
       // 成功時のみゲージ消費＋保存（失敗ならゲージは満タンのまま＝再挑戦できる）。
       spendGauge()
       await addFromGenerated(generated, selectedEntry.id)
+      // アイテム化は特別な体験＝絆も大きめに増やす。
+      addAffinity(AFFINITY_PER_ITEM)
       setResult(generated)
       setPhase('result')
       onReaction(emotionForGenerated())
@@ -78,7 +82,7 @@ export default function KilnView({ onReaction, onGoRealm }: KilnViewProps) {
       setError(err instanceof Error ? err.message : 'アイテム化に失敗しました')
       setPhase('select')
     }
-  }, [phase, selectedEntry, isFull, characterId, spendGauge, addFromGenerated, onReaction])
+  }, [phase, selectedEntry, isFull, characterId, spendGauge, addFromGenerated, addAffinity, onReaction])
 
   const handleClose = useCallback(() => {
     setResult(null)

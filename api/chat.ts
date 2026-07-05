@@ -15,6 +15,8 @@ interface ChatRequestBody {
   history?: ChatTurn[]
   userInput?: string
   personaId?: string
+  /** コレットとの好感度レベル（1..）。口調 tier の選択に使う（クライアントが送る） */
+  affinityLevel?: number
 }
 
 type NodeReq = IncomingMessage & { body?: unknown }
@@ -71,7 +73,11 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
     : []
 
   try {
-    const systemPrompt = buildSystemPrompt(loadPersona(body.personaId))
+    const affinityLevel =
+      typeof body.affinityLevel === 'number' && Number.isFinite(body.affinityLevel)
+        ? body.affinityLevel
+        : undefined
+    const systemPrompt = buildSystemPrompt(loadPersona(body.personaId), { affinityLevel })
     const { text, emotion } = await generateChatReply({ apiKey, systemPrompt, history, userInput })
     sendJson(res, 200, { reply: text, emotion })
   } catch (err) {

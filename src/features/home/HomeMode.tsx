@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useAppStore } from '../../store/appStore'
 import { useChatStore } from '../../store/chatStore'
 import { useGaugeStore, GAUGE_MAX } from '../../store/gaugeStore'
+import { useAffinityStore, levelForScore, MAX_LEVEL } from '../../store/affinityStore'
 import Sprite2DRenderer from '../../lib/character/Sprite2DRenderer'
 import type { FairyExpression } from '../../lib/character/CharacterRenderer'
 import { useFairyReaction } from '../../lib/character/useFairyReaction'
@@ -20,10 +21,15 @@ export default function HomeMode() {
   const replyNonce = useChatStore((s) => s.replyNonce)
   const gaugeValue = useGaugeStore((s) => s.value)
   const addGauge = useGaugeStore((s) => s.add)
+  const affinityScore = useAffinityStore((s) => s.score)
+  const pendingLevelUp = useAffinityStore((s) => s.pendingLevelUp)
+  const clearLevelUp = useAffinityStore((s) => s.clearLevelUp)
+  const bumpAffinity = useAffinityStore((s) => s.bumpLevel)
   const { expression: reactionExpression, animateKey, fire } = useFairyReaction()
 
   const gaugePct = Math.min(100, Math.round((gaugeValue / GAUGE_MAX) * 100))
   const gaugeFull = gaugeValue >= GAUGE_MAX
+  const affinityLevel = levelForScore(affinityScore)
 
   const [subView, setSubView] = useState<HomeSubView>('chat')
 
@@ -34,6 +40,15 @@ export default function HomeMode() {
     if (!replyNonce || !lastFairyEmotion) return
     fire(lastFairyEmotion)
   }, [replyNonce, lastFairyEmotion, fire])
+
+  // 絆レベルアップ＝コレットが大喜び＋お祝い表示。表示はストアの pendingLevelUp から直接出し、
+  // 数秒後に clearLevelUp() で消す（ローカル state を effect 内で同期 set しない）。
+  useEffect(() => {
+    if (!pendingLevelUp) return
+    fire('excited')
+    const timer = setTimeout(() => clearLevelUp(), 3500)
+    return () => clearTimeout(timer)
+  }, [pendingLevelUp, fire, clearLevelUp])
 
   const handleKilnReaction = useCallback(
     (emotion: FairyExpression) => {
@@ -74,6 +89,23 @@ export default function HomeMode() {
         )}
       </button>
 
+      {/* コレットとの絆（なつき度）。会話・撮影・アイテム化で少しずつ上がり、口調と立ち絵が砕けていく。
+          TODO(verify): 検証中はタップで次レベルまで上げるショートカット付き。リリース前に外す。 */}
+      <button
+        type="button"
+        onClick={bumpAffinity}
+        className="shrink-0 rounded-full bg-white/70 px-3 py-1 text-xs font-bold text-rose-400 shadow-pop"
+      >
+        💗 なつき Lv.{affinityLevel}
+        {affinityLevel < MAX_LEVEL ? '（タップで＋・検証用）' : ' MAX'}
+      </button>
+
+      {pendingLevelUp && (
+        <p className="shrink-0 animate-reveal rounded-full bg-rose-400/90 px-4 py-1 text-xs font-bold text-white shadow-pop">
+          コレットとなかよくなった！（なつき Lv.{pendingLevelUp}）
+        </p>
+      )}
+
       {/* サブビュー切替（5タブ・狭い画面では横スクロール）。shrink-0＝縦に長い
           サブビューでも flex に高さを潰されない（overflow-x で min-height:0 になる回避）。 */}
       <div className="flex w-full max-w-full shrink-0 justify-start gap-1 overflow-x-auto rounded-full bg-white/60 p-1 shadow-pop backdrop-blur sm:justify-center">
@@ -109,6 +141,7 @@ export default function HomeMode() {
         expression={expression}
         size="lg"
         animateKey={animateKey}
+        level={affinityLevel}
       />
 
       {subView === 'chat' && <ChatPanel />}

@@ -30,9 +30,18 @@ export function loadPersona(personaId?: string): string {
   return read(id) ?? (id !== 'default' ? read('default') : null) ?? FALLBACK_PERSONA
 }
 
-/** persona 本文に会話ルールを前置きして system prompt を作る。 */
-export function buildSystemPrompt(personaText: string): string {
-  return [
+/**
+ * 会話に注入する接地文脈（v2・STEP2）。今は好感度レベルのみ。
+ * STEP2b で記憶（構造化ファクト＋要約）を同じ context に足していく。
+ */
+export interface ChatContext {
+  /** コレットとの好感度レベル（1..）。persona の「好感度別の口調」tier 選択に使う */
+  affinityLevel?: number
+}
+
+/** persona 本文に会話ルール＋接地文脈を前置きして system prompt を作る。 */
+export function buildSystemPrompt(personaText: string, context?: ChatContext): string {
+  const lines = [
     'あなたは以下のペルソナを持つ妖精キャラクターとして、ユーザーと日本語で会話します。',
     '次のルールを必ず守ってください。',
     '- ペルソナの口調・性格・一人称/二人称を厳密に守る。',
@@ -40,10 +49,16 @@ export function buildSystemPrompt(personaText: string): string {
     '- 絵文字は使わない。',
     '- 地の文のプレーンテキストで返す（Markdown記法・箇条書き・コードブロックは使わない）。',
     '- キャラクターを崩さない（AIやシステムであることに言及しない）。',
-    '',
-    '# ペルソナ定義',
-    personaText.trim(),
-  ].join('\n')
+  ]
+
+  if (context?.affinityLevel && context.affinityLevel >= 1) {
+    lines.push(
+      `- 現在のコレットとの好感度レベルは ${context.affinityLevel} です。ペルソナ定義の「好感度別の口調」のうち、このレベルに対応する距離感で話してください（レベルやシステムの話には触れない）。`,
+    )
+  }
+
+  lines.push('', '# ペルソナ定義', personaText.trim())
+  return lines.join('\n')
 }
 
 /**
