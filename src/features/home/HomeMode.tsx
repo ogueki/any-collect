@@ -19,6 +19,7 @@ export default function HomeMode() {
   const messages = useChatStore((s) => s.messages)
   const replyNonce = useChatStore((s) => s.replyNonce)
   const gaugeValue = useGaugeStore((s) => s.value)
+  const addGauge = useGaugeStore((s) => s.add)
   const { expression: reactionExpression, animateKey, fire } = useFairyReaction()
 
   const gaugePct = Math.min(100, Math.round((gaugeValue / GAUGE_MAX) * 100))
@@ -47,8 +48,13 @@ export default function HomeMode() {
 
   return (
     <div className="flex h-full flex-col items-center gap-4 overflow-y-auto px-6 py-6 text-center">
-      {/* コレットの元気ゲージ（会話・撮影で貯まり、満タンで妖精の窯を解禁） */}
-      <div className="w-full max-w-xs shrink-0">
+      {/* コレットの元気ゲージ（会話・撮影で貯まり、満タンで妖精の窯を解禁）。
+          TODO(verify): 検証中はタップで満タンにできるショートカット付き。リリース前に外す。 */}
+      <button
+        type="button"
+        onClick={() => addGauge(GAUGE_MAX)}
+        className="w-full max-w-xs shrink-0 text-left"
+      >
         <div className="mb-1 flex items-center justify-between text-xs font-bold text-slate-500">
           <span>💛 コレットの元気</span>
           <span>{gaugeFull ? '満タン！' : `${gaugePct}%`}</span>
@@ -59,12 +65,14 @@ export default function HomeMode() {
             style={{ width: `${gaugePct}%` }}
           />
         </div>
-        {gaugeFull && (
+        {gaugeFull ? (
           <p className="mt-1 text-center text-[11px] font-bold text-mint">
             妖精の窯でアイテムにできるよ
           </p>
+        ) : (
+          <p className="mt-1 text-center text-[10px] text-slate-400">タップで満タン（検証用）</p>
         )}
-      </div>
+      </button>
 
       {/* サブビュー切替（5タブ・狭い画面では横スクロール）。shrink-0＝縦に長い
           サブビューでも flex に高さを潰されない（overflow-x で min-height:0 になる回避）。 */}
