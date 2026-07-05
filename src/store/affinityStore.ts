@@ -62,6 +62,8 @@ interface AffinityState {
   clearLevelUp: () => void
   /** 検証用：次のレベルまで一気に上げる（TODO(verify) リリース前に外す） */
   bumpLevel: () => void
+  /** 検証用：絆を 0（Lv.1）に戻す（tier 比較用。TODO(verify) リリース前に外す） */
+  reset: () => void
 }
 
 export const useAffinityStore = create<AffinityState>((set, get) => ({
@@ -88,5 +90,10 @@ export const useAffinityStore = create<AffinityState>((set, get) => ({
     const target = LEVEL_THRESHOLDS[cur] // 次レベルの開始しきい値
     persist(target)
     set({ score: target, pendingLevelUp: cur + 1 })
+  },
+
+  reset: () => {
+    persist(0)
+    set({ score: 0, pendingLevelUp: null })
   },
 }))

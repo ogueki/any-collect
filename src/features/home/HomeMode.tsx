@@ -25,6 +25,7 @@ export default function HomeMode() {
   const pendingLevelUp = useAffinityStore((s) => s.pendingLevelUp)
   const clearLevelUp = useAffinityStore((s) => s.clearLevelUp)
   const bumpAffinity = useAffinityStore((s) => s.bumpLevel)
+  const resetAffinity = useAffinityStore((s) => s.reset)
   const { expression: reactionExpression, animateKey, fire } = useFairyReaction()
 
   const gaugePct = Math.min(100, Math.round((gaugeValue / GAUGE_MAX) * 100))
@@ -90,14 +91,14 @@ export default function HomeMode() {
       </button>
 
       {/* コレットとの絆（なつき度）。会話・撮影・アイテム化で少しずつ上がり、口調と立ち絵が砕けていく。
-          TODO(verify): 検証中はタップで次レベルまで上げるショートカット付き。リリース前に外す。 */}
+          TODO(verify): 検証中はタップで「Lv上げ→MAXならLv1に戻す」を循環（tier比較用）。リリース前に外す。 */}
       <button
         type="button"
-        onClick={bumpAffinity}
+        onClick={() => (affinityLevel >= MAX_LEVEL ? resetAffinity() : bumpAffinity())}
         className="shrink-0 rounded-full bg-white/70 px-3 py-1 text-xs font-bold text-rose-400 shadow-pop"
       >
         💗 なつき Lv.{affinityLevel}
-        {affinityLevel < MAX_LEVEL ? '（タップで＋・検証用）' : ' MAX'}
+        {affinityLevel < MAX_LEVEL ? '（タップで＋・検証用）' : '（タップでLv1へ・検証用）'}
       </button>
 
       {pendingLevelUp && (
