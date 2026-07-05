@@ -85,6 +85,18 @@ export interface Synthesis {
   createdAt: string
 }
 
+/**
+ * コレットが覚えている「きみについての短い事実」（v2・STEP2b）。
+ * 会話まるごとでなく要点だけを蒸留した"生きたリスト"（呼び名・好き・話題・出来事…）。
+ * 端末ローカル（localStorage）に持ち、会話のたびに system prompt へ注入する。
+ */
+export interface MemoryFact {
+  /** 種類（例: 呼び名 / 好き / 苦手 / 話題 / 出来事） */
+  key: string
+  /** 短い内容（1文以内・例: "ラーメンが好き"） */
+  value: string
+}
+
 /** 妖精との会話メッセージ */
 export interface ChatMessage {
   id: string

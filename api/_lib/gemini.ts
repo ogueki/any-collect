@@ -159,6 +159,116 @@ export async function generateChatReply({
   return { text, emotion }
 }
 
+/** コレットが覚える「きみについての短い事実」（api/client ミラー＝src/types MemoryFact）。 */
+export interface MemoryFactWire {
+  key: string
+  value: string
+}
+
+interface ConsolidateMemoryArgs {
+  apiKey: string
+  /** 記憶抽出用の system prompt（buildMemorySystemPrompt・persona 非依存の中立抽出器） */
+  systemPrompt: string
+  /** 直近の（未反映の）会話 */
+  messages: ChatTurn[]
+  /** いま覚えている facts */
+  currentFacts: MemoryFactWire[]
+}
+
+/**
+ * 直近の会話＋現在の facts から、更新後の facts（最大12）を JSON で生成する（記憶の要約）。
+ * generateChatReply と同方式（thinkingBudget:0・responseMimeType json・stripCodeFence）。
+ */
+export async function consolidateMemory({
+  apiKey,
+  systemPrompt,
+  messages,
+  currentFacts,
+}: ConsolidateMemoryArgs): Promise<MemoryFactWire[]> {
+  const model = process.env.GEMINI_TEXT_MODEL || DEFAULT_MODEL
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
+
+  const factsText = currentFacts.length
+    ? currentFacts.map((f) => `- ${f.key}: ${f.value}`).join('\n')
+    : '（まだ何も覚えていない）'
+  const convoText = messages
+    .map((m) => `${m.role === 'user' ? 'きみ' : 'コレット'}: ${m.content}`)
+    .join('\n')
+  const userText = [
+    '# いま覚えていること',
+    factsText,
+    '',
+    '# 直近の会話',
+    convoText,
+    '',
+    '上のルールに従って、更新後の facts を JSON で返して。',
+  ].join('\n')
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      contents: [{ role: 'user', parts: [{ text: userText }] }],
+      generationConfig: {
+        temperature: 0.3,
+        thinkingConfig: { thinkingBudget: 0 },
+        maxOutputTokens: 512,
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: 'OBJECT',
+          properties: {
+            facts: {
+              type: 'ARRAY',
+              description: '更新後の全 facts（最大12）',
+              items: {
+                type: 'OBJECT',
+                properties: {
+                  key: { type: 'STRING', description: '種類（呼び名/好き/苦手/話題/出来事 等）' },
+                  value: { type: 'STRING', description: '短い内容（1文以内）' },
+                },
+                required: ['key', 'value'],
+              },
+            },
+          },
+          required: ['facts'],
+        },
+      },
+    }),
+  })
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '')
+    throw new Error(`Gemini API エラー (${res.status})${detail ? `: ${detail.slice(0, 300)}` : ''}`)
+  }
+
+  const data = (await res.json()) as GeminiResponse
+  const raw = data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('').trim() ?? ''
+  if (!raw) {
+    const reason = data.promptFeedback?.blockReason
+    throw new Error(reason ? `記憶の生成がブロックされました (${reason})` : '記憶を取得できませんでした')
+  }
+
+  let parsed: { facts?: unknown }
+  try {
+    parsed = JSON.parse(stripCodeFence(raw)) as { facts?: unknown }
+  } catch {
+    throw new Error('記憶の JSON 解析に失敗しました')
+  }
+
+  const list = Array.isArray(parsed.facts) ? parsed.facts : []
+  const facts: MemoryFactWire[] = []
+  for (const f of list) {
+    if (f && typeof f === 'object') {
+      const rec = f as Record<string, unknown>
+      const key = typeof rec.key === 'string' ? rec.key.trim() : ''
+      const value = typeof rec.value === 'string' ? rec.value.trim() : ''
+      if (key && value) facts.push({ key, value })
+    }
+  }
+  return facts.slice(0, 12)
+}
+
 export interface ItemMeta {
   name: string
   description: string

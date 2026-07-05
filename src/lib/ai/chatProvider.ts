@@ -1,4 +1,4 @@
-import type { ChatMessage } from '../../types'
+import type { ChatMessage, MemoryFact } from '../../types'
 import type { FairyExpression } from '../character/CharacterRenderer'
 
 /** 妖精の返事。テキストに加え、立ち絵の表情に使う感情を伴う。 */
@@ -18,6 +18,6 @@ export interface ChatProvider {
   sendMessage(
     history: ChatMessage[],
     userInput: string,
-    opts?: { personaId?: string; affinityLevel?: number },
+    opts?: { personaId?: string; affinityLevel?: number; memoryFacts?: MemoryFact[] },
   ): Promise<ChatReply>
 }

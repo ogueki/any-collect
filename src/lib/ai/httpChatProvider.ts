@@ -30,6 +30,7 @@ export const httpChatProvider: ChatProvider = {
         userInput,
         personaId: opts?.personaId ?? 'default',
         affinityLevel: opts?.affinityLevel,
+        memoryFacts: opts?.memoryFacts,
       }),
     })
 

@@ -3,8 +3,12 @@ import type { ChatMessage } from '../types'
 import { chatProvider } from '../lib/ai/chat'
 import { useGaugeStore, GAUGE_PER_CHAT } from './gaugeStore'
 import { useAffinityStore, AFFINITY_PER_CHAT } from './affinityStore'
+import { useMemoryStore } from './memoryStore'
 
 export type ChatStatus = 'idle' | 'sending' | 'error'
+
+/** 何メッセージ進むごとに記憶を要約するか（＝約3往復。頻度を絞ってコスト/接地を両立）。 */
+const CONSOLIDATE_EVERY = 6
 
 interface ChatState {
   messages: ChatMessage[]
@@ -12,8 +16,12 @@ interface ChatState {
   error: string | null
   /** 返信が来るたびに +1。立ち絵の一発アニメ（animateKey）の発火に使う */
   replyNonce: number
+  /** 既に記憶へ反映済みのメッセージ数（セッション内。要約トリガーの基準） */
+  consolidatedCount: number
   /** ユーザー入力を送り、妖精の応答を履歴に追加する */
   send: (userInput: string, personaId: string) => Promise<void>
+  /** 未反映の会話を今すぐ記憶に要約する（検証用の手動発火） */
+  consolidateMemoryNow: () => Promise<void>
   /** 会話をクリア */
   reset: () => void
 }
@@ -37,6 +45,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   status: 'idle',
   error: null,
   replyNonce: 0,
+  consolidatedCount: 0,
 
   send: async (userInput, personaId) => {
     const text = userInput.trim()
@@ -47,9 +56,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({ messages: [...history, createMessage('user', text)], status: 'sending', error: null })
 
     try {
-      // 現在の好感度レベルを会話に載せる（サーバの system prompt で口調 tier に反映）。
+      // 好感度レベル＋記憶を会話に載せる（サーバの system prompt で口調 tier＋接地に反映）。
       const affinityLevel = useAffinityStore.getState().level()
-      const reply = await chatProvider.sendMessage(history, text, { personaId, affinityLevel })
+      const memoryFacts = useMemoryStore.getState().facts
+      const reply = await chatProvider.sendMessage(history, text, {
+        personaId,
+        affinityLevel,
+        memoryFacts,
+      })
       set((s) => ({
         messages: [...s.messages, createMessage('fairy', reply.text, reply.emotion)],
         status: 'idle',
@@ -59,11 +73,27 @@ export const useChatStore = create<ChatState>((set, get) => ({
       // ライフサイクルでなくイベント側で加算し、タブ再マウントでの二重加算を避ける。
       useGaugeStore.getState().add(GAUGE_PER_CHAT)
       useAffinityStore.getState().add(AFFINITY_PER_CHAT)
+
+      // 数往復ごとに記憶を要約（非ブロッキング＝会話は待たせない）。未反映の会話だけ渡す。
+      const msgs = get().messages
+      if (msgs.length - get().consolidatedCount >= CONSOLIDATE_EVERY) {
+        const tail = msgs.slice(get().consolidatedCount)
+        set({ consolidatedCount: msgs.length })
+        void useMemoryStore.getState().consolidate(tail)
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : '会話に失敗しました'
       set({ status: 'error', error: message })
     }
   },
 
-  reset: () => set({ messages: [], status: 'idle', error: null, replyNonce: 0 }),
+  consolidateMemoryNow: async () => {
+    const msgs = get().messages
+    const tail = msgs.slice(get().consolidatedCount)
+    if (tail.length === 0) return
+    set({ consolidatedCount: msgs.length })
+    await useMemoryStore.getState().consolidate(tail)
+  },
+
+  reset: () => set({ messages: [], status: 'idle', error: null, replyNonce: 0, consolidatedCount: 0 }),
 }))

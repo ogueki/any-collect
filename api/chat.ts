@@ -17,6 +17,8 @@ interface ChatRequestBody {
   personaId?: string
   /** コレットとの好感度レベル（1..）。口調 tier の選択に使う（クライアントが送る） */
   affinityLevel?: number
+  /** コレットが覚えている「きみについての短い事実」（クライアントが送る・接地注入） */
+  memoryFacts?: { key?: unknown; value?: unknown }[]
 }
 
 type NodeReq = IncomingMessage & { body?: unknown }
@@ -77,7 +79,13 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
       typeof body.affinityLevel === 'number' && Number.isFinite(body.affinityLevel)
         ? body.affinityLevel
         : undefined
-    const systemPrompt = buildSystemPrompt(loadPersona(body.personaId), { affinityLevel })
+    const memoryFacts = Array.isArray(body.memoryFacts)
+      ? body.memoryFacts
+          .filter((f) => f && typeof f.key === 'string' && typeof f.value === 'string')
+          .map((f) => ({ key: String(f.key), value: String(f.value) }))
+          .slice(0, 12)
+      : undefined
+    const systemPrompt = buildSystemPrompt(loadPersona(body.personaId), { affinityLevel, memoryFacts })
     const { text, emotion } = await generateChatReply({ apiKey, systemPrompt, history, userInput })
     sendJson(res, 200, { reply: text, emotion })
   } catch (err) {

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useChatStore } from '../../store/chatStore'
 import { useAppStore } from '../../store/appStore'
+import { useMemoryStore } from '../../store/memoryStore'
 
 /**
  * ホームの会話UI（STEP2・最小機能）。
@@ -12,7 +13,11 @@ export default function ChatPanel() {
   const status = useChatStore((s) => s.status)
   const error = useChatStore((s) => s.error)
   const send = useChatStore((s) => s.send)
+  const consolidateMemoryNow = useChatStore((s) => s.consolidateMemoryNow)
   const characterId = useAppStore((s) => s.characterId)
+  const facts = useMemoryStore((s) => s.facts)
+  const consolidating = useMemoryStore((s) => s.consolidating)
+  const forget = useMemoryStore((s) => s.forget)
 
   const [input, setInput] = useState('')
   const listRef = useRef<HTMLDivElement>(null)
@@ -84,6 +89,43 @@ export default function ChatPanel() {
         >
           送信
         </button>
+      </div>
+
+      {/* コレットが覚えていること（会話・撮影・アイテム化で自然に増える）。
+          TODO(verify): 「いま覚えて」「忘れる」は検証用。将来ユーザー向けの記憶管理UIに格上げしうる。 */}
+      <div className="mt-1 rounded-2xl bg-white/60 p-3 text-left">
+        <div className="mb-1 flex items-center justify-between">
+          <span className="text-xs font-bold text-slate-500">💭 コレットが覚えていること</span>
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              onClick={() => void consolidateMemoryNow()}
+              disabled={consolidating}
+              className="rounded-full bg-mint px-2.5 py-0.5 text-[11px] font-bold text-slate-900 transition active:scale-95 disabled:opacity-50"
+            >
+              {consolidating ? '覚え中…' : 'いま覚えて'}
+            </button>
+            <button
+              type="button"
+              onClick={forget}
+              disabled={consolidating || facts.length === 0}
+              className="rounded-full border border-slate-300 px-2.5 py-0.5 text-[11px] font-bold text-slate-400 transition active:scale-95 disabled:opacity-40"
+            >
+              忘れる
+            </button>
+          </div>
+        </div>
+        {facts.length === 0 ? (
+          <p className="text-[11px] text-slate-400">まだ何も覚えていないよ（話しかけると覚えていくよ）</p>
+        ) : (
+          <ul className="flex flex-col gap-0.5">
+            {facts.map((f, i) => (
+              <li key={`${f.key}-${i}`} className="text-[11px] text-slate-600">
+                <span className="font-bold text-lavender">{f.key}</span>：{f.value}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   )
