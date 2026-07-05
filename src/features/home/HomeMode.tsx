@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAppStore } from '../../store/appStore'
 import { useChatStore } from '../../store/chatStore'
+import { useGaugeStore, GAUGE_MAX } from '../../store/gaugeStore'
 import Sprite2DRenderer from '../../lib/character/Sprite2DRenderer'
 import type { FairyExpression } from '../../lib/character/CharacterRenderer'
 import { useFairyReaction } from '../../lib/character/useFairyReaction'
@@ -16,7 +17,11 @@ export default function HomeMode() {
   const status = useChatStore((s) => s.status)
   const messages = useChatStore((s) => s.messages)
   const replyNonce = useChatStore((s) => s.replyNonce)
+  const gaugeValue = useGaugeStore((s) => s.value)
   const { expression: reactionExpression, animateKey, fire } = useFairyReaction()
+
+  const gaugePct = Math.min(100, Math.round((gaugeValue / GAUGE_MAX) * 100))
+  const gaugeFull = gaugeValue >= GAUGE_MAX
 
   const [subView, setSubView] = useState<HomeSubView>('chat')
 
@@ -41,6 +46,25 @@ export default function HomeMode() {
 
   return (
     <div className="flex h-full flex-col items-center gap-4 overflow-y-auto px-6 py-6 text-center">
+      {/* コレットの元気ゲージ（会話・撮影で貯まり、満タンで妖精の窯を解禁） */}
+      <div className="w-full max-w-xs">
+        <div className="mb-1 flex items-center justify-between text-xs font-bold text-slate-500">
+          <span>💛 コレットの元気</span>
+          <span>{gaugeFull ? '満タン！' : `${gaugePct}%`}</span>
+        </div>
+        <div className="h-2.5 w-full overflow-hidden rounded-full bg-white/70">
+          <div
+            className={`h-full rounded-full transition-all ${gaugeFull ? 'bg-mint' : 'bg-lavender'}`}
+            style={{ width: `${gaugePct}%` }}
+          />
+        </div>
+        {gaugeFull && (
+          <p className="mt-1 text-center text-[11px] font-bold text-mint">
+            妖精の窯でアイテムにできるよ
+          </p>
+        )}
+      </div>
+
       {/* サブビュー切替 */}
       <div className="flex gap-1 rounded-full bg-white/60 p-1 shadow-pop backdrop-blur">
         <SubViewTab

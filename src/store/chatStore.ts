@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { ChatMessage } from '../types'
 import { chatProvider } from '../lib/ai/chat'
+import { useGaugeStore, GAUGE_PER_CHAT } from './gaugeStore'
 
 export type ChatStatus = 'idle' | 'sending' | 'error'
 
@@ -51,6 +52,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
         status: 'idle',
         replyNonce: s.replyNonce + 1,
       }))
+      // 会話は「安い日常行動」＝コレットの元気ゲージを少し貯める（返事が来たときだけ）。
+      // ライフサイクルでなくイベント側で加算し、タブ再マウントでの二重加算を避ける。
+      useGaugeStore.getState().add(GAUGE_PER_CHAT)
     } catch (err) {
       const message = err instanceof Error ? err.message : '会話に失敗しました'
       set({ status: 'error', error: message })

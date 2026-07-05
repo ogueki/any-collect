@@ -67,6 +67,8 @@ export interface Item {
   iconUrl: string
   /** 由来のアルバム写真 ID（v2・窯でのアイテム化元） */
   sourcePhotoId?: string
+  /** 由来の図鑑エントリ ID（v2・窯は図鑑エントリを入力にアイテム化する。将来の記憶/系譜用） */
+  sourceCollectionId?: string
   /** 妖精界での配置（正規化座標 0..1。未配置なら未定義＝コレットが自動配置） */
   realmX?: number
   realmY?: number

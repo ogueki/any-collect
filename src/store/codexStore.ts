@@ -16,8 +16,8 @@ interface CodexState {
   error: string | null
   /** 永続層から図鑑を読み込む（新しい順） */
   load: () => Promise<void>
-  /** 生成結果を図鑑に登録して保存する。保存済み Item を返す */
-  addFromGenerated: (generated: GeneratedItem) => Promise<Item>
+  /** 生成結果をアイテムとして保存する（窯＝図鑑エントリ→透過アイテム化）。由来の図鑑エントリ ID を紐づける。保存済み Item を返す */
+  addFromGenerated: (generated: GeneratedItem, sourceCollectionId?: string) => Promise<Item>
   /** そのカテゴリの初取得かどうか（登録前に評価する。リアクション判定用） */
   isNewCategory: (category?: string) => boolean
   /** 合成結果を図鑑に登録し、系譜を記録する。素材は消費しない。保存済み Item を返す */
@@ -42,13 +42,15 @@ export const useCodexStore = create<CodexState>((set, get) => ({
     }
   },
 
-  addFromGenerated: async (generated) => {
+  addFromGenerated: async (generated, sourceCollectionId) => {
     // GeneratedItem(imageUrl) → Item(iconUrl) へマッピングして永続化する。
+    // realmX/Y は未設定＝妖精界（RealmView）がマウント時に自動配置する。
     const saved = await itemRepository.add({
       name: generated.name,
       description: generated.description,
       category: generated.category,
       iconUrl: generated.imageUrl,
+      sourceCollectionId,
     })
     // list() と同じ「新しい順」を保つため先頭に積む。
     set((s) => ({ items: [saved, ...s.items] }))

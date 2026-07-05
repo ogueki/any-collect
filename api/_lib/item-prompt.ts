@@ -32,8 +32,10 @@ export const CATEGORY_VALUES: readonly ItemCategoryKey[] = CATEGORIES.map(([key]
 const CATEGORY_CHOICES = CATEGORIES.map(([key, gloss]) => `${key}(${gloss})`).join(' / ')
 
 /**
- * 全アイテム共通のアートスタイル＆構図テンプレ。英語で書くのは画像モデルの追従が良いため。
- * 「同じ1セットのゲームアイコンに見える」ことを最優先に、毎回同じ枠・同じ画風を強制する。
+ * 全アイテム共通の「描画スタイル＋構図」テンプレ。英語で書くのは画像モデルの追従が良いため。
+ * 「同じ1セットのゲームアイコンに見える」ことを最優先に、毎回同じ画風・同じ構図を強制する。
+ * 背景は用途で変わる（透過アイテム＝`ITEM_TRANSPARENT_BG`／合成＝`SYNTHESIS_BADGE_BG`）ので、
+ * このブロックからは分離し、呼び出し側で背景ブロックを添える。
  */
 const ART_STYLE_BLOCK = `RENDERING STYLE (MUST be identical for every item so the whole collection looks like one matching set):
 - Clean hand-drawn anime / game illustration with one bold, even dark outline around the object.
@@ -44,9 +46,24 @@ const ART_STYLE_BLOCK = `RENDERING STYLE (MUST be identical for every item so th
 COMPOSITION (icon template, IDENTICAL every time):
 - Exactly one single object, centered, slight 3/4 view, occupying about 75% of the frame.
 - Square 1:1 framing.
-- Background: a smooth soft pastel radial gradient inside a subtle rounded badge, very simple, no scenery, no environment, no extra objects.
-- A soft drop shadow beneath the object.
 - No watermarks, borders, UI, or hands. Keep only the text/logos physically printed on the object; do NOT add any new text, letters, or numbers.`
+
+/**
+ * 透過アイテム（窯でアルバム/図鑑→アイテム化）の背景指定＝完全透過。
+ * 妖精界にアクセントとして重ねて置くため、切り抜きの背景を残さない。
+ */
+const ITEM_TRANSPARENT_BG = `BACKGROUND (transparent cutout — very important):
+- The background MUST be fully transparent. Output a PNG image with a real alpha channel.
+- No badge, no gradient, no scenery, no environment, no props, and NO drop shadow or ground shadow.
+- Render only the object itself with a clean, crisp, anti-aliased cutout edge — no colored halo and no leftover background pixels.`
+
+/**
+ * 合成（妖精の窯・2素材融合／現状は導線から外して棚上げ中）向けの旧 badge 背景。
+ * 従来の見た目を壊さないよう残す。
+ */
+const SYNTHESIS_BADGE_BG = `BACKGROUND (icon badge):
+- A smooth soft pastel radial gradient inside a subtle rounded badge, very simple, no scenery, no environment, no extra objects.
+- A soft drop shadow beneath the object.`
 
 /**
  * SDXL / Lightning 系（fal の高速 img2img）で効くネガティブプロンプト。
@@ -56,6 +73,7 @@ COMPOSITION (icon template, IDENTICAL every time):
 export const ITEM_NEGATIVE_PROMPT =
   'text, letters, numbers, watermark, signature, border, frame, UI, hands, ' +
   'extra objects, multiple objects, background scenery, environment, props, ' +
+  'opaque background, solid background, gradient background, drop shadow, cast shadow, ground shadow, ' +
   'person, face, eyes, character, creature, mascot, ' +
   'added ornaments, jewels, ribbons, swirls, glow, ' +
   'chibi, deformed, distorted proportions, blurry, lowres, jpeg artifacts'
@@ -75,6 +93,8 @@ export function buildItemImagePrompt(): string {
     '- Never turn the object into a person or character. A can stays a plain can; a box stays a box — just illustrated in the style below.',
     '',
     ART_STYLE_BLOCK,
+    '',
+    ITEM_TRANSPARENT_BG,
   ].join('\n')
 }
 
@@ -93,6 +113,8 @@ export function buildSynthesisImagePrompt(nameA: string, nameB: string): string 
     '- Keep the overall silhouette simple and icon-readable.',
     '',
     ART_STYLE_BLOCK,
+    '',
+    SYNTHESIS_BADGE_BG,
   ].join('\n')
 }
 

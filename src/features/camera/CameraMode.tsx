@@ -7,6 +7,7 @@ import { identifyProvider } from '../../lib/ai/identify'
 import { cropToBlob } from '../../lib/image/crop'
 import { useAlbumStore } from '../../store/albumStore'
 import { useCollectionStore } from '../../store/collectionStore'
+import { useGaugeStore, GAUGE_PER_CAPTURE } from '../../store/gaugeStore'
 
 /**
  * カメラモード（v2・STEP1d）。「見せる → 判定 → 図鑑に収集＋アルバムに思い出」の最短ループ。
@@ -57,6 +58,7 @@ export default function CameraMode() {
   const addPhoto = useAlbumStore((s) => s.add)
   const collect = useCollectionStore((s) => s.collect)
   const updatePhoto = useCollectionStore((s) => s.updatePhoto)
+  const addGauge = useGaugeStore((s) => s.add)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -165,12 +167,14 @@ export default function CameraMode() {
       }
       await addPhoto({ blob: photo, comment: commentText, emotion, subjectName, caption })
       setSavedFlash(true)
+      // 撮影＝「安い日常行動」＝コレットの元気ゲージを少し貯める（保存できたときだけ）。
+      addGauge(GAUGE_PER_CAPTURE)
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存に失敗しました')
     } finally {
       setBusy(false)
     }
-  }, [busy, characterId, fireReaction, addPhoto, collect])
+  }, [busy, characterId, fireReaction, addPhoto, collect, addGauge])
 
   // 再発見時の「写真を更新する？」への応答。
   const confirmUpdate = useCallback(async () => {
