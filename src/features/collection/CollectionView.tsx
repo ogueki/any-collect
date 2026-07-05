@@ -224,8 +224,7 @@ export default function CollectionView() {
             </p>
 
             {selectedLive.description && (
-              <div className="mt-3 rounded-2xl bg-lavender/10 px-3 py-2 text-sm text-slate-600">
-                <span className="mr-1 text-xs font-bold text-lavender">コレット</span>
+              <div className="mt-3 rounded-2xl bg-lavender/10 px-3 py-2 text-left text-sm text-slate-600">
                 {selectedLive.description}
               </div>
             )}
