@@ -25,12 +25,9 @@ interface KilnViewProps {
 
 type KilnPhase = 'select' | 'generating' | 'result'
 
-/** 透過を確認できるチェッカー地（明るい2色の市松）。 */
-const CHECKER_STYLE: React.CSSProperties = {
-  backgroundImage:
-    'linear-gradient(45deg, #e2e8f0 25%, transparent 25%), linear-gradient(-45deg, #e2e8f0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e2e8f0 75%), linear-gradient(-45deg, transparent 75%, #e2e8f0 75%)',
-  backgroundSize: '16px 16px',
-  backgroundPosition: '0 0, 0 8px, 8px -8px, -8px 0',
+/** 結果プレビューの背景＝妖精界を思わせるやわらかいパステル地（透過アイテムが映える）。 */
+const PREVIEW_BG_STYLE: React.CSSProperties = {
+  background: 'linear-gradient(to bottom, #dbeafe 0%, #ede9fe 45%, #d1fae5 100%)',
 }
 
 export default function KilnView({ onReaction, onGoRealm }: KilnViewProps) {
@@ -178,7 +175,7 @@ export default function KilnView({ onReaction, onGoRealm }: KilnViewProps) {
           <div className="animate-reveal w-full max-w-xs rounded-3xl bg-white p-4 text-slate-800 shadow-pop">
             <div
               className="relative mx-auto aspect-square w-full max-w-[15rem] overflow-hidden rounded-2xl"
-              style={CHECKER_STYLE}
+              style={PREVIEW_BG_STYLE}
             >
               <img
                 src={result.imageUrl}
