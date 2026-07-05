@@ -1,5 +1,6 @@
 import type { ImageGenProvider } from './imageProvider'
 import { toCategory } from '../category'
+import { removeMagentaToPng } from '../image/chromaKey'
 
 /**
  * /api/generate-item プロキシ経由でアイテムを生成する ImageGenProvider 実装。
@@ -39,8 +40,17 @@ export const httpImageGenProvider: ImageGenProvider = {
       throw new Error(data.error ?? `アイテム生成に失敗しました (${res.status})`)
     }
 
+    // サーバは単色マゼンタ背景で描くので、クライアントでクロマキー除去して透過 PNG にする
+    // （Gemini はネイティブ透過が苦手＝chromaKey.ts 参照）。失敗時は元画像のまま。
+    let imageUrl = data.imageUrl
+    try {
+      imageUrl = await removeMagentaToPng(imageUrl)
+    } catch {
+      // 透過処理に失敗しても生成自体は成功しているので、背景つきのまま返す。
+    }
+
     return {
-      imageUrl: data.imageUrl,
+      imageUrl,
       name: data.name,
       description: data.description,
       // wire 越しは生 string なので既知キーに正規化（旧/想定外の値は other に倒す）。
