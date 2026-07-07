@@ -82,6 +82,7 @@
 - **カメラモード（外・冒険）＝常時 動的TTS**（反応は動的なので都度生成・低頻度＝限定コスト）。
 - **ホームモード（家・じっくり）＝テキスト＋事前収録パートボイス**（会話は高頻度なので、挨拶・相槌・欲・節目などの**固定セリフを事前生成→静的キャッシュ＝実行時ゼロ円**。動的な本文はテキスト）。→ `persona.md` を**決め台詞・口癖多め**に書いて声化率を上げる。
 - TTS は **Fish Audio**（`TtsProvider`）。ON/OFF 切替。好感度で声を段階解禁しうる。
+  - **STEP3a 実装（動的TTS の MVP）**＝`api/tts.ts`（Fish `POST /v1/tts` プロキシ・鍵はサーバのみ・raw 音声返却）／`api/_lib/voice.ts` `loadVoice`（`src/characters/<id>/voice.json` の `referenceId`/`model`/`format`＝声の差し替えはこのファイル1つ・`loadPersona` ミラー）／`TtsProvider` 実装 `httpTtsProvider`＋差し替え点 `tts.ts`（scene 三点セットのミラー）／`src/lib/audio/useSpeak.ts`（`speak(text)` 共有・`appStore.voiceEnabled` でゲート・直前再生を停止・`primeAudio()` で iOS 自動再生アンロック）。配線＝**カメラ反応を自動読み上げ**＋**会話返信は 🔊 タップ再生**（ユーザー操作内で確実）＋ホーム/カメラに ON/OFF トグル。**検証中は無料モデル `s2.1-pro-free`（$0）**、品質は voice.json で pro に差し替え。**3b（ホーム＝事前収録パートボイス＝AI下書き→Fish一括生成→静的キャッシュ→実行時ゼロ円）は後続。**
 
 ### 4.6 妖精キャラクター
 - **コレット**＝デフォルト妖精。**好奇心旺盛・冒険好き・アクティブ**（主導的に話題・欲・意見を出す。ただし cozy であって needy でない）。3頭身ちびの2Dイラスト。

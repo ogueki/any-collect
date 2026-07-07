@@ -16,6 +16,8 @@ type HomeSubView = 'chat' | 'collection' | 'album' | 'kiln' | 'realm'
 
 export default function HomeMode() {
   const characterId = useAppStore((s) => s.characterId)
+  const voiceEnabled = useAppStore((s) => s.voiceEnabled)
+  const toggleVoice = useAppStore((s) => s.toggleVoice)
   const status = useChatStore((s) => s.status)
   const messages = useChatStore((s) => s.messages)
   const replyNonce = useChatStore((s) => s.replyNonce)
@@ -99,6 +101,16 @@ export default function HomeMode() {
       >
         💗 なつき Lv.{affinityLevel}
         {affinityLevel < MAX_LEVEL ? '（タップで＋・検証用）' : '（タップでLv1へ・検証用）'}
+      </button>
+
+      {/* 声 ON/OFF（コレットの読み上げ・グローバル設定）。会話は返信の 🔊 タップで再生。 */}
+      <button
+        type="button"
+        onClick={toggleVoice}
+        aria-label={voiceEnabled ? '声をオフにする' : '声をオンにする'}
+        className="shrink-0 rounded-full bg-white/70 px-3 py-1 text-xs font-bold text-slate-500 shadow-pop transition active:scale-95"
+      >
+        {voiceEnabled ? '🔊 声オン' : '🔇 声オフ'}
       </button>
 
       {pendingLevelUp && (

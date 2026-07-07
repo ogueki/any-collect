@@ -9,6 +9,7 @@ import { useAlbumStore } from '../../store/albumStore'
 import { useCollectionStore } from '../../store/collectionStore'
 import { useGaugeStore, GAUGE_PER_CAPTURE } from '../../store/gaugeStore'
 import { useAffinityStore, AFFINITY_PER_CAPTURE, levelForScore } from '../../store/affinityStore'
+import { speak, primeAudio } from '../../lib/audio/useSpeak'
 
 /**
  * カメラモード（v2・STEP1d）。「見せる → 判定 → 図鑑に収集＋アルバムに思い出」の最短ループ。
@@ -17,7 +18,7 @@ import { useAffinityStore, AFFINITY_PER_CAPTURE, levelForScore } from '../../sto
  * 撮影フレームを identify に渡し、コレットのひとこと＋感情＋写っている主役（bbox付き）を取る。
  * 主役が採れたら bbox でクロップして図鑑に収集（無料・無制限＝Seek 型）。同時に全体フレームを
  * アルバムに思い出として保存する（iNaturalist の「観察ログ×ライフリスト」二層／§4.1）。
- * テキスト先行で反応を出す（音声＝動的TTSは後続STEP）。判定に失敗しても写真は保存する。
+ * テキスト先行 → 反応を動的TTS（Fish）で読み上げ（声は voiceEnabled でON/OFF）。判定に失敗しても写真は保存する。
  */
 
 // 送信画像が大きすぎないよう、撮影フレームの長辺をこのサイズに縮小する。
@@ -56,6 +57,8 @@ function captureFrame(video: HTMLVideoElement): Promise<Blob> {
 
 export default function CameraMode() {
   const characterId = useAppStore((s) => s.characterId)
+  const voiceEnabled = useAppStore((s) => s.voiceEnabled)
+  const toggleVoice = useAppStore((s) => s.toggleVoice)
   const addPhoto = useAlbumStore((s) => s.add)
   const collect = useCollectionStore((s) => s.collect)
   const updatePhoto = useCollectionStore((s) => s.updatePhoto)
@@ -126,6 +129,7 @@ export default function CameraMode() {
     setFoundToast(null)
     setPendingUpdate(null) // 前回の「更新する？」は次の撮影で閉じる
     fireReaction('thinking') // 「見てるね…」の即時フィードバック
+    primeAudio() // 撮影タップ（ユーザー操作）内で iOS 自動再生をアンロック
     try {
       const photo = await captureFrame(video)
       // テキスト先行：判定（ひとこと＋感情＋主役）を取りに行く。演出なので失敗しても写真は残す。
@@ -139,6 +143,7 @@ export default function CameraMode() {
         emotion = result.emotion
         setComment(result.comment)
         fireReaction(result.emotion ?? 'happy')
+        void speak(result.comment) // 反応を動的TTSで読み上げ（voiceEnabled は speak 内でゲート）
 
         // 主役が採れたら bbox でクロップして図鑑に収集（無料・無制限）。
         if (result.subject) {
@@ -249,6 +254,16 @@ export default function CameraMode() {
     <div className="relative flex h-full flex-col bg-slate-900 text-white">
       {/* ライブビュー */}
       <video ref={videoRef} autoPlay playsInline muted className="h-full w-full object-cover" />
+
+      {/* 声 ON/OFF（コレットの反応読み上げ・グローバル設定） */}
+      <button
+        type="button"
+        onClick={toggleVoice}
+        aria-label={voiceEnabled ? '声をオフにする' : '声をオンにする'}
+        className="absolute right-3 top-3 z-10 rounded-full bg-slate-900/60 px-3 py-1.5 text-lg shadow-pop transition active:scale-95"
+      >
+        {voiceEnabled ? '🔊' : '🔇'}
+      </button>
 
       {/* カメラ不可時のフォールバック */}
       {cameraError && (

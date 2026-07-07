@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useChatStore } from '../../store/chatStore'
 import { useAppStore } from '../../store/appStore'
 import { useMemoryStore } from '../../store/memoryStore'
+import { speak, primeAudio } from '../../lib/audio/useSpeak'
 
 /**
  * ホームの会話UI（STEP2・最小機能）。
@@ -30,6 +31,7 @@ export default function ChatPanel() {
 
   const handleSend = () => {
     if (!input.trim() || sending) return
+    primeAudio() // 送信タップ（ユーザー操作）内で音声再生をアンロックしておく
     void send(input, characterId)
     setInput('')
   }
@@ -53,6 +55,17 @@ export default function ChatPanel() {
             }`}
           >
             {m.content}
+            {m.role !== 'user' && (
+              <button
+                type="button"
+                onClick={() => void speak(m.content)}
+                aria-label="声で聞く"
+                title="声で聞く"
+                className="ml-1 align-middle text-slate-400 transition hover:text-lavender active:scale-95"
+              >
+                🔊
+              </button>
+            )}
           </div>
         ))}
         {sending && (

@@ -10,7 +10,7 @@ type ApiHandler = (req: IncomingMessage, res: ServerResponse) => Promise<void>
  * ハンドラは ssrLoadModule で都度ロードするため HMR が効き、型結合も生まない。
  */
 // dev で配信する API。本番では Vercel が api/*.ts を直接実行する。
-const API_ROUTES = ['chat', 'generate-item', 'describe-scene', 'synthesize', 'identify', 'memory'] as const
+const API_ROUTES = ['chat', 'generate-item', 'describe-scene', 'synthesize', 'identify', 'memory', 'tts'] as const
 
 function apiDevServer(): PluginOption {
   return {
@@ -45,6 +45,8 @@ export default defineConfig(({ mode }) => {
     'GEMINI_TEXT_MODEL',
     'GEMINI_IMAGE_MODEL',
     'ANTHROPIC_API_KEY',
+    // 音声合成（Fish Audio・STEP3）。dev の /api/tts が参照する。
+    'FISH_AUDIO_API_KEY',
     // 画像生成プロバイダ切替（スキャン高速化の検証用）。fal を使うときだけ要設定。
     'IMAGE_PROVIDER',
     'FAL_KEY',
