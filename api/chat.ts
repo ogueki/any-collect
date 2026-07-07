@@ -19,6 +19,8 @@ interface ChatRequestBody {
   affinityLevel?: number
   /** コレットが覚えている「きみについての短い事実」（クライアントが送る・接地注入） */
   memoryFacts?: { key?: unknown; value?: unknown }[]
+  /** きみの最近のようす（図鑑・アルバム傾向）。クライアントが集計した短いノート（接地注入・STEP2c） */
+  groundingNotes?: unknown
 }
 
 type NodeReq = IncomingMessage & { body?: unknown }
@@ -85,7 +87,17 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
           .map((f) => ({ key: String(f.key), value: String(f.value) }))
           .slice(0, 12)
       : undefined
-    const systemPrompt = buildSystemPrompt(loadPersona(body.personaId), { affinityLevel, memoryFacts })
+    const groundingNotes = Array.isArray(body.groundingNotes)
+      ? body.groundingNotes
+          .filter((n): n is string => typeof n === 'string' && n.trim().length > 0)
+          .map((n) => n.slice(0, 200))
+          .slice(0, 3)
+      : undefined
+    const systemPrompt = buildSystemPrompt(loadPersona(body.personaId), {
+      affinityLevel,
+      memoryFacts,
+      groundingNotes,
+    })
     const { text, emotion } = await generateChatReply({ apiKey, systemPrompt, history, userInput })
     sendJson(res, 200, { reply: text, emotion })
   } catch (err) {

@@ -31,6 +31,7 @@ export const httpChatProvider: ChatProvider = {
         personaId: opts?.personaId ?? 'default',
         affinityLevel: opts?.affinityLevel,
         memoryFacts: opts?.memoryFacts,
+        groundingNotes: opts?.groundingNotes,
       }),
     })
 

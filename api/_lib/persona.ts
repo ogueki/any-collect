@@ -39,6 +39,8 @@ export interface ChatContext {
   affinityLevel?: number
   /** コレットが覚えている「きみについての短い事実」（クライアントから注入） */
   memoryFacts?: { key: string; value: string }[]
+  /** きみの最近のようす（図鑑・アルバム傾向）。クライアントが決定的に集計した短いノート（STEP2c） */
+  groundingNotes?: string[]
 }
 
 /** persona 本文に会話ルール＋接地文脈を前置きして system prompt を作る。 */
@@ -70,6 +72,19 @@ export function buildSystemPrompt(personaText: string, context?: ChatContext): s
       '- 関連する話題のときは、覚えていることに自然に触れてよい（名前で呼ぶ・好きなものの話をする等）。ただし一度に並べ立てない。',
       '- 確信が持てないことは断定せず「たしか〜だよね?」のように暫定的に確認する。訂正されたら素直に受け入れる（言い張らない）。',
       '- 覚えていないことを、覚えているかのように作り話しない。',
+    )
+  }
+
+  const notes = (context?.groundingNotes ?? []).filter(Boolean)
+  if (notes.length > 0) {
+    lines.push(
+      '',
+      '# きみの最近のようす（図鑑・アルバムから）',
+      ...notes.map((n) => `- ${n}`),
+      '',
+      '接地の扱い（必ず守る）:',
+      '- 話の流れに合うときだけ、一緒に見つけた/撮った実感として自然に一言触れる。毎回は持ち出さない・一覧で並べ立てない。',
+      '- これはきみの行動の記録であって、決めつけの材料にしない。断定せずやわらかく。',
     )
   }
 

@@ -4,6 +4,9 @@ import { chatProvider } from '../lib/ai/chat'
 import { useGaugeStore, GAUGE_PER_CHAT } from './gaugeStore'
 import { useAffinityStore, AFFINITY_PER_CHAT } from './affinityStore'
 import { useMemoryStore } from './memoryStore'
+import { useCollectionStore } from './collectionStore'
+import { useAlbumStore } from './albumStore'
+import { buildGroundingNotes } from '../lib/grounding'
 
 export type ChatStatus = 'idle' | 'sending' | 'error'
 
@@ -59,10 +62,24 @@ export const useChatStore = create<ChatState>((set, get) => ({
       // 好感度レベル＋記憶を会話に載せる（サーバの system prompt で口調 tier＋接地に反映）。
       const affinityLevel = useAffinityStore.getState().level()
       const memoryFacts = useMemoryStore.getState().facts
+
+      // 図鑑・アルバムの傾向を接地ノートに（STEP2c）。会話タブ単独起動でも接地できるよう、
+      // 未ロードなら読む（データは小さい。collect の「メモリ空なら永続層」idiom と同じ発想）。
+      const col = useCollectionStore.getState()
+      if (col.entries.length === 0 && col.status === 'idle') await col.load()
+      const alb = useAlbumStore.getState()
+      if (alb.photos.length === 0 && alb.status === 'idle') await alb.load()
+      const groundingNotes = buildGroundingNotes({
+        entries: useCollectionStore.getState().entries,
+        photos: useAlbumStore.getState().photos,
+      })
+      if (import.meta.env.DEV) console.debug('[grounding]', groundingNotes)
+
       const reply = await chatProvider.sendMessage(history, text, {
         personaId,
         affinityLevel,
         memoryFacts,
+        groundingNotes,
       })
       set((s) => ({
         messages: [...s.messages, createMessage('fairy', reply.text, reply.emotion)],
