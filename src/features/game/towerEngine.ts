@@ -69,8 +69,11 @@ export async function createTowerGame(
   const W = cssW
   const H = cssH
   const size = pieceSizeFor(W)
-  const GROUND_H = 28
-  const groundTopY = H - GROUND_H
+  // 元ネタ（動物タワーバトル）流に、地面ではなく**せまい台座**。端から落ちたら負け。
+  const PLATFORM_H = 22
+  const platformW = Math.round(Math.min(W - 48, Math.max(120, W * 0.44)))
+  const platformX = W / 2
+  const platformTopY = Math.round(H * 0.72)
   const dropY = 64 // 落下待ちピースの y
 
   // 事前に全アイテムの凸包＋画像を用意（落とす瞬間を同期に）。失敗は握りつぶし除外。
@@ -88,11 +91,14 @@ export async function createTowerGame(
   const engine = Matter.Engine.create()
   engine.gravity.y = 1
   const world = engine.world
-  const ground = Matter.Bodies.rectangle(W / 2, H - GROUND_H / 2, W, GROUND_H, {
-    isStatic: true,
-    friction: 0.9,
-  })
-  Matter.Composite.add(world, ground)
+  const platform = Matter.Bodies.rectangle(
+    platformX,
+    platformTopY + PLATFORM_H / 2,
+    platformW,
+    PLATFORM_H,
+    { isStatic: true, friction: 0.9, chamfer: { radius: 6 } },
+  )
+  Matter.Composite.add(world, platform)
 
   const placed: Placed[] = []
   let pending: SpritePiece | null = null
@@ -181,9 +187,12 @@ export async function createTowerGame(
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.clearRect(0, 0, W, H)
 
-    // 地面。
-    ctx.fillStyle = 'rgba(16, 185, 129, 0.85)'
-    ctx.fillRect(0, groundTopY, W, GROUND_H)
+    // せまい台座（端から落ちたら負け）＋装飾の支柱。
+    const px = platformX - platformW / 2
+    ctx.fillStyle = 'rgba(120, 113, 108, 0.35)'
+    ctx.fillRect(platformX - platformW * 0.13, platformTopY + PLATFORM_H, platformW * 0.26, H)
+    ctx.fillStyle = 'rgba(120, 113, 108, 0.92)'
+    ctx.fillRect(px, platformTopY, platformW, PLATFORM_H)
 
     // 積まれたピース。
     for (const p of placed) {
@@ -197,7 +206,7 @@ export async function createTowerGame(
       ctx.setLineDash([4, 6])
       ctx.beginPath()
       ctx.moveTo(pendingX, dropY)
-      ctx.lineTo(pendingX, groundTopY)
+      ctx.lineTo(pendingX, platformTopY)
       ctx.stroke()
       ctx.restore()
       drawPiece(pending, pendingX, dropY, 0)
