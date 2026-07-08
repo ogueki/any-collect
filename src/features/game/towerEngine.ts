@@ -71,7 +71,7 @@ export async function createTowerGame(
   const size = pieceSizeFor(W)
   // 元ネタ（動物タワーバトル）流に、地面ではなく**せまい台座**。端から落ちたら負け。
   const PLATFORM_H = 22
-  const platformW = Math.round(Math.min(W - 40, Math.max(150, W * 0.58)))
+  const platformW = Math.round(Math.min(W - 32, Math.max(170, W * 0.7)))
   const platformX = W / 2
   const platformTopY = Math.round(H * 0.72)
   const dropY = 64 // 落下待ちピースの y
@@ -118,9 +118,10 @@ export async function createTowerGame(
 
   const makeBody = (piece: SpritePiece, x: number, y: number): MatterNS.Body => {
     const opts: MatterNS.IChamferableBodyDefinition = {
-      friction: 0.6,
-      frictionStatic: 0.8,
-      restitution: 0.02,
+      friction: 0.9,
+      frictionStatic: 1.0,
+      restitution: 0, // 跳ねない＝転がって落ちにくく
+      frictionAir: 0.02, // わずかな空気抵抗で無限にコロコロしない
     }
     if (piece.vertices && piece.vertices.length >= 3) {
       const body = Matter.Bodies.fromVertices(x, y, [piece.vertices], opts)
