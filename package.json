@@ -11,6 +11,8 @@
     "sprites:optimize": "node scripts/optimize-sprites.mjs"
   },
   "dependencies": {
+    "@types/matter-js": "^0.20.2",
+    "matter-js": "^0.20.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "zustand": "^5.0.2"
