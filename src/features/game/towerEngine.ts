@@ -71,7 +71,7 @@ export async function createTowerGame(
   const size = pieceSizeFor(W)
   // 元ネタ（動物タワーバトル）流に、地面ではなく**せまい台座**。端から落ちたら負け。
   const PLATFORM_H = 22
-  const platformW = Math.round(Math.min(W - 48, Math.max(120, W * 0.44)))
+  const platformW = Math.round(Math.min(W - 40, Math.max(150, W * 0.58)))
   const platformX = W / 2
   const platformTopY = Math.round(H * 0.72)
   const dropY = 64 // 落下待ちピースの y
