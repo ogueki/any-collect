@@ -6,6 +6,7 @@ import { useAffinityStore, levelForScore, MAX_LEVEL } from '../../store/affinity
 import Sprite2DRenderer from '../../lib/character/Sprite2DRenderer'
 import type { FairyExpression } from '../../lib/character/CharacterRenderer'
 import { useFairyReaction } from '../../lib/character/useFairyReaction'
+import { primeAudio } from '../../lib/audio/useSpeak'
 import ChatPanel from './ChatPanel'
 import KilnView from '../kiln/KilnView'
 import AlbumView from '../album/AlbumView'
@@ -106,7 +107,11 @@ export default function HomeMode() {
       {/* 声 ON/OFF（コレットの読み上げ・グローバル設定）。会話は返信の 🔊 タップで再生。 */}
       <button
         type="button"
-        onClick={toggleVoice}
+        onClick={() => {
+          // 声をONにするタップ（ユーザー操作）の中でアンロックしておく＝以後の自動読み上げが確実に鳴る。
+          if (!voiceEnabled) primeAudio()
+          toggleVoice()
+        }}
         aria-label={voiceEnabled ? '声をオフにする' : '声をオンにする'}
         className="shrink-0 rounded-full bg-white/70 px-3 py-1 text-xs font-bold text-slate-500 shadow-pop transition active:scale-95"
       >

@@ -258,7 +258,11 @@ export default function CameraMode() {
       {/* 声 ON/OFF（コレットの反応読み上げ・グローバル設定） */}
       <button
         type="button"
-        onClick={toggleVoice}
+        onClick={() => {
+          // 声をONにするタップ内でアンロック（撮影前に有効化しても初回反応が鳴るように）。
+          if (!voiceEnabled) primeAudio()
+          toggleVoice()
+        }}
         aria-label={voiceEnabled ? '声をオフにする' : '声をオンにする'}
         className="absolute right-3 top-3 z-10 rounded-full bg-slate-900/60 px-3 py-1.5 text-lg shadow-pop transition active:scale-95"
       >

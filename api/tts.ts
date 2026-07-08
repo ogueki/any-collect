@@ -90,7 +90,13 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
         model: voice.model,
       },
       // reference_id が undefined のときは JSON から自然に落ちる（Fish 既定話者）。
-      body: JSON.stringify({ text, reference_id: voice.referenceId, format: voice.format }),
+      // latency:'low'＝発話開始（TTFA）優先。音質は既定 mp3_bitrate のまま落とさない。
+      body: JSON.stringify({
+        text,
+        reference_id: voice.referenceId,
+        format: voice.format,
+        latency: 'low',
+      }),
     })
 
     if (!fishRes.ok) {
@@ -101,13 +107,37 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
       return
     }
 
-    const buf = Buffer.from(await fishRes.arrayBuffer())
+    // Fish の音声をバッファし切らず、届いたチャンクからそのままクライアントへ流す（低レイテンシ）。
+    // Content-Length を付けない＝chunked transfer。クライアントは MediaSource で逐次再生できる。
     res.statusCode = 200
     res.setHeader('Content-Type', audioContentType(voice.format))
     res.setHeader('Cache-Control', 'no-store')
-    res.end(buf)
+
+    const stream = fishRes.body
+    if (!stream) {
+      // ストリームが取れない環境では従来どおり全バッファで返す（保険）。
+      res.end(Buffer.from(await fishRes.arrayBuffer()))
+      return
+    }
+    const reader = stream.getReader()
+    try {
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        if (value) res.write(Buffer.from(value))
+      }
+    } catch {
+      // 途中で切れても既に 200/ヘッダ送信済み＝ここでは終了だけ（クライアント側で握りつぶす）。
+    } finally {
+      res.end()
+    }
   } catch (err) {
-    const message = err instanceof Error ? err.message : '音声合成に失敗しました'
-    sendJson(res, 502, { error: message })
+    // ヘッダ送信前の失敗のみ JSON エラーにできる（送信後は上の finally で終了済み）。
+    if (!res.headersSent) {
+      const message = err instanceof Error ? err.message : '音声合成に失敗しました'
+      sendJson(res, 502, { error: message })
+    } else {
+      res.end()
+    }
   }
 }
