@@ -57,6 +57,11 @@ interface Placed {
   piece: SpritePiece
 }
 
+/** 物理は固定タイムステップで進める（matter.js は一定 dt 前提）。 */
+const FIXED_DT = 1000 / 60
+/** 1フレームで追いつく最大ステップ数（これを超える遅延は捨てる＝雪だるま防止）。 */
+const MAX_STEPS = 5
+
 /** VS：落としたピースが「落ち着いた」と見なす速度としきい。 */
 const SETTLE_SPEED = 0.35
 const SETTLE_ANGULAR = 0.05
@@ -117,7 +122,8 @@ export async function createTowerGame(
     }),
   )
 
-  const engine = Matter.Engine.create()
+  // 積み上げの接触を安定させるためソルバ反復を既定より増やす（sink/ジッター低減）。
+  const engine = Matter.Engine.create({ positionIterations: 8, velocityIterations: 6 })
   engine.gravity.y = 1
   const world = engine.world
   const platform = Matter.Bodies.rectangle(
@@ -136,6 +142,7 @@ export async function createTowerGame(
   let over = false
   let raf = 0
   let last = performance.now()
+  let acc = 0 // 固定ステップ用の時間アキュムレータ
 
   // VS 用の状態。
   let turn: TurnActor = 'player'
@@ -327,9 +334,20 @@ export async function createTowerGame(
   }
 
   const frame = (now: number) => {
-    const dt = Math.min(32, now - last)
+    // 物理は**固定タイムステップ**で進める。可変 dt を渡すと積んだ山の接触が不安定化し、
+    // ドラッグで pointermove が大量発火してフレーム間隔が乱れると山が勝手にジッター＝崩壊する
+    // （＝「狙いを動かすだけで崩れる/勝てる」実機バグの原因）。フレーム飛びは複数ステップで追いつく。
+    let elapsed = now - last
     last = now
-    Matter.Engine.update(engine, dt)
+    if (elapsed > 200) elapsed = FIXED_DT // タブ復帰等の巨大 dt は 1 ステップに丸めて捨てる
+    acc += elapsed
+    let steps = 0
+    while (acc >= FIXED_DT && steps < MAX_STEPS) {
+      Matter.Engine.update(engine, FIXED_DT)
+      acc -= FIXED_DT
+      steps += 1
+    }
+    if (steps >= MAX_STEPS) acc = 0 // 追いつけない遅延は捨てる（雪だるま防止）
     updateTurns(now)
     render()
     checkFalls()
