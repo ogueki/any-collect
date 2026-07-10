@@ -7,8 +7,14 @@ import { buildSpritePiece } from '../../lib/image/alphaShape'
  * **固定タイムステップ**で更新する（タワーバトルの実機バグ＝可変 dt で挙動が乱れる教訓を最初から適用）。
  * 実フレーム間隔が乱れても 1 ステップ = 1000/60ms 固定で進め、フレーム飛びは複数ステップで追いつく。
  *
- * 主役＝集めた透過アイテム（`buildSpritePiece` で読み込み・当たりは寛容な矩形）。障害物＝妖精界トーンの
+ * 主役＝集めた透過アイテム（`buildSpritePiece` で読み込み・当たりは矩形）。障害物＝妖精界トーンの
  * パステルな柱（上下に隙間）。当たり or 地面で終了、くぐった数がスコア。
+ *
+ * **難易度は本家相当で一定**（本家同様、進行によるランプは持たない）。本家は 288×512 の固定解像度で
+ * 描いて拡大するが、こちらは canvas サイズが端末で変わるので、**縦の量は地面までの高さ・横の量は画面幅**で
+ * 相似スケールする。これで端末に依らず同じ密度（柱は 1.4 秒に 1 本・隙間は空の 1/4・1 はばたきで空の
+ * 約 1 割ぶん上昇）になる。特に柱の間隔は px ではなく**ステップ数で固定**する（画面幅に比例させると
+ * PC の全画面で 6 秒に 1 本になり、別ゲームになってしまう）。
  */
 
 export interface FlappyItem {
@@ -39,14 +45,30 @@ export interface FlappyGameHandle {
 const FIXED_DT = 1000 / 60
 const MAX_STEPS = 5
 
-// 以下はすべて「1 固定ステップ(1/60秒)あたり」の単位。固定 dt なのでフレームレート非依存。
-const GRAVITY = 0.5 // 毎ステップ vy に加算
-const FLAP_VY = -8.2 // はばたきで vy をこの値に
-const MAX_FALL = 12 // 落下速度の上限
-const SCROLL = 2.4 // 柱が左へ流れる速さ（px/ステップ）
+// --- 本家の基準値（288×512・地面より上が 400px の論理解像度。1 フレーム = 1/60 秒） ---
+const REF_W = 288 // 論理幅（横の量のスケール元）
+const REF_SKY = 400 // 地面より上の高さ（縦の量のスケール元）
+const REF_GRAVITY = 0.25 // 毎フレーム vy に加算
+const REF_FLAP_VY = -4.6 // はばたきで vy をこの値に
+const REF_MAX_FALL = 10 // 落下速度の上限
+const REF_SCROLL = 2 // 柱が左へ流れる速さ
+const REF_GAP = 100 // 上下の柱の隙間（＝空の 1/4）
+const REF_COL_W = 52 // 柱の幅
+const REF_EDGE_MARGIN = 50 // 隙間の上下に必ず残す柱の長さ（＝隙間中心のブレ幅を空の半分に抑える）
+
+/** 柱と柱の間隔（固定ステップ数＝1.4 秒）。画面幅に依らず周期を一定に保つための時間基準。 */
+const COLUMN_INTERVAL_STEPS = 84
+/** 当たり矩形＝スプライトの何割か。透過アイテムは輪郭の外に余白を含むので少しだけ縮める。 */
+const HIT_SCALE = 0.72
+/** 隙間は最低でも主役の当たり高さの何倍か（本家の 100px ÷ 主役の高さ 24px）。 */
+const GAP_PER_BIRD = 100 / 24
+
 const MILESTONE = 5 // この数くぐるごとに excited
 
-/** 主役の表示長辺 px（画面幅から。小さすぎ/大きすぎを避ける）。 */
+/**
+ * 主役の表示長辺 px（画面幅から。小さすぎ/大きすぎを避ける）＝**見た目だけ**の値。
+ * 難易度は当たり矩形（`HIT_SCALE`）と隙間で決まるので、アイテムは大きく見せたままにできる。
+ */
 function birdSizeFor(cssW: number): number {
   return Math.round(Math.min(60, Math.max(42, cssW * 0.14)))
 }
@@ -75,19 +97,29 @@ export async function createFlappyGame(
   const birdX = Math.round(W * 0.3)
   const groundH = Math.round(H * 0.1)
   const groundY = H - groundH
-  const colW = Math.max(46, Math.round(W * 0.15))
-  const spacing = Math.max(190, Math.round(W * 0.66))
-  const GAP = Math.max(155, Math.round(birdSize * 3.1)) // 隙間（寛容め）
-  const firstX = W + colW // 最初の柱は画面右外から
   const centerY = groundY / 2
+
+  // 本家の基準値を、縦は空の高さ・横は画面幅で相似スケールする。
+  const sy = groundY / REF_SKY
+  const sx = W / REF_W
+  const GRAVITY = REF_GRAVITY * sy
+  const FLAP_VY = REF_FLAP_VY * sy
+  const MAX_FALL = REF_MAX_FALL * sy
+  const SCROLL = REF_SCROLL * sx
+  const colW = Math.round(REF_COL_W * sx)
+  const spacing = SCROLL * COLUMN_INTERVAL_STEPS // 幅ではなく時間で決める（周期を端末で揃える）
+  const firstX = W + colW // 最初の柱は画面右外から
 
   // 主役の画像を読み込む（透過アイテムの data URL＝canvas 安全）。凸包は使わず img/寸法だけ使う。
   const sprite = await buildSpritePiece(item.iconUrl, birdSize)
   const birdW = sprite.width
   const birdH = sprite.height
-  // 当たりは寛容（見た目より小さめの矩形）＝フラッピーの気持ちよさ。
-  const hitHW = birdW * 0.3
-  const hitHH = birdH * 0.3
+  const hitHW = (birdW * HIT_SCALE) / 2
+  const hitHH = (birdH * HIT_SCALE) / 2
+
+  // 隙間は空の 1/4。ただし主役が空に対して大きい端末（横長など）でも本家の余裕は割らない。
+  const GAP = Math.max(Math.round(REF_GAP * sy), Math.round(birdH * HIT_SCALE * GAP_PER_BIRD))
+  const edgeMargin = REF_EDGE_MARGIN * sy
 
   const columns: Column[] = []
   let birdY = centerY
@@ -99,8 +131,8 @@ export async function createFlappyGame(
   let acc = 0
 
   const randGapCenter = (): number => {
-    const top = GAP / 2 + 44
-    const bottom = groundY - GAP / 2 - 20
+    const top = GAP / 2 + edgeMargin
+    const bottom = groundY - GAP / 2 - edgeMargin
     return top + Math.random() * Math.max(0, bottom - top)
   }
 
@@ -262,8 +294,9 @@ export async function createFlappyGame(
 
     // 主役（アイテム）。ready 中はふわふわ、飛行中は速度でチルト。
     const drawY = phase === 'ready' ? centerY + Math.sin(now / 300) * 8 : birdY
+    // チルトは速度の絶対値ではなく落下上限に対する比で決める（vy が端末スケール依存になったため）。
     const tilt =
-      phase === 'ready' ? 0 : Math.max(-0.35, Math.min(1.0, vy * 0.06))
+      phase === 'ready' ? 0 : Math.max(-0.35, Math.min(1.0, (vy / MAX_FALL) * 0.85))
     ctx.save()
     ctx.translate(birdX, drawY)
     ctx.rotate(tilt)
