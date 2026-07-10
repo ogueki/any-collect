@@ -1,4 +1,4 @@
-import { buildSpritePiece } from '../../lib/image/alphaShape'
+import { buildSpritePiece, type SpritePiece } from '../../lib/image/alphaShape'
 
 /**
  * フラッピー風ゲーム（オマケ②）の物理＋描画コア。React 非依存＝canvas と主役アイテムと
@@ -52,16 +52,24 @@ const REF_GRAVITY = 0.25 // 毎フレーム vy に加算
 const REF_FLAP_VY = -4.6 // はばたきで vy をこの値に
 const REF_MAX_FALL = 10 // 落下速度の上限
 const REF_SCROLL = 2 // 柱が左へ流れる速さ
-const REF_GAP = 100 // 上下の柱の隙間（＝空の 1/4）
 const REF_COL_W = 52 // 柱の幅
-const REF_EDGE_MARGIN = 50 // 隙間の上下に必ず残す柱の長さ（＝隙間中心のブレ幅を空の半分に抑える）
 
-/** 柱と柱の間隔（固定ステップ数＝1.4 秒）。画面幅に依らず周期を一定に保つための時間基準。 */
+// 以下の 3 つが難易度そのもの。実機で「本家ほどの死にゲー感がない」と分かったので、隙間だけ本家より
+// 締めている（周期を縮める方は、隙間の移動を吸収する余地まで削れて理不尽になったので採らない）。
+// 緩めたいときは REF_GAP を上げるのが一番素直に効く。
+const REF_GAP = 88 // 上下の柱の隙間（本家は 100＝空の 1/4）
+const REF_EDGE_MARGIN = 62 // 隙間の上下に必ず残す柱の長さ（＝隙間中心のブレ幅の上限を決める）
+/** 柱と柱の間隔（固定ステップ数＝1.4 秒＝本家と同じ）。画面幅に依らず周期を一定に保つための時間基準。 */
 const COLUMN_INTERVAL_STEPS = 84
-/** 当たり矩形＝スプライトの何割か。透過アイテムは輪郭の外に余白を含むので少しだけ縮める。 */
-const HIT_SCALE = 0.72
-/** 隙間は最低でも主役の当たり高さの何倍か（本家の 100px ÷ 主役の高さ 24px）。 */
-const GAP_PER_BIRD = 100 / 24
+
+/**
+ * 当たり矩形＝**実際に見えている範囲**（アルファの外接矩形）の何割か。
+ * 透過アイテムは画像の外周に透明な余白を持つので、描画寸法をそのまま使うと当たりが余白ぶんズレる
+ * （余白が多い絵ほど「何もない所で当たる」、少ない絵ほど「めり込んでも当たらない」）。
+ */
+const HIT_SCALE = 0.92
+/** 隙間は最低でも主役の当たり高さの何倍か（画面が横長で主役が空に対して大きいときの下限）。 */
+const GAP_PER_BIRD = 3.6
 
 const MILESTONE = 5 // この数くぐるごとに excited
 
@@ -77,6 +85,26 @@ interface Column {
   x: number // 柱の中心 x
   gapCenter: number // 隙間の中心 y
   passed: boolean
+}
+
+/**
+ * 主役の「見えている範囲」（アルファ凸包の外接矩形・画像中心が原点）。
+ * 凸包が採れなければ描画寸法そのもの（＝矩形フォールバック）。
+ */
+function visibleBounds(sprite: SpritePiece): { dx: number; dy: number; hw: number; hh: number } {
+  const v = sprite.vertices
+  if (!v || v.length < 3) return { dx: 0, dy: 0, hw: sprite.width / 2, hh: sprite.height / 2 }
+  let minX = Infinity
+  let maxX = -Infinity
+  let minY = Infinity
+  let maxY = -Infinity
+  for (const p of v) {
+    if (p.x < minX) minX = p.x
+    if (p.x > maxX) maxX = p.x
+    if (p.y < minY) minY = p.y
+    if (p.y > maxY) maxY = p.y
+  }
+  return { dx: (minX + maxX) / 2, dy: (minY + maxY) / 2, hw: (maxX - minX) / 2, hh: (maxY - minY) / 2 }
 }
 
 export async function createFlappyGame(
@@ -110,15 +138,19 @@ export async function createFlappyGame(
   const spacing = SCROLL * COLUMN_INTERVAL_STEPS // 幅ではなく時間で決める（周期を端末で揃える）
   const firstX = W + colW // 最初の柱は画面右外から
 
-  // 主役の画像を読み込む（透過アイテムの data URL＝canvas 安全）。凸包は使わず img/寸法だけ使う。
+  // 主役の画像を読み込む（透過アイテムの data URL＝canvas 安全）。当たりは凸包の外接矩形、描画は img/寸法。
   const sprite = await buildSpritePiece(item.iconUrl, birdSize)
   const birdW = sprite.width
   const birdH = sprite.height
-  const hitHW = (birdW * HIT_SCALE) / 2
-  const hitHH = (birdH * HIT_SCALE) / 2
+  // 当たりは「見えている範囲」基準。画像中心とズレることがあるので、その分（dx/dy）を足して判定する。
+  const bounds = visibleBounds(sprite)
+  const hitHW = bounds.hw * HIT_SCALE
+  const hitHH = bounds.hh * HIT_SCALE
+  const hitDX = bounds.dx
+  const hitDY = bounds.dy
 
-  // 隙間は空の 1/4。ただし主役が空に対して大きい端末（横長など）でも本家の余裕は割らない。
-  const GAP = Math.max(Math.round(REF_GAP * sy), Math.round(birdH * HIT_SCALE * GAP_PER_BIRD))
+  // 隙間は空に対する比で決める。主役が空に対して大きい端末（横長など）でも通れる下限は割らない。
+  const GAP = Math.max(Math.round(REF_GAP * sy), Math.round(hitHH * 2 * GAP_PER_BIRD))
   const edgeMargin = REF_EDGE_MARGIN * sy
 
   const columns: Column[] = []
@@ -155,10 +187,10 @@ export async function createFlappyGame(
   }
 
   const hitsColumn = (): boolean => {
-    const top = birdY - hitHH
-    const bottom = birdY + hitHH
-    const left = birdX - hitHW
-    const right = birdX + hitHW
+    const top = birdY + hitDY - hitHH
+    const bottom = birdY + hitDY + hitHH
+    const left = birdX + hitDX - hitHW
+    const right = birdX + hitDX + hitHW
     for (const c of columns) {
       const cl = c.x - colW / 2
       const cr = c.x + colW / 2
@@ -176,13 +208,13 @@ export async function createFlappyGame(
     birdY += vy
 
     // 天井は抜けない（クランプ）。
-    if (birdY - hitHH < 0) {
-      birdY = hitHH
+    if (birdY + hitDY - hitHH < 0) {
+      birdY = hitHH - hitDY
       if (vy < 0) vy = 0
     }
     // 地面は墜落。
-    if (birdY + hitHH >= groundY) {
-      birdY = groundY - hitHH
+    if (birdY + hitDY + hitHH >= groundY) {
+      birdY = groundY - hitHH - hitDY
       endGame()
       return
     }
