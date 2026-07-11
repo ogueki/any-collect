@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useCodexStore } from '../../store/codexStore'
 import type { Item } from '../../types'
-import TowerGame from '../game/TowerGame'
-import FlappyGame from '../game/FlappyGame'
 
 /**
  * 妖精界（コレットの世界・v2・STEP1f）。窯で作った透過アイテムが accent として出現する単一シーン。
@@ -42,8 +40,6 @@ export default function RealmView() {
   const [dragPos, setDragPos] = useState<{ id: string; x: number; y: number } | null>(null)
   const [selected, setSelected] = useState<Item | null>(null)
   const [deleting, setDeleting] = useState(false)
-  const [playing, setPlaying] = useState(false)
-  const [flapping, setFlapping] = useState(false)
 
   useEffect(() => {
     void load()
@@ -169,30 +165,9 @@ export default function RealmView() {
           </div>
         )}
       </div>
-      <p className="text-xs text-slate-400">アイテムをドラッグで動かせるよ・タップで詳細</p>
-
-      {/* オマケ：集めたアイテムで遊ぶ（タワーバトル／フラッピー） */}
-      {items.length > 0 && (
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          <button
-            type="button"
-            onClick={() => setPlaying(true)}
-            className="rounded-full bg-lavender px-5 py-2 text-sm font-bold text-white shadow-pop transition active:scale-95"
-          >
-            🧱 積んで遊ぶ
-          </button>
-          <button
-            type="button"
-            onClick={() => setFlapping(true)}
-            className="rounded-full bg-mint px-5 py-2 text-sm font-bold text-slate-900 shadow-pop transition active:scale-95"
-          >
-            🕊️ とんで遊ぶ
-          </button>
-        </div>
-      )}
-
-      {playing && <TowerGame onClose={() => setPlaying(false)} />}
-      {flapping && <FlappyGame onClose={() => setFlapping(false)} />}
+      <p className="text-xs text-slate-400">
+        アイテムをドラッグで動かせるよ・タップで詳細（遊ぶはメニューから）
+      </p>
 
       {/* 詳細（名前＋説明＋削除） */}
       {selected && (

@@ -59,6 +59,7 @@ export default function CameraMode() {
   const characterId = useAppStore((s) => s.characterId)
   const voiceEnabled = useAppStore((s) => s.voiceEnabled)
   const toggleVoice = useAppStore((s) => s.toggleVoice)
+  const go = useAppStore((s) => s.go)
   const addPhoto = useAlbumStore((s) => s.add)
   const collect = useCollectionStore((s) => s.collect)
   const updatePhoto = useCollectionStore((s) => s.updatePhoto)
@@ -254,6 +255,16 @@ export default function CameraMode() {
     <div className="relative flex h-full flex-col bg-slate-900 text-white">
       {/* ライブビュー */}
       <video ref={videoRef} autoPlay playsInline muted className="h-full w-full object-cover" />
+
+      {/* ホームへ戻る（左上・作業画面と同じ位置） */}
+      <button
+        type="button"
+        onClick={() => go('home')}
+        aria-label="ホームへ戻る"
+        className="absolute left-3 top-3 z-10 rounded-full bg-slate-900/60 px-3 py-1.5 text-sm font-bold text-white shadow-pop transition active:scale-95"
+      >
+        ← ホーム
+      </button>
 
       {/* 声 ON/OFF（コレットの反応読み上げ・グローバル設定） */}
       <button
