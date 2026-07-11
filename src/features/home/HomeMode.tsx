@@ -82,7 +82,7 @@ export default function HomeMode() {
         </button>
       </div>
 
-      {/* コレットの元気ゲージ（会話・撮影で貯まり、満タンで召喚を解禁）。
+      {/* まほうパワー（会話・撮影で貯まり、満タンで召喚魔法を解禁）。
           TODO(verify): 検証中はタップで満タンにできるショートカット付き。リリース前に外す。 */}
       <button
         type="button"
@@ -90,7 +90,7 @@ export default function HomeMode() {
         className="w-full max-w-xs shrink-0 text-left"
       >
         <div className="mb-1 flex items-center justify-between text-xs font-bold text-slate-500">
-          <span>💛 コレットの元気</span>
+          <span>まほうパワー</span>
           <span>{gaugeFull ? '満タン！' : `${gaugePct}%`}</span>
         </div>
         <div className="h-2.5 w-full overflow-hidden rounded-full bg-white/70">

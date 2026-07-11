@@ -176,7 +176,7 @@ export default function CameraMode() {
       }
       await addPhoto({ blob: photo, comment: commentText, emotion, subjectName, caption })
       setSavedFlash(true)
-      // 撮影＝「安い日常行動」＝コレットの元気ゲージ＋絆を少し貯める（保存できたときだけ）。
+      // 撮影＝「安い日常行動」＝まほうパワー＋絆を少し貯める（保存できたときだけ）。
       addGauge(GAUGE_PER_CAPTURE)
       addAffinity(AFFINITY_PER_CAPTURE)
     } catch (err) {

@@ -86,7 +86,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         status: 'idle',
         replyNonce: s.replyNonce + 1,
       }))
-      // 会話は「安い日常行動」＝コレットの元気ゲージ＋絆を少し貯める（返事が来たときだけ）。
+      // 会話は「安い日常行動」＝まほうパワー＋絆を少し貯める（返事が来たときだけ）。
       // ライフサイクルでなくイベント側で加算し、タブ再マウントでの二重加算を避ける。
       useGaugeStore.getState().add(GAUGE_PER_CHAT)
       useAffinityStore.getState().add(AFFINITY_PER_CHAT)

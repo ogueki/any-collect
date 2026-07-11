@@ -18,9 +18,9 @@ import type { CollectionEntry, ItemCategory } from '../../types'
  * 画像は Blob なので object URL を作って表示・解放する。
  * 並び替え（カテゴリ順/新しい順）＋カテゴリ絞り込みは旧 CodexView のパターンを踏襲。
  *
- * 新IA（レイアウト再構成 ②）：図鑑は「召喚魔法」の起点でもある。コレットの元気が満タンの
+ * 新IA（レイアウト再構成 ②）：図鑑は「召喚魔法」の起点でもある。まほうパワーが満タンの
  * ときだけ、図鑑エントリ1つ → 透過アイテムを Gemini で生成し妖精界に出現させる
- * （旧 KilnView の単体化ロジックをここへ移設）。生成は成功時だけ元気を消費・図鑑は消費しない。
+ * （旧 KilnView の単体化ロジックをここへ移設）。生成は成功時だけまほうパワーを消費・図鑑は消費しない。
  */
 
 /** ISO 8601 を「2026/7/2」形式に。 */
@@ -144,7 +144,7 @@ export default function CollectionView() {
   }
 
   // 召喚：図鑑エントリ1つ → 透過アイテムを生成し妖精界に出現させる。
-  // 成功時だけ元気を消費（失敗なら満タンのまま再挑戦できる）。図鑑エントリは消費しない。
+  // 成功時だけまほうパワーを消費（失敗なら満タンのまま再挑戦できる）。図鑑エントリは消費しない。
   const handleSummon = useCallback(
     async (entry: CollectionEntry) => {
       if (summonPhase !== 'idle' || !gaugeFull) return
@@ -191,11 +191,11 @@ export default function CollectionView() {
         </div>
       )}
 
-      {/* 召喚できるよバナー（元気が満タンのときだけ） */}
+      {/* 召喚できるよバナー（まほうパワーが満タンのときだけ） */}
       {entries.length > 0 && gaugeFull && summonPhase === 'idle' && (
         <div className="mb-3 rounded-2xl bg-mint/20 px-3 py-2 text-center ring-1 ring-mint">
           <p className="text-xs font-bold text-emerald-700">
-            ✨ コレットの元気が満タン！ 図鑑の子を1つえらんで召喚しよう
+            まほうパワーが満タン！ 図鑑の子を1つえらんで召喚しよう
           </p>
         </div>
       )}
@@ -242,7 +242,7 @@ export default function CollectionView() {
         </div>
       )}
 
-      {/* グリッド。元気が満タンのマスは召喚できるヒントとして淡く光らせる。 */}
+      {/* グリッド。まほうパワーが満タンのマスは召喚できるヒントとして淡く光らせる。 */}
       {entries.length > 0 && (
         <div className="grid grid-cols-3 gap-2">
           {visibleEntries.map((entry) => (
@@ -309,7 +309,7 @@ export default function CollectionView() {
               {formatDate(selectedLive.firstSeenAt)} にはじめて見つけた
             </p>
 
-            {/* 召喚（元気が満タンのときだけ／削除確認中は隠す） */}
+            {/* 召喚（まほうパワーが満タンのときだけ／削除確認中は隠す） */}
             {!confirmDelete &&
               (gaugeFull ? (
                 <button
@@ -317,11 +317,11 @@ export default function CollectionView() {
                   onClick={() => void handleSummon(selectedLive)}
                   className="mt-4 w-full rounded-full bg-lavender py-2.5 font-bold text-white shadow-pop transition active:scale-95"
                 >
-                  ✨ この子を召喚する
+                  この子を召喚する
                 </button>
               ) : (
                 <p className="mt-4 text-center text-xs text-slate-400">
-                  コレットの元気がたまると、この子を召喚できるよ
+                  まほうパワーがたまると、この子を召喚できるよ
                 </p>
               ))}
 
