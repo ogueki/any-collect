@@ -1,164 +1,183 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useAppStore } from '../../store/appStore'
-import { useCollectionStore } from '../../store/collectionStore'
 import { useCodexStore } from '../../store/codexStore'
-import { useGaugeStore, GAUGE_MAX } from '../../store/gaugeStore'
 import { useAffinityStore, AFFINITY_PER_ITEM } from '../../store/affinityStore'
 import { imageGenProvider } from '../../lib/ai/imageGen'
-import { emotionForGenerated } from '../../lib/character/reaction'
+import { emotionForConfirm, emotionForGenerated } from '../../lib/character/reaction'
 import { CATEGORY_LABEL, toCategory } from '../../lib/category'
 import GeneratingOverlay from '../../components/GeneratingOverlay'
 import type { GeneratedItem } from '../../lib/ai/imageProvider'
 import type { FairyExpression } from '../../lib/character/CharacterRenderer'
+import type { Item } from '../../types'
 
 /**
- * 妖精の窯（v2・STEP1e）。**図鑑エントリ1つ → 透過アイテム化**する橋。
- * 図鑑（実物クロップ）を入力に Gemini で透過アイコンを生成し、妖精界に出現させる。
- * 高価なアイテム化は「コレットの元気」ゲージが満タンのときだけ解禁（満タン→生成成功でリセット）。
- * 図鑑エントリは消費しない（何度でも素になれる）。旧2素材合成は導線から外して残置。
+ * 妖精の窯（新IA・レイアウト再構成 ③）＝**2つのアイテムを混ぜて合成**する場所（メニュー内）。
+ * 図鑑エントリ→透過アイテム化（召喚魔法）は図鑑（CollectionView）へ移したので、
+ * 窯は名実一致で「合成」に戻す（残置していた synthesize 系を復活）。
+ * 素材は消費しない（何度でも合成の素になれる）。合成結果は妖精界のアイテムになる。
  */
 
 interface KilnViewProps {
   onReaction: (emotion: FairyExpression) => void
-  /** 生成後に妖精界へ飛ぶ（1f で HomeMode が渡す。未指定なら「とじる」のみ） */
+  /** 合成後に妖精界へ飛ぶ（App が渡す。未指定なら「つづける」のみ） */
   onGoRealm?: () => void
 }
 
-type KilnPhase = 'select' | 'generating' | 'result'
-
-/** 結果プレビューの背景＝妖精界を思わせるやわらかいパステル地（透過アイテムが映える）。 */
-const PREVIEW_BG_STYLE: React.CSSProperties = {
-  background: 'linear-gradient(to bottom, #dbeafe 0%, #ede9fe 45%, #d1fae5 100%)',
-}
+type KilnPhase = 'select' | 'generating' | 'result' | 'saved'
 
 export default function KilnView({ onReaction, onGoRealm }: KilnViewProps) {
   const characterId = useAppStore((s) => s.characterId)
-  const entries = useCollectionStore((s) => s.entries)
-  const loadEntries = useCollectionStore((s) => s.load)
-  const addFromGenerated = useCodexStore((s) => s.addFromGenerated)
-  const gaugeValue = useGaugeStore((s) => s.value)
-  const spendGauge = useGaugeStore((s) => s.spend)
+  const items = useCodexStore((s) => s.items)
+  const load = useCodexStore((s) => s.load)
+  const addFromSynthesis = useCodexStore((s) => s.addFromSynthesis)
+  const isNewCategory = useCodexStore((s) => s.isNewCategory)
   const addAffinity = useAffinityStore((s) => s.add)
 
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selected, setSelected] = useState<string[]>([])
   const [phase, setPhase] = useState<KilnPhase>('select')
   const [result, setResult] = useState<GeneratedItem | null>(null)
   const [error, setError] = useState<string | null>(null)
-
-  const isFull = gaugeValue >= GAUGE_MAX
-  const gaugePct = Math.min(100, Math.round((gaugeValue / GAUGE_MAX) * 100))
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    void loadEntries()
-  }, [loadEntries])
+    void load()
+  }, [load])
 
-  // Blob → object URL（エントリごと）。entries が変わるたび作り直し、前回分は cleanup で解放。
-  const urls = useMemo(() => {
-    const map = new Map<string, string>()
-    entries.forEach((e) => map.set(e.id, URL.createObjectURL(e.blob)))
-    return map
-  }, [entries])
-  useEffect(() => () => urls.forEach((u) => URL.revokeObjectURL(u)), [urls])
+  const selectedItems = selected
+    .map((id) => items.find((it) => it.id === id))
+    .filter((it): it is Item => !!it)
 
-  const selectedEntry = entries.find((e) => e.id === selectedId) ?? null
+  const toggleSelect = useCallback(
+    (id: string) => {
+      if (phase !== 'select') return
+      setSelected((prev) => {
+        if (prev.includes(id)) return prev.filter((x) => x !== id)
+        if (prev.length >= 2) return prev
+        return [...prev, id]
+      })
+    },
+    [phase],
+  )
 
-  const handleGenerate = useCallback(async () => {
-    if (phase !== 'select' || !selectedEntry || !isFull) return
-    setPhase('generating')
+  // 合成（撮り直しの「もう一回合成」と共通の生成本体）。
+  const runSynthesis = useCallback(
+    async (onFailPhase: KilnPhase) => {
+      const [a, b] = selectedItems
+      if (!a || !b) return
+      setPhase('generating')
+      setError(null)
+      try {
+        const generated = await imageGenProvider.synthesize(
+          { imageUrl: a.iconUrl, name: a.name, description: a.description },
+          { imageUrl: b.iconUrl, name: b.name, description: b.description },
+          { personaId: characterId },
+        )
+        setResult(generated)
+        setPhase('result')
+        onReaction(emotionForGenerated())
+      } catch (err) {
+        setError(err instanceof Error ? err.message : '合成に失敗しました')
+        setPhase(onFailPhase)
+      }
+    },
+    [selectedItems, characterId, onReaction],
+  )
+
+  const handleSynthesize = useCallback(() => {
+    if (selected.length !== 2 || phase !== 'select') return
+    void runSynthesis('select')
+  }, [selected, phase, runSynthesis])
+
+  const handleReroll = useCallback(() => {
+    if (selected.length !== 2) return
+    void runSynthesis('result')
+  }, [selected, runSynthesis])
+
+  const handleConfirm = useCallback(async () => {
+    if (!result || saving || selected.length !== 2) return
+    setSaving(true)
     setError(null)
     try {
-      const generated = await imageGenProvider.generateItem(selectedEntry.blob, {
-        personaId: characterId,
-      })
-      // 成功時のみゲージ消費＋保存（失敗ならゲージは満タンのまま＝再挑戦できる）。
-      spendGauge()
-      await addFromGenerated(generated, selectedEntry.id)
-      // アイテム化は特別な体験＝絆も大きめに増やす。
+      const isNew = isNewCategory(result.category)
+      await addFromSynthesis(result, selected[0], selected[1])
+      // 合成は特別な体験＝絆も大きめに増やす。
       addAffinity(AFFINITY_PER_ITEM)
-      setResult(generated)
-      setPhase('result')
-      onReaction(emotionForGenerated())
+      setPhase('saved')
+      onReaction(emotionForConfirm(isNew))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'アイテム化に失敗しました')
-      setPhase('select')
+      setError(err instanceof Error ? err.message : '妖精界への登録に失敗しました')
+    } finally {
+      setSaving(false)
     }
-  }, [phase, selectedEntry, isFull, characterId, spendGauge, addFromGenerated, addAffinity, onReaction])
+  }, [result, saving, selected, addFromSynthesis, isNewCategory, addAffinity, onReaction])
 
-  const handleClose = useCallback(() => {
+  const resetToSelect = useCallback(() => {
     setResult(null)
     setError(null)
-    setSelectedId(null)
+    setSelected([])
     setPhase('select')
   }, [])
 
-  // 図鑑が空：カメラへ誘導。
-  if (entries.length === 0) {
+  if (items.length < 2) {
     return (
       <div className="flex flex-col items-center gap-2 py-8 text-center">
-        <p className="text-sm text-slate-500">まだ図鑑がからっぽだよ</p>
-        <p className="text-xs text-slate-400">カメラでいろんなものを見つけてこよう！</p>
+        <p className="text-sm text-slate-500">合成にはアイテムが2つ以上必要だよ</p>
+        <p className="text-xs text-slate-400">図鑑から召喚して、アイテムを集めてこよう</p>
       </div>
     )
   }
 
   return (
     <div className="relative flex w-full max-w-md flex-col gap-3">
-      {/* ゲージ状況＋アイテム化ボタン（select フェーズ） */}
+      {/* 選択中の素材プレビュー（合成前・結果表示中は隠す） */}
+      {(phase === 'select' || phase === 'generating') && (
+        <div className="flex items-center justify-center gap-3">
+          <SlotPreview item={selectedItems[0]} label="素材A" />
+          <span className="text-xl font-bold text-violet-400">+</span>
+          <SlotPreview item={selectedItems[1]} label="素材B" />
+        </div>
+      )}
+
+      {/* 合成ボタン */}
       {phase === 'select' && (
-        <div className="flex flex-col items-center gap-2">
-          <div className="w-full max-w-xs">
-            <div className="mb-1 flex items-center justify-between text-xs font-bold text-slate-500">
-              <span>コレットの元気</span>
-              <span>{gaugePct}%</span>
-            </div>
-            <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-200">
-              <div
-                className={`h-full rounded-full transition-all ${isFull ? 'bg-mint' : 'bg-lavender'}`}
-                style={{ width: `${gaugePct}%` }}
-              />
-            </div>
-          </div>
+        <>
           <button
             type="button"
-            onClick={() => void handleGenerate()}
-            disabled={!selectedEntry || !isFull}
+            onClick={handleSynthesize}
+            disabled={selected.length !== 2}
             className="mx-auto rounded-full bg-lavender px-8 py-2.5 font-bold text-white shadow-pop transition active:scale-95 disabled:opacity-40"
           >
-            アイテムにする
+            合成する
           </button>
           <p className="text-center text-xs text-slate-400">
-            {!isFull
-              ? 'コレットの元気がたまったら、図鑑のものをアイテムにできるよ'
-              : !selectedEntry
-                ? '図鑑から1つえらんでね'
-                : `「${selectedEntry.name}」をアイテムにする？`}
+            {selected.length < 2 ? 'アイテムを2つえらんでね' : '2つを混ぜて新しいアイテムを作る？'}
           </p>
-        </div>
+        </>
       )}
 
       {error && <p className="text-center text-xs text-peach">{error}</p>}
 
-      {/* 図鑑エントリの選択グリッド */}
+      {/* アイテム選択グリッド */}
       {phase === 'select' && (
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-          {entries.map((entry) => {
-            const isSelected = entry.id === selectedId
+          {items.map((item) => {
+            const isSelected = selected.includes(item.id)
             return (
               <button
-                key={entry.id}
+                key={item.id}
                 type="button"
-                onClick={() => setSelectedId(isSelected ? null : entry.id)}
+                onClick={() => toggleSelect(item.id)}
                 className={`flex flex-col items-center rounded-2xl p-1.5 text-center transition active:scale-95 ${
                   isSelected ? 'bg-lavender/20 ring-2 ring-lavender' : 'bg-white shadow-pop'
                 }`}
               >
                 <img
-                  src={urls.get(entry.id)}
-                  alt={entry.name}
-                  className="aspect-square w-full rounded-xl object-cover"
+                  src={item.iconUrl}
+                  alt={item.name}
+                  className="aspect-square w-full rounded-xl object-contain"
                 />
                 <span className="mt-1 line-clamp-1 text-xs font-bold text-slate-700">
-                  {entry.name}
+                  {item.name}
                 </span>
               </button>
             )
@@ -173,18 +192,15 @@ export default function KilnView({ onReaction, onGoRealm }: KilnViewProps) {
         </div>
       )}
 
-      {/* 結果プレビュー（透過アイテム・チェッカー地で透過を確認） */}
+      {/* 結果プレビュー */}
       {phase === 'result' && result && (
         <div className="flex flex-col items-center gap-3">
           <div className="animate-reveal w-full max-w-xs rounded-3xl bg-white p-4 text-slate-800 shadow-pop">
-            <div
-              className="relative mx-auto aspect-square w-full max-w-[15rem] overflow-hidden rounded-2xl"
-              style={PREVIEW_BG_STYLE}
-            >
+            <div className="relative mx-auto aspect-square w-full max-w-[15rem]">
               <img
                 src={result.imageUrl}
                 alt={result.name}
-                className="relative h-full w-full object-contain"
+                className="relative h-full w-full rounded-2xl object-contain"
               />
             </div>
             <div className="mt-3 flex items-center justify-center gap-2">
@@ -198,15 +214,47 @@ export default function KilnView({ onReaction, onGoRealm }: KilnViewProps) {
             <p className="mt-2 whitespace-pre-wrap text-center text-sm text-slate-600">
               {result.description}
             </p>
-            <p className="mt-2 text-center text-xs text-mint">✨ 妖精界にあらわれたよ</p>
           </div>
 
+          <button
+            type="button"
+            onClick={() => void handleConfirm()}
+            disabled={saving}
+            className="rounded-full bg-mint px-8 py-2.5 font-bold text-slate-900 shadow-pop transition active:scale-95 disabled:opacity-50"
+          >
+            {saving ? '登録中…' : '妖精界にしまう'}
+          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleReroll}
+              disabled={saving}
+              className="rounded-full border border-slate-300 px-5 py-2 text-sm font-bold text-slate-500 transition active:scale-95 disabled:opacity-50"
+            >
+              もう一回合成
+            </button>
+            <button
+              type="button"
+              onClick={resetToSelect}
+              disabled={saving}
+              className="rounded-full border border-slate-300 px-5 py-2 text-sm font-bold text-slate-500 transition active:scale-95 disabled:opacity-50"
+            >
+              素材を変える
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 保存後：妖精界へ誘導 */}
+      {phase === 'saved' && (
+        <div className="flex flex-col items-center gap-3 py-6 text-center">
+          <p className="text-sm font-bold text-slate-600">✨ 妖精界にあらわれたよ</p>
           <div className="flex items-center gap-3">
             {onGoRealm && (
               <button
                 type="button"
                 onClick={() => {
-                  handleClose()
+                  resetToSelect()
                   onGoRealm()
                 }}
                 className="rounded-full bg-mint px-6 py-2.5 font-bold text-slate-900 shadow-pop transition active:scale-95"
@@ -216,13 +264,29 @@ export default function KilnView({ onReaction, onGoRealm }: KilnViewProps) {
             )}
             <button
               type="button"
-              onClick={handleClose}
+              onClick={resetToSelect}
               className="rounded-full border border-slate-300 px-5 py-2 text-sm font-bold text-slate-500 transition active:scale-95"
             >
-              とじる
+              つづけて合成
             </button>
           </div>
         </div>
+      )}
+    </div>
+  )
+}
+
+function SlotPreview({ item, label }: { item?: Item; label: string }) {
+  return (
+    <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-white/60 shadow-pop">
+      {item ? (
+        <img
+          src={item.iconUrl}
+          alt={item.name}
+          className="h-full w-full rounded-2xl object-contain p-1"
+        />
+      ) : (
+        <span className="text-xs text-slate-400">{label}</span>
       )}
     </div>
   )

@@ -1,8 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAppStore } from '../../store/appStore'
 import { useCollectionStore } from '../../store/collectionStore'
+import { useCodexStore } from '../../store/codexStore'
+import { useGaugeStore, GAUGE_MAX } from '../../store/gaugeStore'
+import { useAffinityStore, AFFINITY_PER_ITEM } from '../../store/affinityStore'
+import { imageGenProvider } from '../../lib/ai/imageGen'
 import Sprite2DRenderer from '../../lib/character/Sprite2DRenderer'
+import GeneratingOverlay from '../../components/GeneratingOverlay'
 import { CATEGORY_EMOJI, CATEGORY_LABEL, CATEGORY_ORDER } from '../../lib/category'
+import type { GeneratedItem } from '../../lib/ai/imageProvider'
 import type { CollectionEntry, ItemCategory } from '../../types'
 
 /**
@@ -11,6 +17,10 @@ import type { CollectionEntry, ItemCategory } from '../../types'
  * こちらは種別デデュープ済みのコレクション）。永続層は collectionStore 越し。
  * 画像は Blob なので object URL を作って表示・解放する。
  * 並び替え（カテゴリ順/新しい順）＋カテゴリ絞り込みは旧 CodexView のパターンを踏襲。
+ *
+ * 新IA（レイアウト再構成 ②）：図鑑は「召喚魔法」の起点でもある。コレットの元気が満タンの
+ * ときだけ、図鑑エントリ1つ → 透過アイテムを Gemini で生成し妖精界に出現させる
+ * （旧 KilnView の単体化ロジックをここへ移設）。生成は成功時だけ元気を消費・図鑑は消費しない。
  */
 
 /** ISO 8601 を「2026/7/2」形式に。 */
@@ -18,6 +28,14 @@ function formatDate(iso: string): string {
   const d = new Date(iso)
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('ja-JP')
 }
+
+/** 召喚結果プレビューの背景＝妖精界を思わせるやわらかいパステル地（透過アイテムが映える）。 */
+const PREVIEW_BG_STYLE: React.CSSProperties = {
+  background: 'linear-gradient(to bottom, #dbeafe 0%, #ede9fe 45%, #d1fae5 100%)',
+}
+
+/** 召喚のフェーズ（idle＝閲覧中／生成中／結果プレビュー）。 */
+type SummonPhase = 'idle' | 'generating' | 'result'
 
 /** 並び替え/絞り込みのチップ（横スクロールで縮まないよう shrink-0）。 */
 function FilterChip({
@@ -44,17 +62,31 @@ function FilterChip({
 
 export default function CollectionView() {
   const characterId = useAppStore((s) => s.characterId)
+  const go = useAppStore((s) => s.go)
   const entries = useCollectionStore((s) => s.entries)
   const status = useCollectionStore((s) => s.status)
   const error = useCollectionStore((s) => s.error)
   const load = useCollectionStore((s) => s.load)
   const remove = useCollectionStore((s) => s.remove)
 
+  // 召喚（図鑑エントリ→透過アイテム化）に必要なストア。
+  const addFromGenerated = useCodexStore((s) => s.addFromGenerated)
+  const gaugeValue = useGaugeStore((s) => s.value)
+  const spendGauge = useGaugeStore((s) => s.spend)
+  const addAffinity = useAffinityStore((s) => s.add)
+
   const [selected, setSelected] = useState<CollectionEntry | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [filter, setFilter] = useState<ItemCategory | 'all'>('all')
   const [sortMode, setSortMode] = useState<'category' | 'recent'>('category')
+
+  // 召喚の状態。
+  const [summonPhase, setSummonPhase] = useState<SummonPhase>('idle')
+  const [summonResult, setSummonResult] = useState<GeneratedItem | null>(null)
+  const [summonError, setSummonError] = useState<string | null>(null)
+
+  const gaugeFull = gaugeValue >= GAUGE_MAX
 
   // マウント時に図鑑を読み込む（ローカルなので軽い）。
   useEffect(() => {
@@ -111,6 +143,35 @@ export default function CollectionView() {
     }
   }
 
+  // 召喚：図鑑エントリ1つ → 透過アイテムを生成し妖精界に出現させる。
+  // 成功時だけ元気を消費（失敗なら満タンのまま再挑戦できる）。図鑑エントリは消費しない。
+  const handleSummon = useCallback(
+    async (entry: CollectionEntry) => {
+      if (summonPhase !== 'idle' || !gaugeFull) return
+      closeDetail()
+      setSummonPhase('generating')
+      setSummonError(null)
+      try {
+        const generated = await imageGenProvider.generateItem(entry.blob, { personaId: characterId })
+        spendGauge()
+        await addFromGenerated(generated, entry.id)
+        // 召喚は特別な体験＝絆も大きめに増やす。
+        addAffinity(AFFINITY_PER_ITEM)
+        setSummonResult(generated)
+        setSummonPhase('result')
+      } catch (err) {
+        setSummonError(err instanceof Error ? err.message : '召喚に失敗しました')
+        setSummonPhase('idle')
+      }
+    },
+    [summonPhase, gaugeFull, characterId, spendGauge, addFromGenerated, addAffinity],
+  )
+
+  const closeSummonResult = () => {
+    setSummonResult(null)
+    setSummonPhase('idle')
+  }
+
   return (
     <div className="flex w-full max-w-md flex-col">
       {/* 読み込み中 */}
@@ -128,6 +189,20 @@ export default function CollectionView() {
           <p className="text-sm text-slate-500">まだ図鑑がからっぽだよ。</p>
           <p className="text-sm text-slate-500">カメラでいろんなものを見つけてこよう！</p>
         </div>
+      )}
+
+      {/* 召喚できるよバナー（元気が満タンのときだけ） */}
+      {entries.length > 0 && gaugeFull && summonPhase === 'idle' && (
+        <div className="mb-3 rounded-2xl bg-mint/20 px-3 py-2 text-center ring-1 ring-mint">
+          <p className="text-xs font-bold text-emerald-700">
+            ✨ コレットの元気が満タン！ 図鑑の子を1つえらんで召喚しよう
+          </p>
+        </div>
+      )}
+
+      {/* 召喚エラー（生成失敗） */}
+      {summonError && summonPhase === 'idle' && (
+        <p className="mb-3 text-center text-xs text-peach">{summonError}</p>
       )}
 
       {/* 並び替え＋カテゴリ絞り込み */}
@@ -167,7 +242,7 @@ export default function CollectionView() {
         </div>
       )}
 
-      {/* グリッド */}
+      {/* グリッド。元気が満タンのマスは召喚できるヒントとして淡く光らせる。 */}
       {entries.length > 0 && (
         <div className="grid grid-cols-3 gap-2">
           {visibleEntries.map((entry) => (
@@ -175,7 +250,9 @@ export default function CollectionView() {
               key={entry.id}
               type="button"
               onClick={() => setSelected(entry)}
-              className="relative flex flex-col items-center overflow-hidden rounded-2xl bg-white p-1.5 shadow-pop transition active:scale-95"
+              className={`relative flex flex-col items-center overflow-hidden rounded-2xl bg-white p-1.5 shadow-pop transition active:scale-95 ${
+                gaugeFull ? 'ring-2 ring-mint/60' : ''
+              }`}
             >
               <div className="relative w-full">
                 <img
@@ -232,6 +309,22 @@ export default function CollectionView() {
               {formatDate(selectedLive.firstSeenAt)} にはじめて見つけた
             </p>
 
+            {/* 召喚（元気が満タンのときだけ／削除確認中は隠す） */}
+            {!confirmDelete &&
+              (gaugeFull ? (
+                <button
+                  type="button"
+                  onClick={() => void handleSummon(selectedLive)}
+                  className="mt-4 w-full rounded-full bg-lavender py-2.5 font-bold text-white shadow-pop transition active:scale-95"
+                >
+                  ✨ この子を召喚する
+                </button>
+              ) : (
+                <p className="mt-4 text-center text-xs text-slate-400">
+                  コレットの元気がたまると、この子を召喚できるよ
+                </p>
+              ))}
+
             <div className="mt-4 flex items-center justify-center gap-3">
               {!confirmDelete ? (
                 <>
@@ -269,6 +362,63 @@ export default function CollectionView() {
                   </button>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 召喚：生成中オーバーレイ */}
+      {summonPhase === 'generating' && (
+        <div className="fixed inset-0 z-20">
+          <GeneratingOverlay characterId={characterId} context="synthesizing" />
+        </div>
+      )}
+
+      {/* 召喚：結果プレビュー（透過アイテム・パステル地で透過を確認） */}
+      {summonPhase === 'result' && summonResult && (
+        <div className="fixed inset-0 z-20 flex items-center justify-center bg-slate-900/60 px-6">
+          <div className="animate-reveal w-full max-w-xs rounded-3xl bg-white p-4 text-slate-800 shadow-pop">
+            <div
+              className="relative mx-auto aspect-square w-full max-w-[15rem] overflow-hidden rounded-2xl"
+              style={PREVIEW_BG_STYLE}
+            >
+              <img
+                src={summonResult.imageUrl}
+                alt={summonResult.name}
+                className="relative h-full w-full object-contain"
+              />
+            </div>
+            <div className="mt-3 flex items-center justify-center gap-2">
+              <h2 className="font-display text-xl font-bold">{summonResult.name}</h2>
+            </div>
+            {summonResult.category && (
+              <p className="mt-0.5 text-center text-xs text-slate-400">
+                {CATEGORY_LABEL[summonResult.category]}
+              </p>
+            )}
+            <p className="mt-2 whitespace-pre-wrap text-center text-sm text-slate-600">
+              {summonResult.description}
+            </p>
+            <p className="mt-2 text-center text-xs text-mint">✨ 妖精界にあらわれたよ</p>
+
+            <div className="mt-4 flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  closeSummonResult()
+                  go('realm')
+                }}
+                className="rounded-full bg-mint px-6 py-2.5 font-bold text-slate-900 shadow-pop transition active:scale-95"
+              >
+                妖精界で見る
+              </button>
+              <button
+                type="button"
+                onClick={closeSummonResult}
+                className="rounded-full border border-slate-300 px-5 py-2 text-sm font-bold text-slate-500 transition active:scale-95"
+              >
+                とじる
+              </button>
             </div>
           </div>
         </div>
