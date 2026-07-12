@@ -422,8 +422,8 @@ export default function CameraMode() {
         </div>
       )}
 
-      {/* 妖精は画面右下に小さく。撮影に反応してひとことを返す。 */}
-      <div className="absolute bottom-4 right-4 flex flex-col items-end gap-1">
+      {/* 妖精は画面右下。撮影に反応してひとことを返す。撮影ボタンと干渉しないよう少し上げる。 */}
+      <div className="absolute bottom-24 right-4 flex flex-col items-end gap-1">
         {comment && (
           <div className="max-w-[60vw] rounded-2xl rounded-br-sm bg-white/95 px-3 py-1.5 text-right text-xs text-slate-700 shadow-pop">
             {comment}
