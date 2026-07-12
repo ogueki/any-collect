@@ -50,7 +50,7 @@ export default function WorkingScreen({ title, children }: { title: string; chil
         </header>
 
         {/* 中身。右下コレットに隠れないよう下に余白を持たせる。 */}
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-36">
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-44">
           <div className="mx-auto w-full max-w-md">{children}</div>
         </div>
 
