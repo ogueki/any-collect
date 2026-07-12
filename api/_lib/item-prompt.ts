@@ -34,8 +34,8 @@ const CATEGORY_CHOICES = CATEGORIES.map(([key, gloss]) => `${key}(${gloss})`).jo
 /**
  * 全アイテム共通の「描画スタイル＋構図」テンプレ。英語で書くのは画像モデルの追従が良いため。
  * 「同じ1セットのゲームアイコンに見える」ことを最優先に、毎回同じ画風・同じ構図を強制する。
- * 背景は用途で変わる（透過アイテム＝`ITEM_TRANSPARENT_BG`／合成＝`SYNTHESIS_BADGE_BG`）ので、
- * このブロックからは分離し、呼び出し側で背景ブロックを添える。
+ * 背景は分離し呼び出し側で添える。召喚（図鑑→アイテム化）・合成（窯）とも `ITEM_SOLID_BG`
+ * （単色マゼンタ地→クライアントでクロマキー除去）で統一＝どちらも透過アイテムになる。
  */
 const ART_STYLE_BLOCK = `RENDERING STYLE (MUST be identical for every item so the whole collection looks like one matching set):
 - Clean hand-drawn anime / game illustration with one bold, even dark outline around the object.
@@ -49,11 +49,11 @@ COMPOSITION (icon template, IDENTICAL every time):
 - No watermarks, borders, UI, or hands. Keep only the text/logos physically printed on the object; do NOT add any new text, letters, or numbers.`
 
 /**
- * 透過アイテム（窯で図鑑→アイテム化）の背景指定＝クロマキー用の単色マゼンタ。
+ * 透過アイテム（召喚＝図鑑→アイテム化／合成＝窯の2素材融合）の背景指定＝クロマキー用の単色マゼンタ。
  * Gemini はネイティブ透過（アルファ）が苦手で「透過を市松模様として描き込む」ため、
  * ここでは**塗りやすい単色フラット背景**を描かせ、クライアント側 canvas
  * （`src/lib/image/chromaKey.ts`）でその色を抜いて透過 PNG にする。
- * 妖精界にアクセントとして重ねて置くための切り抜き。
+ * 妖精界にアクセントとして重ねて置くための切り抜き。召喚・合成の両方でこれを使う。
  */
 const ITEM_SOLID_BG = `BACKGROUND (solid flat chroma color for clean cutout — very important):
 - Fill the ENTIRE background with a single, uniform, perfectly flat PURE MAGENTA color: EXACTLY hex #FF00FF (rgb 255,0,255). The green channel must be 0.
@@ -61,14 +61,6 @@ const ITEM_SOLID_BG = `BACKGROUND (solid flat chroma color for clean cutout — 
 - It must be a plain solid magenta fill: NO checkerboard or transparency pattern, NO gradient, NO badge, NO scenery, NO environment, NO drop shadow and NO ground shadow.
 - Do NOT use magenta, pink or purple anywhere on the object itself — only the background is magenta — so the object can be keyed out cleanly.
 - Keep a clean, crisp edge between the object and the magenta background.`
-
-/**
- * 合成（妖精の窯・2素材融合／現状は導線から外して棚上げ中）向けの旧 badge 背景。
- * 従来の見た目を壊さないよう残す。
- */
-const SYNTHESIS_BADGE_BG = `BACKGROUND (icon badge):
-- A smooth soft pastel radial gradient inside a subtle rounded badge, very simple, no scenery, no environment, no extra objects.
-- A soft drop shadow beneath the object.`
 
 /**
  * SDXL / Lightning 系（fal の高速 img2img）で効くネガティブプロンプト。
@@ -106,6 +98,7 @@ export function buildItemImagePrompt(): string {
 /**
  * 合成（妖精の窯）：2つのアイテムアイコンを融合して新アイテムアイコンを作る画像生成プロンプト。
  * 両方の視覚的特徴を取り入れつつ、1つの新しいアイテムにまとめる。
+ * 背景は召喚と同じ単色マゼンタ（`ITEM_SOLID_BG`）＝クライアントでクロマキー除去して透過にする。
  */
 export function buildSynthesisImagePrompt(nameA: string, nameB: string): string {
   return [
@@ -119,7 +112,7 @@ export function buildSynthesisImagePrompt(nameA: string, nameB: string): string 
     '',
     ART_STYLE_BLOCK,
     '',
-    SYNTHESIS_BADGE_BG,
+    ITEM_SOLID_BG,
   ].join('\n')
 }
 

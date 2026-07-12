@@ -74,8 +74,17 @@ export const httpImageGenProvider: ImageGenProvider = {
       throw new Error(data.error ?? `アイテム合成に失敗しました (${res.status})`)
     }
 
+    // 合成も召喚と同じ＝サーバは単色マゼンタ背景で描くので、クライアントでクロマキー除去して
+    // 透過 PNG にする（妖精界で他のアイテムと同じく背景なしで飾れる）。失敗時は元画像のまま。
+    let imageUrl = data.imageUrl
+    try {
+      imageUrl = await removeMagentaToPng(imageUrl)
+    } catch {
+      // 透過処理に失敗しても合成自体は成功しているので、背景つきのまま返す。
+    }
+
     return {
-      imageUrl: data.imageUrl,
+      imageUrl,
       name: data.name,
       description: data.description,
       // wire 越しは生 string なので既知キーに正規化（旧/想定外の値は other に倒す）。
