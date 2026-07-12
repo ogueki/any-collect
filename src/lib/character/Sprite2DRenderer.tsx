@@ -96,7 +96,8 @@ function pickSprite(urls: string[], key: string): string {
 }
 
 const SIZE_CLASS: Record<NonNullable<FairyViewProps['size']>, string> = {
-  sm: 'h-20 w-20',
+  // sm＝作業画面/カメラ/ゲームの右下コレット（相棒の存在感を出すため少し大きめ）。
+  sm: 'h-28 w-28',
   lg: 'h-44 w-44',
 }
 
