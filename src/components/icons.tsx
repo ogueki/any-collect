@@ -59,3 +59,65 @@ export function SparkleIcon(props: IconProps) {
     </Base>
   )
 }
+
+/** ハート（なつき度・塗り）。 */
+export function HeartIcon(props: IconProps) {
+  return (
+    <Base fill="currentColor" stroke="none" {...props}>
+      <path d="M12 20s-7-4.4-9.3-8.3A5 5 0 0 1 12 6.2 5 5 0 0 1 21.3 11.7C19 15.6 12 20 12 20z" />
+    </Base>
+  )
+}
+
+/** 図鑑（本）。 */
+export function BookIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M6.5 3H20v18H6.5A2.5 2.5 0 0 1 4 18.5v-13A2.5 2.5 0 0 1 6.5 3z" />
+      <path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20" />
+    </Base>
+  )
+}
+
+/** 妖精界（世界＝グローブ）。 */
+export function GlobeIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18" />
+      <path d="M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" />
+    </Base>
+  )
+}
+
+/** メニュー（2×2 グリッド）。 */
+export function GridIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <rect x="3.5" y="3.5" width="7" height="7" rx="2" />
+      <rect x="13.5" y="3.5" width="7" height="7" rx="2" />
+      <rect x="3.5" y="13.5" width="7" height="7" rx="2" />
+      <rect x="13.5" y="13.5" width="7" height="7" rx="2" />
+    </Base>
+  )
+}
+
+/** 送信（紙飛行機）。 */
+export function SendIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M22 2 11 13" />
+      <path d="M22 2 15 22l-4-9-9-4z" />
+    </Base>
+  )
+}
+
+/** カメラ。 */
+export function CameraIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" />
+      <circle cx="12" cy="13.5" r="3.4" />
+    </Base>
+  )
+}

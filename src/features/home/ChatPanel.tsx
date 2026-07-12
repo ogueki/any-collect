@@ -3,12 +3,12 @@ import { useChatStore } from '../../store/chatStore'
 import { useAppStore } from '../../store/appStore'
 import { useMemoryStore } from '../../store/memoryStore'
 import { speak, primeAudio } from '../../lib/audio/useSpeak'
-import { SoundOnIcon } from '../../components/icons'
+import { SoundOnIcon, SendIcon } from '../../components/icons'
 
 /**
- * ホームの会話UI（STEP2・最小機能）。
- * メッセージ一覧＋入力欄＋送信ボタン。送信中は入力を無効化し「考え中…」を表示する。
- * レイアウトの作り込みは後続（UI-NOTES 参照）。
+ * ホームの会話UI（リデザイン）。**最新の返事はホーム中央の大セリフ**に出るので、
+ * ここは「入力」を主役にし、会話ログは控えめ（折りたたみ・既定は閉じる）。
+ * 記憶パネルは検証用（TODO(verify)・将来ユーザー向け記憶管理UIに格上げしうる）。
  */
 export default function ChatPanel() {
   const messages = useChatStore((s) => s.messages)
@@ -22,13 +22,15 @@ export default function ChatPanel() {
   const forget = useMemoryStore((s) => s.forget)
 
   const [input, setInput] = useState('')
+  const [showLog, setShowLog] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
   const sending = status === 'sending'
 
-  // 新着メッセージ・状態変化で最下部へスクロール。
+  // ログを開いているときだけ最下部へスクロール。
   useEffect(() => {
+    if (!showLog) return
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' })
-  }, [messages, status])
+  }, [messages, status, showLog])
 
   const handleSend = () => {
     if (!input.trim() || sending) return
@@ -39,45 +41,7 @@ export default function ChatPanel() {
 
   return (
     <div className="flex w-full max-w-md flex-col gap-2">
-      <div
-        ref={listRef}
-        className="flex h-64 flex-col gap-2 overflow-y-auto rounded-2xl bg-white/60 p-3"
-      >
-        {messages.length === 0 && (
-          <p className="m-auto text-sm text-slate-400">妖精に話しかけてみよう</p>
-        )}
-        {messages.map((m) => (
-          <div
-            key={m.id}
-            className={`max-w-[80%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-left text-sm ${
-              m.role === 'user'
-                ? 'self-end bg-lavender text-white'
-                : 'self-start bg-white text-slate-700 shadow-pop'
-            }`}
-          >
-            {m.content}
-            {m.role !== 'user' && (
-              <button
-                type="button"
-                onClick={() => void speak(m.content)}
-                aria-label="声で聞く"
-                title="声で聞く"
-                className="ml-1 inline-flex align-middle text-slate-400 transition hover:text-lavender active:scale-95"
-              >
-                <SoundOnIcon className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        ))}
-        {sending && (
-          <div className="self-start rounded-2xl bg-white px-3 py-2 text-sm text-slate-400 shadow-pop">
-            考え中…
-          </div>
-        )}
-      </div>
-
-      {error && <p className="px-1 text-xs text-peach">{error}</p>}
-
+      {/* 入力バー（主役）。会話はここから。最新の返事はホーム中央の大セリフに出る。 */}
       <div className="flex gap-2">
         {/* 文字サイズは text-base(16px) 以上。iOS Safari は 16px 未満の input にフォーカスすると自動ズームしてしまう。 */}
         <input
@@ -91,19 +55,68 @@ export default function ChatPanel() {
             }
           }}
           disabled={sending}
-          placeholder="メッセージを入力"
+          placeholder="コレットに話しかける…"
           aria-label="メッセージ入力"
-          className="flex-1 rounded-full border border-slate-200 bg-white px-4 py-2 text-base outline-none focus:border-lavender disabled:opacity-60"
+          className="flex-1 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-base outline-none focus:border-lavender disabled:opacity-60"
         />
         <button
           type="button"
           onClick={handleSend}
           disabled={sending || !input.trim()}
-          className="rounded-full bg-lavender px-4 py-2 text-sm font-bold text-white transition disabled:opacity-40"
+          aria-label="送信"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-lavender text-white shadow-pop transition active:scale-95 disabled:opacity-40"
         >
-          送信
+          <SendIcon className="h-5 w-5" />
         </button>
       </div>
+
+      {error && <p className="px-1 text-xs text-peach">{error}</p>}
+
+      {/* 会話履歴（控えめ・折りたたみ／既定は閉じる）。 */}
+      {messages.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setShowLog((v) => !v)}
+          className="self-center text-xs font-bold text-slate-400 transition active:scale-95"
+        >
+          {showLog ? '会話を閉じる' : `これまでの会話を見る（${messages.length}）`}
+        </button>
+      )}
+      {showLog && (
+        <div
+          ref={listRef}
+          className="flex max-h-56 flex-col gap-2 overflow-y-auto rounded-2xl bg-white/60 p-3"
+        >
+          {messages.map((m) => (
+            <div
+              key={m.id}
+              className={`max-w-[80%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-left text-sm ${
+                m.role === 'user'
+                  ? 'self-end bg-lavender text-white'
+                  : 'self-start bg-white text-slate-700 shadow-pop'
+              }`}
+            >
+              {m.content}
+              {m.role !== 'user' && (
+                <button
+                  type="button"
+                  onClick={() => void speak(m.content)}
+                  aria-label="声で聞く"
+                  title="声で聞く"
+                  className="ml-1 inline-flex align-middle text-slate-400 transition hover:text-lavender active:scale-95"
+                >
+                  <SoundOnIcon className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          ))}
+          {sending && (
+            <div className="self-start rounded-2xl bg-white px-3 py-2 text-sm text-slate-400 shadow-pop">
+              考え中…
+            </div>
+          )}
+        </div>
+      )}
 
       {/* コレットが覚えていること（会話・撮影・アイテム化で自然に増える）。
           TODO(verify): 「いま覚えて」「忘れる」は検証用。将来ユーザー向けの記憶管理UIに格上げしうる。 */}
