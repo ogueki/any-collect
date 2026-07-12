@@ -48,6 +48,12 @@ export default {
           '60%': { opacity: '1', transform: 'scale(1.03) translateY(0)' },
           '100%': { opacity: '1', transform: 'scale(1) translateY(0)' },
         },
+        // 撮影で貯まった「＋まほうパワー / なつき」がふわっと上がって消える。
+        rise: {
+          '0%': { opacity: '0', transform: 'translateY(8px) scale(0.9)' },
+          '18%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+          '100%': { opacity: '0', transform: 'translateY(-26px) scale(1)' },
+        },
       },
       animation: {
         float: 'float 3s ease-in-out infinite',
@@ -56,6 +62,7 @@ export default {
         shake: 'shake 0.5s ease-in-out 1',
         droop: 'droop 0.5s ease-out 1 forwards',
         reveal: 'reveal 0.5s ease-out 1',
+        rise: 'rise 1.4s ease-out 1 forwards',
       },
     },
   },

@@ -7,9 +7,10 @@ import { identifyProvider } from '../../lib/ai/identify'
 import { cropToBlob } from '../../lib/image/crop'
 import { useAlbumStore } from '../../store/albumStore'
 import { useCollectionStore } from '../../store/collectionStore'
-import { useGaugeStore, GAUGE_PER_CAPTURE } from '../../store/gaugeStore'
+import { useGaugeStore, GAUGE_PER_CAPTURE, GAUGE_MAX } from '../../store/gaugeStore'
 import { useAffinityStore, AFFINITY_PER_CAPTURE, levelForScore } from '../../store/affinityStore'
 import { speak, primeAudio } from '../../lib/audio/useSpeak'
+import { SoundOnIcon, SoundOffIcon, SparkleIcon } from '../../components/icons'
 
 /**
  * カメラモード（v2・STEP1d）。「見せる → 判定 → 図鑑に収集＋アルバムに思い出」の最短ループ。
@@ -89,6 +90,11 @@ export default function CameraMode() {
   >(null)
   // 軽い通知トースト（「写真を更新したよ」等）。
   const [foundToast, setFoundToast] = useState<string | null>(null)
+  // 撮影で貯まった「＋まほうパワー / なつき」のふわっとポップアップ（nonce で毎回リスタート）。
+  const [gainKey, setGainKey] = useState(0)
+  const [showGain, setShowGain] = useState(false)
+  // この撮影でまほうパワーが満タンになった瞬間の大きめお祝い演出。
+  const [powerMax, setPowerMax] = useState(false)
   // 撮影に対する妖精の一時リアクション（数秒でベース表情へ戻る）。共有フックに集約。
   const { expression: reactionExpression, animateKey, fire: fireReaction } = useFairyReaction()
 
@@ -177,8 +183,16 @@ export default function CameraMode() {
       await addPhoto({ blob: photo, comment: commentText, emotion, subjectName, caption })
       setSavedFlash(true)
       // 撮影＝「安い日常行動」＝まほうパワー＋絆を少し貯める（保存できたときだけ）。
+      // 常時バーは出さず、貯まった瞬間だけポップアップで見せる（ファインダーを主役に）。
+      const gaugeBefore = useGaugeStore.getState().value
       addGauge(GAUGE_PER_CAPTURE)
       addAffinity(AFFINITY_PER_CAPTURE)
+      setGainKey((k) => k + 1)
+      setShowGain(true)
+      // この撮影で 0..MAX 未満 → 満タンに達したら、大きめのお祝い＝召喚解禁を知らせる。
+      if (gaugeBefore < GAUGE_MAX && useGaugeStore.getState().value >= GAUGE_MAX) {
+        setPowerMax(true)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存に失敗しました')
     } finally {
@@ -220,6 +234,20 @@ export default function CameraMode() {
     const timer = setTimeout(() => setFoundToast(null), 2500)
     return () => clearTimeout(timer)
   }, [foundToast])
+
+  // 「＋まほうパワー / なつき」ポップアップは rise アニメの尺で自然に消す（gainKey で毎回リスタート）。
+  useEffect(() => {
+    if (!showGain) return
+    const timer = setTimeout(() => setShowGain(false), 1400)
+    return () => clearTimeout(timer)
+  }, [showGain, gainKey])
+
+  // まほうパワー満タンのお祝いは少し長めに出す。
+  useEffect(() => {
+    if (!powerMax) return
+    const timer = setTimeout(() => setPowerMax(false), 2800)
+    return () => clearTimeout(timer)
+  }, [powerMax])
 
   // 初発見バナーは数秒で消す。消えるタイミングでクロップの object URL を解放する。
   useEffect(() => {
@@ -275,9 +303,9 @@ export default function CameraMode() {
           toggleVoice()
         }}
         aria-label={voiceEnabled ? '声をオフにする' : '声をオンにする'}
-        className="absolute right-3 top-3 z-10 rounded-full bg-slate-900/60 px-3 py-1.5 text-lg shadow-pop transition active:scale-95"
+        className="absolute right-3 top-3 z-10 rounded-full bg-slate-900/60 p-2 text-white shadow-pop transition active:scale-95"
       >
-        {voiceEnabled ? '🔊' : '🔇'}
+        {voiceEnabled ? <SoundOnIcon className="h-5 w-5" /> : <SoundOffIcon className="h-5 w-5" />}
       </button>
 
       {/* カメラ不可時のフォールバック */}
@@ -336,6 +364,32 @@ export default function CameraMode() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 撮影で貯まった「＋まほうパワー / なつき」がふわっと上がって消える（常時バーは出さない）。 */}
+      {showGain && (
+        <div
+          key={gainKey}
+          className="animate-rise pointer-events-none absolute inset-x-0 top-1/2 flex flex-col items-center gap-1"
+        >
+          <span className="rounded-full bg-lavender/90 px-3 py-1 text-xs font-bold text-white shadow-pop">
+            まほうパワー ＋
+          </span>
+          <span className="rounded-full bg-rose-400/90 px-3 py-1 text-xs font-bold text-white shadow-pop">
+            なつき ＋
+          </span>
+        </div>
+      )}
+
+      {/* まほうパワーMAX＝召喚解禁の大きめお祝い演出 */}
+      {powerMax && (
+        <div className="pointer-events-none absolute inset-x-0 top-1/3 flex justify-center px-6">
+          <div className="animate-reveal flex flex-col items-center gap-1 rounded-3xl bg-white/95 px-6 py-4 text-center text-slate-800 shadow-pop">
+            <SparkleIcon className="h-7 w-7 text-mint" />
+            <p className="font-display text-lg font-bold text-mint">まほうパワーが満タン！</p>
+            <p className="text-xs font-bold text-slate-500">ずかんから召喚できるよ</p>
           </div>
         </div>
       )}

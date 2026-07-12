@@ -7,6 +7,7 @@ import { useAffinityStore, AFFINITY_PER_ITEM } from '../../store/affinityStore'
 import { imageGenProvider } from '../../lib/ai/imageGen'
 import Sprite2DRenderer from '../../lib/character/Sprite2DRenderer'
 import GeneratingOverlay from '../../components/GeneratingOverlay'
+import { SparkleIcon } from '../../components/icons'
 import { CATEGORY_EMOJI, CATEGORY_LABEL, CATEGORY_ORDER } from '../../lib/category'
 import type { GeneratedItem } from '../../lib/ai/imageProvider'
 import type { CollectionEntry, ItemCategory } from '../../types'
@@ -399,7 +400,10 @@ export default function CollectionView() {
             <p className="mt-2 whitespace-pre-wrap text-center text-sm text-slate-600">
               {summonResult.description}
             </p>
-            <p className="mt-2 text-center text-xs text-mint">✨ 妖精界にあらわれたよ</p>
+            <p className="mt-2 flex items-center justify-center gap-1 text-center text-xs text-mint">
+              <SparkleIcon className="h-3.5 w-3.5" />
+              妖精界にあらわれたよ
+            </p>
 
             <div className="mt-4 flex items-center justify-center gap-3">
               <button

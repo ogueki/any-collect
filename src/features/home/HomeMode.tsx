@@ -7,6 +7,7 @@ import Sprite2DRenderer from '../../lib/character/Sprite2DRenderer'
 import type { FairyExpression } from '../../lib/character/CharacterRenderer'
 import { useFairyReaction } from '../../lib/character/useFairyReaction'
 import { primeAudio } from '../../lib/audio/useSpeak'
+import { SoundOnIcon, SoundOffIcon } from '../../components/icons'
 import ChatPanel from './ChatPanel'
 
 /**
@@ -76,9 +77,13 @@ export default function HomeMode() {
             toggleVoice()
           }}
           aria-label={voiceEnabled ? '声をオフにする' : '声をオンにする'}
-          className="rounded-full bg-white/80 px-3 py-2 text-lg shadow-pop transition active:scale-95"
+          className="rounded-full bg-white/80 p-2 text-slate-500 shadow-pop transition active:scale-95"
         >
-          {voiceEnabled ? '🔊' : '🔇'}
+          {voiceEnabled ? (
+            <SoundOnIcon className="h-5 w-5" />
+          ) : (
+            <SoundOffIcon className="h-5 w-5" />
+          )}
         </button>
       </div>
 

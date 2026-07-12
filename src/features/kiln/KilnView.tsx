@@ -6,6 +6,7 @@ import { imageGenProvider } from '../../lib/ai/imageGen'
 import { emotionForConfirm, emotionForGenerated } from '../../lib/character/reaction'
 import { CATEGORY_LABEL, toCategory } from '../../lib/category'
 import GeneratingOverlay from '../../components/GeneratingOverlay'
+import { SparkleIcon } from '../../components/icons'
 import type { GeneratedItem } from '../../lib/ai/imageProvider'
 import type { FairyExpression } from '../../lib/character/CharacterRenderer'
 import type { Item } from '../../types'
@@ -256,7 +257,10 @@ export default function KilnView({ onReaction, onGoRealm }: KilnViewProps) {
       {/* 保存後：妖精界へ誘導 */}
       {phase === 'saved' && (
         <div className="flex flex-col items-center gap-3 py-6 text-center">
-          <p className="text-sm font-bold text-slate-600">✨ 妖精界にあらわれたよ</p>
+          <p className="flex items-center gap-1.5 text-sm font-bold text-slate-600">
+            <SparkleIcon className="h-4 w-4 text-mint" />
+            妖精界にあらわれたよ
+          </p>
           <div className="flex items-center gap-3">
             {onGoRealm && (
               <button
