@@ -3,9 +3,9 @@
 このファイルは Claude Code がプロジェクト作業時に参照する開発規約です。詳細な機能仕様は `spec.md` を参照。
 
 ## プロジェクト概要
-妖精の相棒 **コレット** と、いつもの毎日を「ちょっと冒険」に変える寄り添いブラウザWEBアプリ。**カメラモード**（世界を見せる＝撮影→声つき反応→写真をアルバムに保存）と **ホームモード**（会話・アルバム・妖精の窯でアイテム化・妖精界）の2モード構成。
+妖精の相棒 **コレット** と、いつもの毎日を「ちょっと冒険」に変える寄り添いブラウザWEBアプリ。**カメラモード**（世界を見せる＝撮影→声つき反応→写真をアルバムに保存）と **ホームモード**（会話が主役・図鑑からの召喚魔法でアイテム化・妖精界・メニュー＝窯で合成/アルバム/ゲーム）の2モード構成。
 - **背骨**：コレットの"欲・好奇心"がユーザーを現実へ連れ出す（「行きたいなら行ってみるか」）。
-- **二重構造**：カメラ→写真→**アルバム（あなたの世界）**／アルバム写真→窯→アイテム→**妖精界（コレットの世界）**／窯＝橋。
+- **二重構造**：カメラ→写真→**アルバム（あなたの世界）**／図鑑エントリ→召喚魔法→透過アイテム→**妖精界（コレットの世界）**／召喚＝橋。妖精の窯＝アイテム2つの合成（メニュー内）。
 - **v2 転換（2026-07-02）**：旧「撮影→即スキャン画像生成で収集」から、**会話＋アルバム＋妖精界コア**へ移行（コスト・リテンション両面）。詳細は `spec.md`、進行は `ROADMAP.md`。
 - 将来ネイティブアプリ化（Capacitor）＝**プッシュ通知で"毎日開く理由"を作る**のが主目的。
 
@@ -23,7 +23,7 @@
 ## ディレクトリ方針
 > 「現状」＝実在するもの、「将来/後続」＝対応STEPで追加予定（最終形の案は `spec.md §8`）。
 - `api/` … 外部API呼び出し（鍵を使う処理は必ずここ）。`describe-scene.ts`（景色ひとこと・図鑑に残さない）/ `identify.ts`（図鑑判定＝主役同定＋bbox・Seek型）/ `chat.ts`（会話・接地注入）/ `generate-item.ts`（図鑑エントリ→透過アイテム）/ `tts.ts`（Fish・稼働＝カメラ反応の動的読み上げ／声設定は `characters/<id>/voice.json`）/ `memory.ts`（会話要約→保存）＋ `_lib/`（persona/gemini/item-prompt/voice・ルート対象外）。
-- `src/features/<機能>/` … 機能単位。`camera/`（見せる・判定・図鑑収集＋アルバム保存）/ `home/` / `collection/`（図鑑＝実物のクロップ収集・Seek型）/ `album/`（思い出写真・旧 codex を置換）/ `kiln/`（アイテム化）/ `realm/`（妖精界）/ `onboarding/`。妖精リアクションは表示層なので `src/lib/character/` 側。クロップは `src/lib/image/crop.ts`。
+- `src/features/<機能>/` … 機能単位。`camera/`（見せる・判定・図鑑収集＋アルバム保存）/ `home/` / `collection/`（図鑑＝実物のクロップ収集・Seek型）/ `album/`（思い出写真・旧 codex を置換）/ `kiln/`（妖精の窯＝2アイテム合成。図鑑→透過アイテムの召喚は `collection/` 側に移設）/ `realm/`（妖精界）/ `onboarding/`。妖精リアクションは表示層なので `src/lib/character/` 側。クロップは `src/lib/image/crop.ts`。
 - `src/lib/ai/` … AIプロバイダの抽象化（`ImageGenProvider`/`ChatProvider`/`SceneProvider`/`IdentifyProvider`/`TtsProvider`）
 - `src/lib/character/` … キャラ表示の抽象化（今は2Dスプライト、将来3D/Live2D差し替え）
 - `src/lib/storage/` … Repositoryパターン。`ItemRepository` ＋ 新規 `PhotoRepository`/`MemoryRepository`/`AffinityRepository`。**インターフェースを先に切って** IndexedDB（先行）↔ Supabase（後続）を同一抽象の裏に吸収。

@@ -32,7 +32,7 @@ export default function App() {
       )}
       {screen === 'kiln' && (
         <WorkingScreen title="妖精の窯">
-          <KilnView onReaction={() => {}} onGoRealm={() => go('realm')} />
+          <KilnView onGoRealm={() => go('realm')} />
         </WorkingScreen>
       )}
       {screen === 'realm' && (

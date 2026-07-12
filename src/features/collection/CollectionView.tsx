@@ -5,8 +5,9 @@ import { useCodexStore } from '../../store/codexStore'
 import { useGaugeStore, GAUGE_MAX } from '../../store/gaugeStore'
 import { useAffinityStore, AFFINITY_PER_ITEM } from '../../store/affinityStore'
 import { imageGenProvider } from '../../lib/ai/imageGen'
-import Sprite2DRenderer from '../../lib/character/Sprite2DRenderer'
+import { emotionForGenerated } from '../../lib/character/reaction'
 import GeneratingOverlay from '../../components/GeneratingOverlay'
+import { useShellFairy } from '../../components/shellFairy'
 import { SparkleIcon } from '../../components/icons'
 import { CATEGORY_EMOJI, CATEGORY_LABEL, CATEGORY_ORDER } from '../../lib/category'
 import type { GeneratedItem } from '../../lib/ai/imageProvider'
@@ -75,6 +76,7 @@ export default function CollectionView() {
   const gaugeValue = useGaugeStore((s) => s.value)
   const spendGauge = useGaugeStore((s) => s.spend)
   const addAffinity = useAffinityStore((s) => s.add)
+  const { fire } = useShellFairy() // 召喚成功→右下コレットが反応
 
   const [selected, setSelected] = useState<CollectionEntry | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -160,12 +162,13 @@ export default function CollectionView() {
         addAffinity(AFFINITY_PER_ITEM)
         setSummonResult(generated)
         setSummonPhase('result')
+        fire(emotionForGenerated()) // 右下コレットが大喜び
       } catch (err) {
         setSummonError(err instanceof Error ? err.message : '召喚に失敗しました')
         setSummonPhase('idle')
       }
     },
-    [summonPhase, gaugeFull, characterId, spendGauge, addFromGenerated, addAffinity],
+    [summonPhase, gaugeFull, characterId, spendGauge, addFromGenerated, addAffinity, fire],
   )
 
   const closeSummonResult = () => {
@@ -183,12 +186,11 @@ export default function CollectionView() {
       {/* エラー */}
       {status === 'error' && <p className="mt-10 text-center text-sm text-peach">{error}</p>}
 
-      {/* 空状態：妖精＋誘導 */}
+      {/* 空状態：誘導（コレットは右下の共通シェルにいる） */}
       {status !== 'loading' && status !== 'error' && entries.length === 0 && (
-        <div className="mt-8 flex flex-col items-center gap-3 text-center">
-          <Sprite2DRenderer characterId={characterId} expression="neutral" size="lg" />
-          <p className="text-sm text-slate-500">まだ図鑑がからっぽだよ。</p>
-          <p className="text-sm text-slate-500">カメラでいろんなものを見つけてこよう！</p>
+        <div className="mt-16 flex flex-col items-center gap-2 text-center">
+          <p className="text-sm font-bold text-slate-500">まだ図鑑がからっぽだよ。</p>
+          <p className="text-sm text-slate-400">カメラでいろんなものを見つけてこよう！</p>
         </div>
       )}
 

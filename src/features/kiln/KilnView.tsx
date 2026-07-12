@@ -6,9 +6,9 @@ import { imageGenProvider } from '../../lib/ai/imageGen'
 import { emotionForConfirm, emotionForGenerated } from '../../lib/character/reaction'
 import { CATEGORY_LABEL, toCategory } from '../../lib/category'
 import GeneratingOverlay from '../../components/GeneratingOverlay'
+import { useShellFairy } from '../../components/shellFairy'
 import { SparkleIcon } from '../../components/icons'
 import type { GeneratedItem } from '../../lib/ai/imageProvider'
-import type { FairyExpression } from '../../lib/character/CharacterRenderer'
 import type { Item } from '../../types'
 
 /**
@@ -19,7 +19,6 @@ import type { Item } from '../../types'
  */
 
 interface KilnViewProps {
-  onReaction: (emotion: FairyExpression) => void
   /** 合成後に妖精界へ飛ぶ（App が渡す。未指定なら「つづける」のみ） */
   onGoRealm?: () => void
 }
@@ -31,13 +30,14 @@ const PREVIEW_BG_STYLE: React.CSSProperties = {
   background: 'linear-gradient(to bottom, #dbeafe 0%, #ede9fe 45%, #d1fae5 100%)',
 }
 
-export default function KilnView({ onReaction, onGoRealm }: KilnViewProps) {
+export default function KilnView({ onGoRealm }: KilnViewProps) {
   const characterId = useAppStore((s) => s.characterId)
   const items = useCodexStore((s) => s.items)
   const load = useCodexStore((s) => s.load)
   const addFromSynthesis = useCodexStore((s) => s.addFromSynthesis)
   const isNewCategory = useCodexStore((s) => s.isNewCategory)
   const addAffinity = useAffinityStore((s) => s.add)
+  const { fire } = useShellFairy() // 合成成功→右下コレットが反応
 
   const [selected, setSelected] = useState<string[]>([])
   const [phase, setPhase] = useState<KilnPhase>('select')
@@ -80,13 +80,13 @@ export default function KilnView({ onReaction, onGoRealm }: KilnViewProps) {
         )
         setResult(generated)
         setPhase('result')
-        onReaction(emotionForGenerated())
+        fire(emotionForGenerated())
       } catch (err) {
         setError(err instanceof Error ? err.message : '合成に失敗しました')
         setPhase(onFailPhase)
       }
     },
-    [selectedItems, characterId, onReaction],
+    [selectedItems, characterId, fire],
   )
 
   const handleSynthesize = useCallback(() => {
@@ -109,13 +109,13 @@ export default function KilnView({ onReaction, onGoRealm }: KilnViewProps) {
       // 合成は特別な体験＝絆も大きめに増やす。
       addAffinity(AFFINITY_PER_ITEM)
       setPhase('saved')
-      onReaction(emotionForConfirm(isNew))
+      fire(emotionForConfirm(isNew))
     } catch (err) {
       setError(err instanceof Error ? err.message : '妖精界への登録に失敗しました')
     } finally {
       setSaving(false)
     }
-  }, [result, saving, selected, addFromSynthesis, isNewCategory, addAffinity, onReaction])
+  }, [result, saving, selected, addFromSynthesis, isNewCategory, addAffinity, fire])
 
   const resetToSelect = useCallback(() => {
     setResult(null)

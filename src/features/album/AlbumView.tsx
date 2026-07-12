@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useAppStore } from '../../store/appStore'
 import { useAlbumStore } from '../../store/albumStore'
-import Sprite2DRenderer from '../../lib/character/Sprite2DRenderer'
 import type { Photo } from '../../types'
 
 /**
@@ -17,7 +15,6 @@ function formatDate(iso: string): string {
 }
 
 export default function AlbumView() {
-  const characterId = useAppStore((s) => s.characterId)
   const photos = useAlbumStore((s) => s.photos)
   const status = useAlbumStore((s) => s.status)
   const error = useAlbumStore((s) => s.error)
@@ -77,12 +74,11 @@ export default function AlbumView() {
       {/* エラー */}
       {status === 'error' && <p className="mt-10 text-center text-sm text-peach">{error}</p>}
 
-      {/* 空状態：妖精＋誘導 */}
+      {/* 空状態：誘導（コレットは右下の共通シェルにいる） */}
       {status !== 'loading' && status !== 'error' && photos.length === 0 && (
-        <div className="mt-8 flex flex-col items-center gap-3 text-center">
-          <Sprite2DRenderer characterId={characterId} expression="neutral" size="lg" />
-          <p className="text-sm text-slate-500">まだ写真がないみたい。</p>
-          <p className="text-sm text-slate-500">カメラでコレットに見せてみよう！</p>
+        <div className="mt-16 flex flex-col items-center gap-2 text-center">
+          <p className="text-sm font-bold text-slate-500">まだ写真がないみたい。</p>
+          <p className="text-sm text-slate-400">カメラでコレットに見せてみよう！</p>
         </div>
       )}
 
