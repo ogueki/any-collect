@@ -43,6 +43,8 @@ export default function HomeMode() {
   const status = useChatStore((s) => s.status)
   const messages = useChatStore((s) => s.messages)
   const replyNonce = useChatStore((s) => s.replyNonce)
+  const opening = useChatStore((s) => s.opening)
+  const openConversation = useChatStore((s) => s.openConversation)
   const gaugeValue = useGaugeStore((s) => s.value)
   const addGauge = useGaugeStore((s) => s.add)
   const affinityScore = useAffinityStore((s) => s.score)
@@ -76,6 +78,11 @@ export default function HomeMode() {
     if (!replyNonce || !lastFairyEmotion) return
     fire(lastFairyEmotion)
   }, [replyNonce, lastFairyEmotion, fire])
+
+  // ホームに来たら、コレットの方から第一声（会話が空のとき・セッション1回・失敗は固定挨拶のまま）。
+  useEffect(() => {
+    void openConversation(characterId)
+  }, [openConversation, characterId])
 
   // 絆レベルアップ＝コレットが大喜び＋お祝い表示。表示はストアの pendingLevelUp から直接出し、
   // 数秒後に clearLevelUp() で消す（ローカル state を effect 内で同期 set しない）。
@@ -174,7 +181,7 @@ export default function HomeMode() {
           </div>
         )}
         <div className="relative w-full rounded-3xl bg-white px-5 py-4 shadow-pop">
-          {sending ? (
+          {sending || (opening && !heroFairy) ? (
             <span className="flex justify-center gap-1.5 py-1">
               {[0, 150, 300].map((d) => (
                 <span
@@ -187,6 +194,7 @@ export default function HomeMode() {
           ) : heroFairy ? (
             <p className="text-lg font-bold leading-relaxed text-slate-700">{heroFairy.content}</p>
           ) : (
+            /* 第一声（openConversation）が失敗したときだけ出る固定挨拶フォールバック */
             <p className="text-lg font-bold leading-relaxed text-slate-700">
               {name && <span className="text-violet-500">{name}</span>}
               {name ? '、おかえりっ！' : 'おかえりっ！'}{' '}

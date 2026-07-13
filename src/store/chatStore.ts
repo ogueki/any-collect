@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { ChatMessage } from '../types'
 import { chatProvider } from '../lib/ai/chat'
-import { useGaugeStore, GAUGE_PER_CHAT } from './gaugeStore'
+import { useGaugeStore, GAUGE_PER_CHAT, GAUGE_MAX } from './gaugeStore'
 import { useAffinityStore, AFFINITY_PER_CHAT } from './affinityStore'
 import { useMemoryStore } from './memoryStore'
 import { useCollectionStore } from './collectionStore'
@@ -13,16 +13,56 @@ export type ChatStatus = 'idle' | 'sending' | 'error'
 /** 何メッセージ進むごとに記憶を要約するか（＝約3往復。頻度を絞ってコスト/接地を両立）。 */
 const CONSOLIDATE_EVERY = 6
 
+/** 現地時刻→時間帯ラベル（サーバ側 allowlist と対応。会話の接地・挨拶に使う）。 */
+export function timeOfDayLabel(hour: number): string {
+  if (hour <= 4) return '深夜'
+  if (hour <= 10) return '朝'
+  if (hour <= 15) return '昼'
+  if (hour <= 18) return '夕方'
+  return '夜'
+}
+
+/** 会話に載せる接地文脈（好感度・記憶・図鑑/アルバム傾向・時間帯）を集める。send/opening 共用。 */
+async function gatherChatContext() {
+  const affinityLevel = useAffinityStore.getState().level()
+  const memoryFacts = useMemoryStore.getState().facts
+
+  // 図鑑・アルバムの傾向を接地ノートに（STEP2c）。会話タブ単独起動でも接地できるよう、
+  // 未ロードなら読む（データは小さい。collect の「メモリ空なら永続層」idiom と同じ発想）。
+  const col = useCollectionStore.getState()
+  if (col.entries.length === 0 && col.status === 'idle') await col.load()
+  const alb = useAlbumStore.getState()
+  if (alb.photos.length === 0 && alb.status === 'idle') await alb.load()
+  const groundingNotes = buildGroundingNotes({
+    entries: useCollectionStore.getState().entries,
+    photos: useAlbumStore.getState().photos,
+  })
+  if (import.meta.env.DEV) console.debug('[grounding]', groundingNotes)
+
+  return {
+    affinityLevel,
+    memoryFacts,
+    groundingNotes,
+    timeOfDay: timeOfDayLabel(new Date().getHours()),
+  }
+}
+
 interface ChatState {
   messages: ChatMessage[]
   status: ChatStatus
   error: string | null
+  /** コレットの第一声を生成中か（送信ブロックはしない・ホームのタイピング表示用） */
+  opening: boolean
+  /** 第一声をこのセッションで既に要求したか（再マウントでの重複呼び出しガード） */
+  openingRequested: boolean
   /** 返信が来るたびに +1。立ち絵の一発アニメ（animateKey）の発火に使う */
   replyNonce: number
   /** 既に記憶へ反映済みのメッセージ数（セッション内。要約トリガーの基準） */
   consolidatedCount: number
   /** ユーザー入力を送り、妖精の応答を履歴に追加する */
   send: (userInput: string, personaId: string) => Promise<void>
+  /** 会話が空のとき、コレットから第一声を話しかける（セッション1回・失敗は握りつぶし） */
+  openConversation: (personaId: string) => Promise<void>
   /** 未反映の会話を今すぐ記憶に要約する（検証用の手動発火） */
   consolidateMemoryNow: () => Promise<void>
   /** 会話をクリア */
@@ -47,6 +87,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   messages: [],
   status: 'idle',
   error: null,
+  opening: false,
+  openingRequested: false,
   replyNonce: 0,
   consolidatedCount: 0,
 
@@ -59,27 +101,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({ messages: [...history, createMessage('user', text)], status: 'sending', error: null })
 
     try {
-      // 好感度レベル＋記憶を会話に載せる（サーバの system prompt で口調 tier＋接地に反映）。
-      const affinityLevel = useAffinityStore.getState().level()
-      const memoryFacts = useMemoryStore.getState().facts
-
-      // 図鑑・アルバムの傾向を接地ノートに（STEP2c）。会話タブ単独起動でも接地できるよう、
-      // 未ロードなら読む（データは小さい。collect の「メモリ空なら永続層」idiom と同じ発想）。
-      const col = useCollectionStore.getState()
-      if (col.entries.length === 0 && col.status === 'idle') await col.load()
-      const alb = useAlbumStore.getState()
-      if (alb.photos.length === 0 && alb.status === 'idle') await alb.load()
-      const groundingNotes = buildGroundingNotes({
-        entries: useCollectionStore.getState().entries,
-        photos: useAlbumStore.getState().photos,
-      })
-      if (import.meta.env.DEV) console.debug('[grounding]', groundingNotes)
-
+      // 好感度レベル＋記憶＋図鑑/アルバム傾向＋時間帯を会話に載せる（サーバの system prompt で接地）。
+      const context = await gatherChatContext()
       const reply = await chatProvider.sendMessage(history, text, {
         personaId,
-        affinityLevel,
-        memoryFacts,
-        groundingNotes,
+        ...context,
       })
       set((s) => ({
         messages: [...s.messages, createMessage('fairy', reply.text, reply.emotion)],
@@ -104,6 +130,30 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
+  openConversation: async (personaId) => {
+    // 会話が既に始まっている・要求済みなら何もしない（ホーム再マウントごとに叩かない）。
+    if (get().openingRequested || get().messages.length > 0 || get().status === 'sending') return
+    set({ openingRequested: true, opening: true })
+
+    try {
+      const context = await gatherChatContext()
+      const gaugeFull = useGaugeStore.getState().value >= GAUGE_MAX
+      const reply = await chatProvider.openConversation({ personaId, ...context, gaugeFull })
+
+      // 生成中にユーザーが先に話し始めていたら、第一声は捨てる（会話に割り込まない）。
+      if (get().messages.length === 0) {
+        set((s) => ({
+          messages: [createMessage('fairy', reply.text, reply.emotion)],
+          replyNonce: s.replyNonce + 1,
+        }))
+      }
+    } catch {
+      // 第一声はベストエフォート＝失敗してもホームの固定挨拶が出るだけ（エラー表示しない）。
+    } finally {
+      set({ opening: false })
+    }
+  },
+
   consolidateMemoryNow: async () => {
     const msgs = get().messages
     const tail = msgs.slice(get().consolidatedCount)
@@ -112,5 +162,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
     await useMemoryStore.getState().consolidate(tail)
   },
 
-  reset: () => set({ messages: [], status: 'idle', error: null, replyNonce: 0, consolidatedCount: 0 }),
+  reset: () =>
+    set({
+      messages: [],
+      status: 'idle',
+      error: null,
+      opening: false,
+      openingRequested: false,
+      replyNonce: 0,
+      consolidatedCount: 0,
+    }),
 }))

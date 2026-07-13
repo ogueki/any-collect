@@ -8,6 +8,16 @@ export interface ChatReply {
   emotion?: FairyExpression
 }
 
+/** 会話に載せる接地オプション（好感度・記憶・図鑑/アルバム傾向・時間帯）。 */
+export interface ChatOpts {
+  personaId?: string
+  affinityLevel?: number
+  memoryFacts?: MemoryFact[]
+  groundingNotes?: string[]
+  /** いまの時間帯（朝/昼/夕方/夜/深夜）。クライアントの現地時刻から */
+  timeOfDay?: string
+}
+
 /**
  * 会話プロバイダの抽象。
  * 実装（httpChatProvider, Gemini 経由）は STEP2 で追加済み。将来 Claude へはサーバ側 (api/chat.ts) で切替。API キーは /api/chat 側に置く。
@@ -15,14 +25,7 @@ export interface ChatReply {
  */
 export interface ChatProvider {
   /** 会話履歴とユーザー入力から、妖精としての応答（テキスト＋感情）を返す */
-  sendMessage(
-    history: ChatMessage[],
-    userInput: string,
-    opts?: {
-      personaId?: string
-      affinityLevel?: number
-      memoryFacts?: MemoryFact[]
-      groundingNotes?: string[]
-    },
-  ): Promise<ChatReply>
+  sendMessage(history: ChatMessage[], userInput: string, opts?: ChatOpts): Promise<ChatReply>
+  /** 会話の始まりに、コレットからの第一声を生成する（ホームを開いたとき等） */
+  openConversation(opts?: ChatOpts & { gaugeFull?: boolean }): Promise<ChatReply>
 }

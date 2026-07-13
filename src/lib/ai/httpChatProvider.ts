@@ -20,25 +20,43 @@ function toFairyExpression(value: unknown): FairyExpression | undefined {
     : undefined
 }
 
+/** /api/chat に POST して返事（テキスト＋感情）を取り出す共通処理。 */
+async function postChat(payload: Record<string, unknown>) {
+  const res = await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  const data: ChatApiResponse = await res.json().catch(() => ({}))
+  if (!res.ok || !data.reply) {
+    throw new Error(data.error ?? `会話に失敗しました (${res.status})`)
+  }
+  return { text: data.reply, emotion: toFairyExpression(data.emotion) }
+}
+
 export const httpChatProvider: ChatProvider = {
   async sendMessage(history, userInput, opts) {
-    const res = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        history: history.map((m) => ({ role: m.role, content: m.content })),
-        userInput,
-        personaId: opts?.personaId ?? 'default',
-        affinityLevel: opts?.affinityLevel,
-        memoryFacts: opts?.memoryFacts,
-        groundingNotes: opts?.groundingNotes,
-      }),
+    return postChat({
+      history: history.map((m) => ({ role: m.role, content: m.content })),
+      userInput,
+      personaId: opts?.personaId ?? 'default',
+      affinityLevel: opts?.affinityLevel,
+      memoryFacts: opts?.memoryFacts,
+      groundingNotes: opts?.groundingNotes,
+      timeOfDay: opts?.timeOfDay,
     })
+  },
 
-    const data: ChatApiResponse = await res.json().catch(() => ({}))
-    if (!res.ok || !data.reply) {
-      throw new Error(data.error ?? `会話に失敗しました (${res.status})`)
-    }
-    return { text: data.reply, emotion: toFairyExpression(data.emotion) }
+  async openConversation(opts) {
+    return postChat({
+      mode: 'opening',
+      history: [],
+      personaId: opts?.personaId ?? 'default',
+      affinityLevel: opts?.affinityLevel,
+      memoryFacts: opts?.memoryFacts,
+      groundingNotes: opts?.groundingNotes,
+      timeOfDay: opts?.timeOfDay,
+      gaugeFull: opts?.gaugeFull,
+    })
   },
 }

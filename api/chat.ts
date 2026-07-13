@@ -21,7 +21,20 @@ interface ChatRequestBody {
   memoryFacts?: { key?: unknown; value?: unknown }[]
   /** きみの最近のようす（図鑑・アルバム傾向）。クライアントが集計した短いノート（接地注入・STEP2c） */
   groundingNotes?: unknown
+  /** 'opening' ならコレットからの第一声を生成（userInput 不要・履歴なし想定） */
+  mode?: unknown
+  /** いまの時間帯（朝/昼/夕方/夜/深夜）。クライアントの現地時刻から。allowlist 検証する */
+  timeOfDay?: unknown
+  /** まほうパワーが満タンか（opening で召喚に誘う判断に使う） */
+  gaugeFull?: unknown
 }
+
+/** timeOfDay として受け付ける値（自由文字列を system prompt に入れない） */
+const TIME_OF_DAY_VALUES = ['朝', '昼', '夕方', '夜', '深夜'] as const
+
+/** opening のとき Gemini に渡す固定のユーザーターン（contents は空にできないため） */
+const OPENING_USER_TURN =
+  '（きみがアプリをひらいて、コレットのところに来たよ。「いまの場面」の指示どおり、コレットから最初のひとことを話しかけて）'
 
 type NodeReq = IncomingMessage & { body?: unknown }
 
@@ -64,8 +77,9 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
     return
   }
 
+  const opening = body.mode === 'opening'
   const userInput = typeof body.userInput === 'string' ? body.userInput.trim() : ''
-  if (!userInput) {
+  if (!userInput && !opening) {
     sendJson(res, 400, { error: 'userInput が空です' })
     return
   }
@@ -93,12 +107,25 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
           .map((n) => n.slice(0, 200))
           .slice(0, 3)
       : undefined
+    const timeOfDay =
+      typeof body.timeOfDay === 'string' &&
+      (TIME_OF_DAY_VALUES as readonly string[]).includes(body.timeOfDay)
+        ? body.timeOfDay
+        : undefined
     const systemPrompt = buildSystemPrompt(loadPersona(body.personaId), {
       affinityLevel,
       memoryFacts,
       groundingNotes,
+      timeOfDay,
+      opening,
+      gaugeFull: body.gaugeFull === true,
     })
-    const { text, emotion } = await generateChatReply({ apiKey, systemPrompt, history, userInput })
+    const { text, emotion } = await generateChatReply({
+      apiKey,
+      systemPrompt,
+      history,
+      userInput: opening ? OPENING_USER_TURN : userInput,
+    })
     sendJson(res, 200, { reply: text, emotion })
   } catch (err) {
     const message = err instanceof Error ? err.message : '会話の生成に失敗しました'
