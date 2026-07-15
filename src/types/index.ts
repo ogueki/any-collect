@@ -33,9 +33,9 @@ export interface Photo {
 /**
  * 図鑑エントリ（v2・Seek 型）。カメラで撮った写真から主体を判定し、
  * その部分だけ矩形クロップして収集する「実物のコレクション」。
- * 窯で生成する妖精アイテム（Item）とは別物：こちらは実写クロップで、種別に集約する。
+ * 召喚魔法で生成する妖精アイテム（Item）とは別物：こちらは実写クロップで、種別に集約する。
  * 同種は 1 エントリにまとめ、`count` に発見回数を積む（speciesKey でデデュープ）。
- * クロップ画像は Blob で保持（Photo と同様。窯のアイテム化ではこの blob を入力に使う）。
+ * クロップ画像は Blob で保持（Photo と同様。召喚＝アイテム化ではこの blob を入力に使う）。
  */
 export interface CollectionEntry {
   id: string
@@ -57,7 +57,7 @@ export interface CollectionEntry {
   lastSeenAt: string
 }
 
-/** アイテム（窯でアルバム写真から作る透過アイテム／妖精界に出現する） */
+/** アイテム（召喚魔法＝図鑑エントリから作る透過アイテム。窯の合成でも生まれる／妖精界に出現する） */
 export interface Item {
   id: string
   name: string
@@ -65,9 +65,9 @@ export interface Item {
   category?: ItemCategory
   /** 生成された透過アイコン画像の URL（Supabase Storage 等） */
   iconUrl: string
-  /** 由来のアルバム写真 ID（v2・窯でのアイテム化元） */
+  /** 由来のアルバム写真 ID（旧設計＝写真からのアイテム化の名残・現状は未使用） */
   sourcePhotoId?: string
-  /** 由来の図鑑エントリ ID（v2・窯は図鑑エントリを入力にアイテム化する。将来の記憶/系譜用） */
+  /** 由来の図鑑エントリ ID（v2・召喚は図鑑エントリを入力にアイテム化する。将来の記憶/系譜用） */
   sourceCollectionId?: string
   /** 妖精界での配置（正規化座標 0..1。未配置なら未定義＝コレットが自動配置） */
   realmX?: number

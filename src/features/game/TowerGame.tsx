@@ -153,7 +153,7 @@ export default function TowerGame({ onClose }: { onClose: () => void }) {
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-8 text-center">
             <p className="text-lg font-bold text-slate-600">まだ積むものがない…</p>
             <p className="text-sm text-slate-500">
-              妖精の窯でアイテムを作ると、ここで積んで遊べるよ
+              図鑑からアイテムを召喚すると、ここで積んで遊べるよ
             </p>
           </div>
         ) : mode === 'menu' ? (

@@ -3,7 +3,7 @@ import { useCodexStore } from '../../store/codexStore'
 import type { Item } from '../../types'
 
 /**
- * 妖精界（コレットの世界・v2・STEP1f）。窯で作った透過アイテムが accent として出現する単一シーン。
+ * 妖精界（コレットの世界・v2・STEP1f）。召喚/合成した透過アイテムが accent として出現する単一シーン。
  * 背景は STEP1 プレースホルダ（Tailwind グラデ＝本番の世界観アートは後日ユーザーの craft）。
  * アイテムは正規化座標 realmX/Y で絶対配置し、ドラッグで移動→永続（codexStore.updatePlacement）。
  * 未配置のアイテムはマウント時に id 由来の擬似ランダム座標へ自動配置（＝コレットが置く）。
@@ -161,7 +161,7 @@ export default function RealmView() {
         {items.length === 0 && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 px-6 text-center">
             <p className="text-sm font-bold text-slate-500">まだ何もない世界…</p>
-            <p className="text-xs text-slate-500">妖精の窯でアイテムを作ると、ここに増えていくよ</p>
+            <p className="text-xs text-slate-500">図鑑からアイテムを召喚すると、ここに増えていくよ</p>
           </div>
         )}
       </div>

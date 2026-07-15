@@ -5,8 +5,8 @@
  *   非コーダーでも編集しやすいよう素のテキストで置くが、追記時は persona の口調
  *   （タメ口・語尾「〜だね/〜だよ」・絵文字なし）に揃える。
  *
- * いまは鑑定中（カメラのアイテム化待ち）だけ。STEP8 の合成（妖精の窯）でも
- * `synthesizing` を足せば同じ仕組み（GeneratingOverlay）で使い回せる。
+ * コンテキストは `searching`（召喚＝図鑑エントリ→アイテム化の待ち）と
+ * `synthesizing`（窯＝2アイテム合成の待ち）。どちらも GeneratingOverlay で使う。
  */
 
 export type WaitContext = 'searching' | 'synthesizing'

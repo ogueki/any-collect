@@ -13,7 +13,7 @@
 - React 19 + TypeScript + Vite + Tailwind CSS + Zustand
 - API層：Vercel Serverless Functions（`api/`）
 - バックエンド：Supabase（Postgres / Storage / 匿名認証）
-- AI：Gemini 2.5 Flash Image（**アルバム写真→透過アイテム**・1日1個ゲージ配給）/ Gemini（反応・会話・名前説明・記憶要約）/ **Fish Audio（音声＝稼働。カメラ＝動的TTS／ホーム＝事前収録パートボイス）**。会話は将来 Claude に切替可（`ChatProvider` 差し替え）
+- AI：Gemini 2.5 Flash Image（**召喚＝図鑑エントリのクロップ→透過アイテム**・まほうパワー配給／**窯＝2アイテム合成**）/ Gemini（反応・会話・名前説明・記憶要約）/ **Fish Audio（音声＝稼働。カメラ反応の自動読み上げ＋会話返信の🔊タップ＝動的TTS。ホームの事前収録パートボイスは STEP3b で後続）**。会話は将来 Claude に切替可（`ChatProvider` 差し替え）
 
 ## 開発コマンド
 - `npm run dev` … 開発サーバ
@@ -22,13 +22,13 @@
 
 ## ディレクトリ方針
 > 「現状」＝実在するもの、「将来/後続」＝対応STEPで追加予定（最終形の案は `spec.md §8`）。
-- `api/` … 外部API呼び出し（鍵を使う処理は必ずここ）。`describe-scene.ts`（景色ひとこと・図鑑に残さない）/ `identify.ts`（図鑑判定＝主役同定＋bbox・Seek型）/ `chat.ts`（会話・接地注入）/ `generate-item.ts`（図鑑エントリ→透過アイテム）/ `tts.ts`（Fish・稼働＝カメラ反応の動的読み上げ／声設定は `characters/<id>/voice.json`）/ `memory.ts`（会話要約→保存）＋ `_lib/`（persona/gemini/item-prompt/voice・ルート対象外）。
+- `api/` … 外部API呼び出し（鍵を使う処理は必ずここ）。`describe-scene.ts`（景色ひとこと・図鑑に残さない・現在導線なしの残置）/ `identify.ts`（図鑑判定＝主役同定＋bbox・Seek型）/ `chat.ts`（会話・接地注入）/ `generate-item.ts`（召喚＝図鑑エントリ→透過アイテム）/ `synthesize.ts`（窯＝2アイテム合成）/ `tts.ts`（Fish・稼働＝カメラ反応の動的読み上げ／声設定は `characters/<id>/voice.json`）/ `memory.ts`（会話→記憶ファクト抽出。保存はクライアント側）＋ `_lib/`（persona/gemini/gemini-image/fal-image/item-prompt/voice・ルート対象外）。
 - `src/features/<機能>/` … 機能単位。`camera/`（見せる・判定・図鑑収集＋アルバム保存）/ `home/` / `collection/`（図鑑＝実物のクロップ収集・Seek型）/ `album/`（思い出写真・旧 codex を置換）/ `kiln/`（妖精の窯＝2アイテム合成。図鑑→透過アイテムの召喚は `collection/` 側に移設）/ `realm/`（妖精界）/ `onboarding/`。妖精リアクションは表示層なので `src/lib/character/` 側。クロップは `src/lib/image/crop.ts`。
-- `src/lib/ai/` … AIプロバイダの抽象化（`ImageGenProvider`/`ChatProvider`/`SceneProvider`/`IdentifyProvider`/`TtsProvider`）
+- `src/lib/ai/` … AIプロバイダの抽象化（`ImageGenProvider`/`ChatProvider`/`SceneProvider`/`IdentifyProvider`/`TtsProvider`/`MemoryProvider`）
 - `src/lib/character/` … キャラ表示の抽象化（今は2Dスプライト、将来3D/Live2D差し替え）
-- `src/lib/storage/` … Repositoryパターン。`ItemRepository` ＋ 新規 `PhotoRepository`/`MemoryRepository`/`AffinityRepository`。**インターフェースを先に切って** IndexedDB（先行）↔ Supabase（後続）を同一抽象の裏に吸収。
-- `src/store/` … Zustand ストア（`appStore` / `chatStore` / `albumStore` / `gaugeStore` / `affinityStore` / `memoryStore`）。`src/components/` … モード横断の共有UI。`src/types/` … 共有型。
-- `src/characters/<id>/` … キャラ定義一式。デフォルト＝`colette`。`persona.md`（**好奇心旺盛・冒険好き・欲・決め台詞多め**）＋ `sprites/<感情>/*.webp`（感情フォルダ式・好感度 level-aware）＋ `voice.json`（音声設定・稼働）。
+- `src/lib/storage/` … Repositoryパターン。現状＝`ItemRepository`/`PhotoRepository`/`CollectionRepository`（IndexedDB 実装済）。記憶・好感度・まほうパワーは軽量値なので現状 localStorage ストア直（`MemoryRepository`/`AffinityRepository` は Supabase 移行＝STEP6 で切る）。**インターフェースを先に切って** IndexedDB（先行）↔ Supabase（後続）を同一抽象の裏に吸収。
+- `src/store/` … Zustand ストア（`appStore` / `chatStore` / `albumStore` / `collectionStore`（図鑑） / `codexStore`（生成アイテム） / `gaugeStore` / `affinityStore` / `memoryStore` / `gameStore`）。`src/components/` … モード横断の共有UI（`WorkingScreen`/`MenuSheet`/`icons` 等）。`src/types/` … 共有型。
+- `src/characters/<id>/` … キャラ定義一式。デフォルト＝`default`（コレット）。`persona.md`（**好奇心旺盛・冒険好き・欲・決め台詞多め**）＋ `sprites/<感情>/*.webp`（感情フォルダ式・好感度 level-aware）＋ `voice.json`（音声設定・稼働）。
   - **スプライト画像のルール**：本番素材は **WebP・最大1024px**。`sprites/` に png/jpg を追加したら **`npm run sprites:optimize` を実行してから commit**（`scripts/optimize-sprites.mjs` が WebP 化＝1枚~1MB→~120KB、冪等）。大きい元 png をそのままコミットしない。
 
 ## アーキテクチャ原則（重要）

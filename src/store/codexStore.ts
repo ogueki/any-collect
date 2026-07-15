@@ -16,7 +16,7 @@ interface CodexState {
   error: string | null
   /** 永続層から図鑑を読み込む（新しい順） */
   load: () => Promise<void>
-  /** 生成結果をアイテムとして保存する（窯＝図鑑エントリ→透過アイテム化）。由来の図鑑エントリ ID を紐づける。保存済み Item を返す */
+  /** 生成結果をアイテムとして保存する（召喚魔法＝図鑑エントリ→透過アイテム化）。由来の図鑑エントリ ID を紐づける。保存済み Item を返す */
   addFromGenerated: (generated: GeneratedItem, sourceCollectionId?: string) => Promise<Item>
   /** そのカテゴリの初取得かどうか（登録前に評価する。リアクション判定用） */
   isNewCategory: (category?: string) => boolean

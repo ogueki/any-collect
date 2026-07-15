@@ -47,7 +47,7 @@ function persist(value: number): void {
 interface GaugeState {
   /** 現在値 0..GAUGE_MAX */
   value: number
-  /** 満タンか（窯のアイテム化を解禁できる） */
+  /** 満タンか（図鑑からの召喚を解禁できる） */
   isFull: () => boolean
   /** まほうパワーを足す（クランプ＋永続）。安い行動から呼ぶ */
   add: (amount: number) => void

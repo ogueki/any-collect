@@ -6,7 +6,7 @@ import type { FairyExpression } from './CharacterRenderer'
  * マッピングはチューニング前提でここに集約する（屋外目視で値を詰める）。
  */
 
-/** 生成成功時（窯のアイテム化）のリアクション。新しいものが生まれた喜び＝わくわく。 */
+/** 生成成功時（召喚/合成のアイテム化）のリアクション。新しいものが生まれた喜び＝わくわく。 */
 export function emotionForGenerated(): FairyExpression {
   return 'excited'
 }

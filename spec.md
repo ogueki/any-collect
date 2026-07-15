@@ -105,7 +105,7 @@
 - **物理は固定タイムステップ**（`Matter.Engine.update` に常に 1000/60ms・フレーム飛びは複数ステップで追いつく）。可変 dt だと積んだ山が実機のドラッグ中に不安定化して勝手に崩れるため（`positionIterations:8/velocityIterations:6` も併用）。
 
 #### 4.7.2 フラッピー
-- 集めた**透過アイテムを主役**にした Flappy Bird 風。妖精界の「🕊️ とんで遊ぶ」から起動→**主役アイテムを1つ選ぶ**→タップではばたき、**妖精界トーンのパステルな柱**の隙間をくぐる。ソロのスコアアタック（くぐった数＝スコア・ベストは localStorage `anycollect.game.flappy.best`）。コレットが隅で応援（節目=excited／墜落=sad）。
+- 集めた**透過アイテムを主役**にした Flappy Bird 風。メニューの「とんで遊ぶ」から起動→**主役アイテムを1つ選ぶ**→タップではばたき、**妖精界トーンのパステルな柱**の隙間をくぐる。ソロのスコアアタック（くぐった数＝スコア・ベストは localStorage `anycollect.game.flappy.best`）。コレットが隅で応援（節目=excited／墜落=sad）。
 - **実装**：matter.js 不要の自前ループ（重力＋タップで上昇）。**固定タイムステップ**（タワーの教訓を最初から適用＝1000/60ms 固定・rAF の now だけで駆動）。`src/features/game/{flappyEngine.ts,FlappyGame.tsx}`＋`gameStore` に `flappyBest`。
 - **当たりは「見えている範囲」基準の矩形**＝`buildSpritePiece` の**アルファ凸包の外接矩形 × 0.92**（中心ズレも補正）。透過アイテムは画像の外周に透明な余白を持つので、描画寸法をそのまま使うと絵ごとに当たりがズレる（余白が多い絵は"何もない所で当たり"、少ない絵は"めり込んでも当たらない"）。
 - **難易度は一定**（本家同様、進行によるランプは持たない）。本家（288×512・地面より上 400px）の定数を**縦は空の高さ・横は画面幅で相似スケール**し、端末に依らず同じ密度にする。**柱の周期は px でなくステップ数で固定**（84 step＝1.4 秒＝本家と同じ）＝間隔を画面幅に比例させると PC の全画面で 6 秒に 1 本になり別ゲームになるため。主役の描画サイズは据え置き（＝アイテムは大きく見せたまま、隙間と当たりで難易度を作る）。
@@ -117,7 +117,7 @@
 ## 5. AI構成
 | 用途 | サービス | 備考 |
 |---|---|---|
-| アイテム化（アルバム写真→透過アイコン） | Gemini 2.5 Flash Image | 約 $0.04/枚＝¥7/回。**1日1個・ゲージ配給**で制御。`ART_STYLE_BLOCK` 共有 |
+| 召喚・合成（図鑑エントリのクロップ／アイテム2つ→透過アイコン） | Gemini 2.5 Flash Image | 約 $0.04/枚＝¥7/回。召喚は**まほうパワー配給（実質1日1個）**で制御。`ART_STYLE_BLOCK` 共有 |
 | 反応・会話・名前/説明・記憶要約 | **Gemini（初期）→ Claude（将来切替可）** | `ChatProvider`/`SceneProvider` 抽象。口調は persona.md で統一 |
 | 音声合成 | **Fish Audio**（保留解除・昇格） | $15/100万UTF-8バイト＝日本語 ¥0.007/字。カメラ＝動的／ホーム＝事前収録キャッシュ |
 
@@ -131,7 +131,7 @@
 - 全テーブルに **Row Level Security**。
 - テーブル（案）
   - `profiles`：匿名ユーザー設定（選択中キャラ、音声ON/OFF、好感度、opt-in 状態 等）
-  - `items`：`id, user_id, name, description, category, icon_url(透過), source_photo_id, created_at`（`category` は固定キー `food/creature/nature/gear/toy/wear/other`。**窯で生成した透過アイテム**＝妖精界に出現）
+  - `items`：`id, user_id, name, description, category, icon_url(透過), source_collection_id, created_at`（`category` は固定キー `food/creature/nature/gear/toy/wear/other`。**召喚/合成で生成した透過アイテム**＝妖精界に出現。※現行 `Item` 型の `sourcePhotoId` は旧「写真からアイテム化」の名残＝未使用）
   - `collection`（新）：`id, user_id, species_key, name, description, category, image_ref(クロップ), count, first_seen_at, last_seen_at`（**図鑑＝実物のクロップ収集**・種別デデュープ。既定ローカル、opt-in でクラウド）
   - `photos`（新）：`id, user_id, storage(local/cloud), url_or_ref, created_at, meta`（**アルバムの写真**。既定ローカル、opt-in でクラウド）
   - `memories`（新）：`id, user_id, kind(fact/episode), content, weight, created_at`（**会話要約＋構造化ファクト**。pgvector 列は後続で追加）
@@ -149,7 +149,7 @@
 
 ## 8. アーキテクチャ / 拡張性
 拡張・ネイティブ化を見据え、以下を**インターフェースで抽象化**する：
-- **AIプロバイダ**：`ImageGenProvider` / `ChatProvider` / `SceneProvider`（景色反応）/ `IdentifyProvider`（図鑑判定＝主役同定＋bbox）/ `TtsProvider`。
+- **AIプロバイダ**：`ImageGenProvider` / `ChatProvider` / `SceneProvider`（景色反応）/ `IdentifyProvider`（図鑑判定＝主役同定＋bbox）/ `TtsProvider` / `MemoryProvider`（記憶ファクト抽出）。
 - **キャラレンダラ**：`CharacterRenderer`（2Dスプライト、将来 Live2D/3D）。
 - **ストレージ**：Repository パターン（`ItemRepository` ＋ 新規 `PhotoRepository` / `MemoryRepository` / `AffinityRepository`。**インターフェースを先に切って** IndexedDB↔Supabase を吸収）。
 - **キャラクター定義**：`characters/<id>/`（persona・スプライト・voice）。
@@ -158,23 +158,27 @@
 ```
 any-collect/
   api/
-    describe-scene.ts   # Gemini: 景色ひとこと（図鑑に残さない）
+    describe-scene.ts   # Gemini: 景色ひとこと（図鑑に残さない・現在導線なしの残置）
     identify.ts         # Gemini: 図鑑判定（主役同定＋bbox・Seek型）
-    generate-item.ts    # Gemini: 図鑑エントリ→透過アイテム
+    generate-item.ts    # Gemini: 召喚＝図鑑エントリ→透過アイテム
+    synthesize.ts       # Gemini: 窯＝2アイテム合成
     chat.ts             # Gemini: 会話（接地注入）／将来 Claude
     tts.ts              # Fish Audio: 音声
-    memory.ts           # 会話要約→保存 等
-    _lib/               # persona/gemini/item-prompt 等
+    memory.ts           # 会話→記憶ファクト抽出（保存はクライアント側）
+    _lib/               # persona/gemini/gemini-image/fal-image/item-prompt/voice
   src/
-    features/{camera,home,collection,album,kiln,realm,onboarding}/
+    components/         # モード横断の共有UI（WorkingScreen/MenuSheet/GeneratingOverlay/icons）
+    features/{camera,home,collection,album,kiln,realm,game}/   # onboarding は STEP4 で追加予定
     lib/
-      ai/{imageProvider,chatProvider,sceneProvider,identifyProvider,ttsProvider}.ts
+      ai/{imageProvider,chatProvider,sceneProvider,identifyProvider,ttsProvider,memoryProvider}.ts
+      audio/useSpeak.ts # TTS 再生（永続 audio・MediaSource ストリーミング）
       character/{CharacterRenderer.ts,Sprite2DRenderer.tsx}
-      image/crop.ts     # bbox→クロップ（図鑑）
-      storage/{itemRepository,photoRepository,collectionRepository,memoryRepository,affinityRepository}.ts
-      supabase/client.ts
-    characters/colette/{persona.md,sprites/,voice.json}
-    store/    # gauge / affinity / memory / chat / app
+      image/{crop,chromaKey,alphaShape}.ts  # クロップ（図鑑）／透過化（召喚・合成）／凸包（ゲーム）
+      grounding.ts      # 図鑑・アルバム傾向→会話の接地ノート
+      storage/{itemRepository,photoRepository,collectionRepository}.ts  # memory/affinity の Repository は STEP6 で追加予定
+      supabase/client.ts  # STEP6 で追加予定
+    characters/default/{persona.md,sprites/,voice.json}   # デフォルト＝コレット
+    store/    # app / chat / album / collection / codex / gauge / affinity / memory / game
     styles/  types/
   public/
   .env.example

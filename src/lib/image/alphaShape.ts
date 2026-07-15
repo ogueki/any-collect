@@ -2,7 +2,7 @@
  * 透過スプライトのアルファチャンネルから物理エンジン用の凸包ポリゴンを作る（オマケ＝タワーバトル）。
  * 透過アイテムの「いびつな形」を当たり判定にそのまま使い、グラグラ積み上がる手触りを出すためのもの。
  *
- * iconUrl は窯のクロマキー処理で作った透過 PNG の data URL（IndexedDB ローカル＝canvas 安全・
+ * iconUrl は召喚/合成のクロマキー処理で作った透過 PNG の data URL（IndexedDB ローカル＝canvas 安全・
  * `chromaKey.ts` と同じ `loadImage`+`getImageData` 路線）なので getImageData が通る。
  * 凸包なので concave 分解ライブラリは不要（`Matter.Bodies.fromVertices` にそのまま渡せる）。
  * アルファが薄い/空などで頂点が採れないときは vertices=null を返す（呼び出し側は矩形にフォールバック）。
