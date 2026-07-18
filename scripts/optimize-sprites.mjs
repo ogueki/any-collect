@@ -1,10 +1,11 @@
-// スプライト画像を WebP（最大 1024px）へ最適化する。
+// スプライト/背景画像を WebP へ最適化する（スプライト＝最大 1024px／背景＝最大 1536px）。
 //
 // なぜ: ChatGPT 等で書き出した PNG は 1 枚 ~1MB と重く、スマホの初回ロード/decode が遅い。
-//      表示は大きくても画面サイズ程度なので、1024px・WebP に落とすと画質を保ったまま激減する。
+//      表示サイズに合わせて WebP に落とすと画質を保ったまま激減する。
+//      背景（ホーム全画面）はスプライトより大きく映るので上限を 1536px にしている。
 //
-// ルール: `src/characters/<id>/sprites/` に画像（png/jpg）を追加したら必ず
-//        `npm run sprites:optimize` を実行してから commit する（claude.md 参照）。
+// ルール: `src/characters/<id>/sprites/` または `backgrounds/` に画像（png/jpg）を追加したら
+//        必ず `npm run sprites:optimize` を実行してから commit する（claude.md 参照）。
 //        既に webp のものは対象外なので、何度実行しても安全（冪等）。
 
 import { readdir, rm, stat } from 'node:fs/promises'
@@ -14,6 +15,7 @@ import sharp from 'sharp'
 
 const CHARACTERS_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'characters')
 const MAX_DIMENSION = 1024
+const MAX_BACKGROUND_DIMENSION = 1536
 const WEBP_QUALITY = 85
 // 最適化対象（webp は既に最適化済みなので対象外）。
 const SOURCE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg'])
@@ -32,14 +34,16 @@ let savedBytes = 0
 
 for await (const file of walk(CHARACTERS_DIR)) {
   const normalized = file.replaceAll('\\', '/')
-  if (!normalized.includes('/sprites/')) continue // sprites 配下のみ
+  const isBackground = normalized.includes('/backgrounds/')
+  if (!normalized.includes('/sprites/') && !isBackground) continue // sprites / backgrounds 配下のみ
   if (!SOURCE_EXTENSIONS.has(extname(file).toLowerCase())) continue
 
+  const max = isBackground ? MAX_BACKGROUND_DIMENSION : MAX_DIMENSION
   const out = join(dirname(file), `${basename(file, extname(file))}.webp`)
   const before = (await stat(file)).size
   const info = await sharp(file)
-    // 長辺 1024px 以内に収める（小さい画像は拡大しない）。透過は WebP がそのまま保持。
-    .resize({ width: MAX_DIMENSION, height: MAX_DIMENSION, fit: 'inside', withoutEnlargement: true })
+    // 長辺を上限以内に収める（小さい画像は拡大しない）。透過は WebP がそのまま保持。
+    .resize({ width: max, height: max, fit: 'inside', withoutEnlargement: true })
     .webp({ quality: WEBP_QUALITY })
     .toFile(out)
   await rm(file) // 元の png/jpg は削除（webp に置き換え）
@@ -47,7 +51,7 @@ for await (const file of walk(CHARACTERS_DIR)) {
   converted++
   savedBytes += before - info.size
   console.log(
-    `✓ ${normalized.split('/sprites/')[1]} → ${basename(out)}  ` +
+    `✓ ${normalized.split('/characters/')[1]} → ${basename(out)}  ` +
       `${(before / 1024).toFixed(0)}KB → ${(info.size / 1024).toFixed(0)}KB`,
   )
 }
