@@ -189,10 +189,13 @@ export default function HomeMode() {
           </p>
         )}
 
-        {/* ヒーロー：直前の発話（薄く）＋コレットの大セリフ＋立ち絵。
-            justify-end＋固定 pb＝インタラクション帯（セリフ→立ち絵→ボタン→入力）を下部に一定間隔で束ね、
-            端末の縦差は全部「上の景色」に逃がす（端末ごとに間延びしない・pb-12 が間隔の調整ノブ）。 */}
-        <div className="flex min-h-0 w-full max-w-xs flex-1 flex-col items-center justify-end pb-12">
+        {/* 景色スペーサー：端末の縦差を"ここ（上の空／天井）だけ"が吸う。
+            下のインタラクション帯（大セリフ→立ち絵→ボタン→入力）は shrink-0 で底に固定し、
+            画面が高くても低くても同じ見た目・同じ操作位置に保つ（キャラ系アプリの定石）。 */}
+        <div className="min-h-2 w-full flex-1" />
+
+        {/* ヒーロー：直前の発話（薄く）＋コレットの大セリフ＋立ち絵。高さ固定の下部クラスタ。 */}
+        <div className="flex w-full max-w-xs shrink-0 flex-col items-center">
           {prevUser && (
             <div className="mb-1.5 max-w-[80%] shrink-0 self-end truncate rounded-2xl rounded-br-sm bg-lavender/50 px-3 py-1 text-xs font-bold text-white">
               {prevUser.content}
@@ -201,15 +204,15 @@ export default function HomeMode() {
           {/* 大セリフ＝縁が溶けるスクリム（枠なし見え・実機FB 2026-07-19）。
               文字の周りだけ白がふわっと滲み、端はフェザーで背景に溶ける。
               マスク非対応環境では自動で角丸の半透過カードに落ちる（rounded/bg はその保険）。
-              min-h-0＋内側 overflow-y-auto＝長文の返事はヒーロー枠に収まる高さで頭打ちにして
-              中でスクロール（立ち絵・ボタン・入力欄を侵食しない＝1画面固定の維持）。 */}
-          <div className="relative flex min-h-0 w-full flex-col">
+              max-h＋overflow-y-auto＝長文の返事は一定の高さで頭打ちにして中でスクロール
+              （高さを固定＝端末が変わってもクラスタ全体の見た目が動かない）。 */}
+          <div className="relative flex w-full flex-col">
             <div
               aria-hidden
               className="absolute -inset-3 rounded-3xl bg-white/55 backdrop-blur-md"
               style={{ maskImage: SCRIM_MASK, WebkitMaskImage: SCRIM_MASK }}
             />
-            <div className="relative min-h-0 overflow-y-auto px-5 py-4">
+            <div className="relative max-h-40 overflow-y-auto px-5 py-4">
               {sending || (opening && !heroFairy) ? (
                 <span className="flex justify-center gap-1.5 py-1">
                   {[0, 150, 300].map((d) => (
@@ -235,16 +238,13 @@ export default function HomeMode() {
             </div>
           </div>
 
-          {/* shrink-0＝吹き出しが長くても立ち絵は潰さない（縮むのは吹き出し側） */}
-          <div className="shrink-0">
-            <Sprite2DRenderer
-              characterId={characterId}
-              expression={expression}
-              size="lg"
-              animateKey={animateKey}
-              level={affinityLevel}
-            />
-          </div>
+          <Sprite2DRenderer
+            characterId={characterId}
+            expression={expression}
+            size="lg"
+            animateKey={animateKey}
+            level={affinityLevel}
+          />
         </div>
 
         {/* 入口：図鑑・妖精界・メニュー（カメラは上の切替に昇格） */}
