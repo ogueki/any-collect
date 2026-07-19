@@ -17,7 +17,8 @@ export default function App() {
   const closeGame = useAppStore((s) => s.closeGame)
 
   return (
-    <div className="relative h-full overflow-hidden">
+    // max-w-md＋中央寄せ＝タブレット/PC でも SP レイアウトのまま表示（iPad 専用レイアウトは作らない・2026-07-19）
+    <div className="relative mx-auto h-full max-w-md overflow-hidden">
       {screen === 'home' && <HomeMode />}
       {screen === 'camera' && <CameraMode />}
       {screen === 'collection' && (

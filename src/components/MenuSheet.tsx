@@ -22,7 +22,7 @@ export default function MenuSheet() {
       <div
         role="dialog"
         aria-label="メニュー"
-        className={`fixed inset-x-0 bottom-0 z-50 rounded-t-3xl bg-white px-4 pb-7 pt-3 shadow-pop transition-transform duration-300 ${
+        className={`fixed inset-x-0 bottom-0 z-50 mx-auto max-w-md rounded-t-3xl bg-white px-4 pb-7 pt-3 shadow-pop transition-transform duration-300 ${
           open ? 'translate-y-0' : 'translate-y-full'
         }`}
       >

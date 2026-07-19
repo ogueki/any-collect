@@ -189,8 +189,10 @@ export default function HomeMode() {
           </p>
         )}
 
-        {/* ヒーロー：直前の発話（薄く）＋コレットの大セリフ＋立ち絵。残り高さの中央に置く。 */}
-        <div className="flex min-h-0 w-full max-w-xs flex-1 flex-col items-center justify-center">
+        {/* ヒーロー：直前の発話（薄く）＋コレットの大セリフ＋立ち絵。
+            justify-end＋固定 pb＝インタラクション帯（セリフ→立ち絵→ボタン→入力）を下部に一定間隔で束ね、
+            端末の縦差は全部「上の景色」に逃がす（端末ごとに間延びしない・pb-12 が間隔の調整ノブ）。 */}
+        <div className="flex min-h-0 w-full max-w-xs flex-1 flex-col items-center justify-end pb-12">
           {prevUser && (
             <div className="mb-1.5 max-w-[80%] shrink-0 self-end truncate rounded-2xl rounded-br-sm bg-lavender/50 px-3 py-1 text-xs font-bold text-white">
               {prevUser.content}
