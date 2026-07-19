@@ -12,6 +12,21 @@ body,
   height: 100%;
 }
 
+/* 画面の高さに合わせて UI 全体を同じ比率でズーム（引き伸ばしでなく拡大＝歪まない）。
+   Tailwind のサイズは rem 基準なので、ルート font-size を上げるだけで全要素が一括で拡大し、
+   縦に長い画面の「間の抜けた空白」を、コレット・文字・ボタンが大きくなって埋める。
+   ・下限 16px … 短い画面は現状デザインのまま＋iOS の input(16px 未満で自動ズーム)回避
+   ・上限 20px … 大画面で巨大化させない
+   ・基準は dvh（実表示高）。除数 46 は「〜750px で 16px」になるよう調整（14 Pro 等の実測起点）。 */
+html {
+  font-size: clamp(16px, calc(100dvh / 46), 20px);
+}
+@supports not (height: 100dvh) {
+  html {
+    font-size: clamp(16px, calc(100vh / 46), 20px);
+  }
+}
+
 /* iOS Safari：アドレスバーの伸縮で 100% が揺れる→実際の表示高（dvh）に追従させる。
    ホームは1画面固定（スクロールなし）前提。 */
 @supports (height: 100dvh) {
