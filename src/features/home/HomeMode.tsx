@@ -189,13 +189,11 @@ export default function HomeMode() {
           </p>
         )}
 
-        {/* 景色スペーサー：端末の縦差を"ここ（上の空／天井）だけ"が吸う。
-            下のインタラクション帯（大セリフ→立ち絵→ボタン→入力）は shrink-0 で底に固定し、
-            画面が高くても低くても同じ見た目・同じ操作位置に保つ（キャラ系アプリの定石）。 */}
-        <div className="min-h-2 w-full flex-1" />
-
-        {/* ヒーロー：直前の発話（薄く）＋コレットの大セリフ＋立ち絵。高さ固定の下部クラスタ。 */}
-        <div className="flex w-full max-w-xs shrink-0 flex-col items-center">
+        {/* ヒーロー：直前の発話（薄く）＋コレットの大セリフ＋立ち絵。
+            flex-1＋justify-center＝HUD とボタンの間の余りを上下"均等"に割る（片寄せの帯を作らない）。
+            画面高ズーム（index.css の html font-size）で余り総量を抑えているので、割った各余白は小さい。
+            結果：コレットが中央で「部屋に立つ」構図・上下に薄い余白＝1つの大きな空白帯を消す。 */}
+        <div className="flex min-h-0 w-full max-w-xs flex-1 flex-col items-center justify-center">
           {prevUser && (
             <div className="mb-1.5 max-w-[80%] shrink-0 self-end truncate rounded-2xl rounded-br-sm bg-lavender/50 px-3 py-1 text-xs font-bold text-white">
               {prevUser.content}
