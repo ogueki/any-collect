@@ -28,6 +28,9 @@ import ChatPanel from './ChatPanel'
  * 下部の入口＝図鑑・妖精界・メニュー、左上でカメラへ切替。会話ログは控えめ（ChatPanel 側で折りたたみ）。
  */
 
+/** 大セリフのスクリムのフェザーマスク（中心は不透明・78%で完全に背景へ溶ける）。 */
+const SCRIM_MASK = 'radial-gradient(ellipse at center, black 45%, transparent 78%)'
+
 /** 記憶ファクトから「呼び名」を拾う（あれば挨拶で名前を呼ぶ）。 */
 const NAME_KEY = /呼び名|名前|なまえ|ニックネーム/
 function nameFromFacts(facts: MemoryFact[]): string | null {
@@ -193,35 +196,42 @@ export default function HomeMode() {
               {prevUser.content}
             </div>
           )}
-          {/* 半透過＋blur＝背景の部屋が透ける（実機フィードバック 2026-07-19）。
-              min-h-0＋overflow-y-auto＝長文の返事はヒーロー枠に収まる高さで頭打ちにして
-              吹き出しの中でスクロール（立ち絵・ボタン・入力欄を侵食しない＝1画面固定の維持）。 */}
-          <div className="relative min-h-0 w-full overflow-y-auto rounded-3xl bg-white/45 px-5 py-4 shadow-pop backdrop-blur-md">
-            {sending || (opening && !heroFairy) ? (
-              <span className="flex justify-center gap-1.5 py-1">
-                {[0, 150, 300].map((d) => (
-                  <span
-                    key={d}
-                    className="h-2 w-2 animate-bounce rounded-full bg-slate-300"
-                    style={{ animationDelay: `${d}ms` }}
-                  />
-                ))}
-              </span>
-            ) : heroFairy ? (
-              <p className="text-lg font-bold leading-relaxed text-slate-700">{heroFairy.content}</p>
-            ) : (
-              /* 第一声（openConversation）が失敗したときだけ出る固定挨拶フォールバック */
-              <p className="text-lg font-bold leading-relaxed text-slate-700">
-                {name && <span className="text-violet-500">{name}</span>}
-                {name ? '、おかえりっ！' : 'おかえりっ！'}{' '}
-                {gaugeFull
-                  ? 'まほうパワー満タンだよ。ずかんの子、召喚してみない？'
-                  : 'きょうは何を見つけた？'}
-              </p>
-            )}
+          {/* 大セリフ＝縁が溶けるスクリム（枠なし見え・実機FB 2026-07-19）。
+              文字の周りだけ白がふわっと滲み、端はフェザーで背景に溶ける。
+              マスク非対応環境では自動で角丸の半透過カードに落ちる（rounded/bg はその保険）。
+              min-h-0＋内側 overflow-y-auto＝長文の返事はヒーロー枠に収まる高さで頭打ちにして
+              中でスクロール（立ち絵・ボタン・入力欄を侵食しない＝1画面固定の維持）。 */}
+          <div className="relative flex min-h-0 w-full flex-col">
+            <div
+              aria-hidden
+              className="absolute -inset-3 rounded-3xl bg-white/55 backdrop-blur-md"
+              style={{ maskImage: SCRIM_MASK, WebkitMaskImage: SCRIM_MASK }}
+            />
+            <div className="relative min-h-0 overflow-y-auto px-5 py-4">
+              {sending || (opening && !heroFairy) ? (
+                <span className="flex justify-center gap-1.5 py-1">
+                  {[0, 150, 300].map((d) => (
+                    <span
+                      key={d}
+                      className="h-2 w-2 animate-bounce rounded-full bg-slate-300"
+                      style={{ animationDelay: `${d}ms` }}
+                    />
+                  ))}
+                </span>
+              ) : heroFairy ? (
+                <p className="text-lg font-bold leading-relaxed text-slate-700">{heroFairy.content}</p>
+              ) : (
+                /* 第一声（openConversation）が失敗したときだけ出る固定挨拶フォールバック */
+                <p className="text-lg font-bold leading-relaxed text-slate-700">
+                  {name && <span className="text-violet-500">{name}</span>}
+                  {name ? '、おかえりっ！' : 'おかえりっ！'}{' '}
+                  {gaugeFull
+                    ? 'まほうパワー満タンだよ。ずかんの子、召喚してみない？'
+                    : 'きょうは何を見つけた？'}
+                </p>
+              )}
+            </div>
           </div>
-          {/* 吹き出しのしっぽ */}
-          <div className="h-0 w-0 shrink-0 border-x-8 border-t-8 border-x-transparent border-t-white/45" />
 
           {/* shrink-0＝吹き出しが長くても立ち絵は潰さない（縮むのは吹き出し側） */}
           <div className="shrink-0">
