@@ -189,12 +189,14 @@ export default function HomeMode() {
         {/* ヒーロー：直前の発話（薄く）＋コレットの大セリフ＋立ち絵。残り高さの中央に置く。 */}
         <div className="flex min-h-0 w-full max-w-xs flex-1 flex-col items-center justify-center">
           {prevUser && (
-            <div className="mb-1.5 max-w-[80%] self-end truncate rounded-2xl rounded-br-sm bg-lavender/50 px-3 py-1 text-xs font-bold text-white">
+            <div className="mb-1.5 max-w-[80%] shrink-0 self-end truncate rounded-2xl rounded-br-sm bg-lavender/50 px-3 py-1 text-xs font-bold text-white">
               {prevUser.content}
             </div>
           )}
-          {/* 半透過＋blur＝背景の部屋が透ける（実機フィードバック 2026-07-19） */}
-          <div className="relative w-full rounded-3xl bg-white/75 px-5 py-4 shadow-pop backdrop-blur-sm">
+          {/* 半透過＋blur＝背景の部屋が透ける（実機フィードバック 2026-07-19）。
+              min-h-0＋overflow-y-auto＝長文の返事はヒーロー枠に収まる高さで頭打ちにして
+              吹き出しの中でスクロール（立ち絵・ボタン・入力欄を侵食しない＝1画面固定の維持）。 */}
+          <div className="relative min-h-0 w-full overflow-y-auto rounded-3xl bg-white/75 px-5 py-4 shadow-pop backdrop-blur-sm">
             {sending || (opening && !heroFairy) ? (
               <span className="flex justify-center gap-1.5 py-1">
                 {[0, 150, 300].map((d) => (
@@ -219,15 +221,18 @@ export default function HomeMode() {
             )}
           </div>
           {/* 吹き出しのしっぽ */}
-          <div className="h-0 w-0 border-x-8 border-t-8 border-x-transparent border-t-white/75" />
+          <div className="h-0 w-0 shrink-0 border-x-8 border-t-8 border-x-transparent border-t-white/75" />
 
-          <Sprite2DRenderer
-            characterId={characterId}
-            expression={expression}
-            size="lg"
-            animateKey={animateKey}
-            level={affinityLevel}
-          />
+          {/* shrink-0＝吹き出しが長くても立ち絵は潰さない（縮むのは吹き出し側） */}
+          <div className="shrink-0">
+            <Sprite2DRenderer
+              characterId={characterId}
+              expression={expression}
+              size="lg"
+              animateKey={animateKey}
+              level={affinityLevel}
+            />
+          </div>
         </div>
 
         {/* 入口：図鑑・妖精界・メニュー（カメラは上の切替に昇格） */}
