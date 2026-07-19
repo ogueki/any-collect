@@ -196,7 +196,7 @@ export default function HomeMode() {
           {/* 半透過＋blur＝背景の部屋が透ける（実機フィードバック 2026-07-19）。
               min-h-0＋overflow-y-auto＝長文の返事はヒーロー枠に収まる高さで頭打ちにして
               吹き出しの中でスクロール（立ち絵・ボタン・入力欄を侵食しない＝1画面固定の維持）。 */}
-          <div className="relative min-h-0 w-full overflow-y-auto rounded-3xl bg-white/60 px-5 py-4 shadow-pop backdrop-blur">
+          <div className="relative min-h-0 w-full overflow-y-auto rounded-3xl bg-white/45 px-5 py-4 shadow-pop backdrop-blur-md">
             {sending || (opening && !heroFairy) ? (
               <span className="flex justify-center gap-1.5 py-1">
                 {[0, 150, 300].map((d) => (
@@ -221,7 +221,7 @@ export default function HomeMode() {
             )}
           </div>
           {/* 吹き出しのしっぽ */}
-          <div className="h-0 w-0 shrink-0 border-x-8 border-t-8 border-x-transparent border-t-white/60" />
+          <div className="h-0 w-0 shrink-0 border-x-8 border-t-8 border-x-transparent border-t-white/45" />
 
           {/* shrink-0＝吹き出しが長くても立ち絵は潰さない（縮むのは吹き出し側） */}
           <div className="shrink-0">
