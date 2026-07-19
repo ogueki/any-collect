@@ -12,6 +12,15 @@ body,
   height: 100%;
 }
 
+/* iOS Safari：アドレスバーの伸縮で 100% が揺れる→実際の表示高（dvh）に追従させる。
+   ホームは1画面固定（スクロールなし）前提。 */
+@supports (height: 100dvh) {
+  body,
+  #root {
+    height: 100dvh;
+  }
+}
+
 body {
   margin: 0;
   font-family: theme('fontFamily.sans');
@@ -19,4 +28,6 @@ body {
   /* ポップでやわらかい背景グラデーション */
   background: linear-gradient(160deg, #fdf4ff 0%, #eef2ff 45%, #ecfdf5 100%);
   -webkit-font-smoothing: antialiased;
+  /* 端でのゴム引きスクロール（ページ全体が動いて見える）を抑止 */
+  overscroll-behavior-y: none;
 }

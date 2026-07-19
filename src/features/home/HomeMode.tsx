@@ -110,7 +110,8 @@ export default function HomeMode() {
           style={{ backgroundImage: `url(${backgroundUrl})` }}
         />
       )}
-      <div className="relative flex h-full flex-col items-center gap-4 overflow-y-auto px-6 py-6 text-center">
+      {/* 1画面固定（スクロールなし）。縦に伸びる要素（会話ログ・記憶）は ChatPanel のシートへ。 */}
+      <div className="relative flex h-full flex-col items-center gap-3 px-6 pb-4 pt-5 text-center">
         {/* 上段：カメラへ切替（左）＋声（右）。位置は作業画面と揃える。 */}
         <div className="flex w-full max-w-xs shrink-0 items-center justify-between">
           <button
@@ -136,7 +137,7 @@ export default function HomeMode() {
 
         {/* 状態を一本バーに：なつき（左）＋まほうパワー（右）。
             TODO(verify): なつき＝タップでLv循環／まほうパワー＝タップで満タン。リリース前に外す。 */}
-        <div className="flex w-full max-w-xs shrink-0 items-center gap-3 rounded-2xl bg-white px-3.5 py-2.5 shadow-pop">
+        <div className="flex w-full max-w-xs shrink-0 items-center gap-3 rounded-2xl bg-white/80 px-3.5 py-2.5 shadow-pop backdrop-blur-sm">
           <button
             type="button"
             onClick={() => (affinityLevel >= MAX_LEVEL ? resetAffinity() : bumpAffinity())}
@@ -185,14 +186,15 @@ export default function HomeMode() {
           </p>
         )}
 
-        {/* ヒーロー：直前の発話（薄く）＋コレットの大セリフ＋立ち絵 */}
-        <div className="flex w-full max-w-xs shrink-0 flex-col items-center">
+        {/* ヒーロー：直前の発話（薄く）＋コレットの大セリフ＋立ち絵。残り高さの中央に置く。 */}
+        <div className="flex min-h-0 w-full max-w-xs flex-1 flex-col items-center justify-center">
           {prevUser && (
             <div className="mb-1.5 max-w-[80%] self-end truncate rounded-2xl rounded-br-sm bg-lavender/50 px-3 py-1 text-xs font-bold text-white">
               {prevUser.content}
             </div>
           )}
-          <div className="relative w-full rounded-3xl bg-white px-5 py-4 shadow-pop">
+          {/* 半透過＋blur＝背景の部屋が透ける（実機フィードバック 2026-07-19） */}
+          <div className="relative w-full rounded-3xl bg-white/75 px-5 py-4 shadow-pop backdrop-blur-sm">
             {sending || (opening && !heroFairy) ? (
               <span className="flex justify-center gap-1.5 py-1">
                 {[0, 150, 300].map((d) => (
@@ -217,7 +219,7 @@ export default function HomeMode() {
             )}
           </div>
           {/* 吹き出しのしっぽ */}
-          <div className="h-0 w-0 border-x-8 border-t-8 border-x-transparent border-t-white" />
+          <div className="h-0 w-0 border-x-8 border-t-8 border-x-transparent border-t-white/75" />
 
           <Sprite2DRenderer
             characterId={characterId}
