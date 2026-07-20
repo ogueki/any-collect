@@ -8,7 +8,7 @@ import { useFairyReaction } from '../../lib/character/useFairyReaction'
 import { createFlappyGame, type FlappyGameHandle, type FlappyItem } from './flappyEngine'
 
 /**
- * オマケ②：集めた透過アイテムでフラッピー風。妖精界から起動するフルスクリーン overlay。
+ * オマケ②：集めた透過アイテムでフラッピー風。メニューから起動するフルスクリーン overlay。
  * まず主役アイテムを選び、タップではばたいて妖精界トーンの柱の隙間をくぐる。ソロのスコアアタック
  * （ベストは localStorage）。物理と描画は `flappyEngine`（固定タイムステップ）に委譲。
  */
@@ -30,7 +30,7 @@ export default function FlappyGame({ onClose }: { onClose: () => void }) {
   const [result, setResult] = useState<number | null>(null)
   const [isNewBest, setIsNewBest] = useState(false)
 
-  // 起動時に図鑑（アイテム）を読み込む（妖精界と同じ遅延ロード idiom）。
+  // 起動時に図鑑（アイテム）を読み込む（たからばこと同じ遅延ロード idiom）。
   useEffect(() => {
     void load()
   }, [load])

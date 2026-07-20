@@ -6,7 +6,7 @@ import MenuSheet from './components/MenuSheet'
 import CollectionView from './features/collection/CollectionView'
 import AlbumView from './features/album/AlbumView'
 import KilnView from './features/kiln/KilnView'
-import RealmView from './features/realm/RealmView'
+import TreasureBoxView from './features/treasure/TreasureBoxView'
 import TowerGame from './features/game/TowerGame'
 import FlappyGame from './features/game/FlappyGame'
 
@@ -33,12 +33,12 @@ export default function App() {
       )}
       {screen === 'kiln' && (
         <WorkingScreen title="妖精の窯">
-          <KilnView onGoRealm={() => go('realm')} />
+          <KilnView onGoTreasure={() => go('treasure')} />
         </WorkingScreen>
       )}
-      {screen === 'realm' && (
-        <WorkingScreen title="妖精界">
-          <RealmView />
+      {screen === 'treasure' && (
+        <WorkingScreen title="たからばこ">
+          <TreasureBoxView />
         </WorkingScreen>
       )}
 

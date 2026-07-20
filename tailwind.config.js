@@ -48,6 +48,18 @@ export default {
           '60%': { opacity: '1', transform: 'scale(1.03) translateY(0)' },
           '100%': { opacity: '1', transform: 'scale(1) translateY(0)' },
         },
+        // たからばこの中でアイテムがゆっくり漂う（周期/位相はアイテムごとにインラインで散らす）。
+        drift: {
+          '0%, 100%': { transform: 'translate(0, 0) rotate(0deg)' },
+          '25%': { transform: 'translate(5px, -7px) rotate(2deg)' },
+          '50%': { transform: 'translate(0, -11px) rotate(0deg)' },
+          '75%': { transform: 'translate(-5px, -6px) rotate(-2deg)' },
+        },
+        // たからばこの星屑のまたたき。
+        twinkle: {
+          '0%, 100%': { opacity: '0.25' },
+          '50%': { opacity: '0.9' },
+        },
         // 撮影で貯まった「＋まほうパワー / なつき」がふわっと上がって消える。
         rise: {
           '0%': { opacity: '0', transform: 'translateY(8px) scale(0.9)' },
@@ -63,6 +75,9 @@ export default {
         droop: 'droop 0.5s ease-out 1 forwards',
         reveal: 'reveal 0.5s ease-out 1',
         rise: 'rise 1.4s ease-out 1 forwards',
+        // 秒数はインライン style で上書きする前提のデフォルト。
+        drift: 'drift 8s ease-in-out infinite',
+        twinkle: 'twinkle 3s ease-in-out infinite',
       },
     },
   },

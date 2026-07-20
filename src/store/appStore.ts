@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 
-/** トップレベルの画面。ホーム⇄カメラが主軸、図鑑/妖精界は入口、アルバム/窯はメニュー経由。 */
-export type Screen = 'home' | 'camera' | 'collection' | 'album' | 'kiln' | 'realm'
+/** トップレベルの画面。ホーム⇄カメラが主軸、図鑑/たからばこは入口、アルバム/窯はメニュー経由。 */
+export type Screen = 'home' | 'camera' | 'collection' | 'album' | 'kiln' | 'treasure'
 /** 全画面オーバーレイで起動するオマケゲーム（メニューから）。 */
 export type Game = 'tower' | 'flappy' | null
 

@@ -22,7 +22,7 @@ interface CodexState {
   isNewCategory: (category?: string) => boolean
   /** 合成結果を図鑑に登録し、系譜を記録する。素材は消費しない。保存済み Item を返す */
   addFromSynthesis: (generated: GeneratedItem, parentAId: string, parentBId: string) => Promise<Item>
-  /** 妖精界での配置（正規化座標 0..1）を更新して永続化する（ドラッグ移動・自動配置） */
+  /** たからばこでの配置（正規化座標 0..1）を更新して永続化する（ドラッグ移動・自動配置） */
   updatePlacement: (id: string, realmX: number, realmY: number) => Promise<void>
   /** アイテムを削除する */
   remove: (id: string) => Promise<void>
@@ -46,7 +46,7 @@ export const useCodexStore = create<CodexState>((set, get) => ({
 
   addFromGenerated: async (generated, sourceCollectionId) => {
     // GeneratedItem(imageUrl) → Item(iconUrl) へマッピングして永続化する。
-    // realmX/Y は未設定＝妖精界（RealmView）がマウント時に自動配置する。
+    // realmX/Y は未設定＝たからばこ（TreasureBoxView）がマウント時に自動配置する。
     const saved = await itemRepository.add({
       name: generated.name,
       description: generated.description,

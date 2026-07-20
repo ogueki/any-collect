@@ -7,7 +7,7 @@ import { CATEGORY_ORDER } from '../lib/category'
 /**
  * 図鑑（Seek 型・実物クロップの収集）の状態。永続化は `collectionRepository` 越し
  * （albumStore に倣う）。同種は speciesKey でまとめ、発見回数を積む（デデュープ）。
- * 図鑑は「召喚魔法（アイテム化）の入口」でもあり、集めた実物が妖精界アイテムの素になる。
+ * 図鑑は「召喚魔法（アイテム化）の入口」でもあり、集めた実物がたからばこのアイテムの素になる。
  */
 
 export type CollectionStatus = 'idle' | 'loading' | 'error'

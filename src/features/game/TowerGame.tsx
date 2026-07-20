@@ -14,7 +14,7 @@ import {
 } from './towerEngine'
 
 /**
- * オマケ：アイテムでタワーバトル。妖精界から起動するフルスクリーン overlay。
+ * オマケ：アイテムでタワーバトル。メニューから起動するフルスクリーン overlay。
  * 集めた透過アイテムをドラッグで狙って落とし、物理でグラグラ積む。
  * モード＝**ソロ**（積めた数を競う・ベストは localStorage）／**VSコレット**（交互ターンで
  * 先に台から落とした側が負け）。物理と描画は `towerEngine`（matter.js 遅延ロード）に委譲。
@@ -40,7 +40,7 @@ export default function TowerGame({ onClose }: { onClose: () => void }) {
   const [result, setResult] = useState<TowerResult | null>(null)
   const [isNewBest, setIsNewBest] = useState(false)
 
-  // 起動時に図鑑（アイテム）を読み込む（妖精界と同じ遅延ロード idiom）。
+  // 起動時に図鑑（アイテム）を読み込む（たからばこと同じ遅延ロード idiom）。
   useEffect(() => {
     void load()
   }, [load])

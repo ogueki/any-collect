@@ -15,22 +15,22 @@ import type { Item } from '../../types'
  * 妖精の窯（新IA・レイアウト再構成 ③）＝**2つのアイテムを混ぜて合成**する場所（メニュー内）。
  * 図鑑エントリ→透過アイテム化（召喚魔法）は図鑑（CollectionView）へ移したので、
  * 窯は名実一致で「合成」に戻す（残置していた synthesize 系を復活）。
- * 素材は消費しない（何度でも合成の素になれる）。合成結果は妖精界のアイテムになる。
+ * 素材は消費しない（何度でも合成の素になれる）。合成結果はたからばこに入るアイテムになる。
  */
 
 interface KilnViewProps {
-  /** 合成後に妖精界へ飛ぶ（App が渡す。未指定なら「つづける」のみ） */
-  onGoRealm?: () => void
+  /** 合成後にたからばこへ飛ぶ（App が渡す。未指定なら「つづける」のみ） */
+  onGoTreasure?: () => void
 }
 
 type KilnPhase = 'select' | 'generating' | 'result' | 'saved'
 
-/** 結果プレビューの背景＝妖精界を思わせるやわらかいパステル地（透過アイテムが映える・召喚と共通）。 */
+/** 結果プレビューの背景＝やわらかいパステル地（透過アイテムが映える・召喚と共通）。 */
 const PREVIEW_BG_STYLE: React.CSSProperties = {
   background: 'linear-gradient(to bottom, #dbeafe 0%, #ede9fe 45%, #d1fae5 100%)',
 }
 
-export default function KilnView({ onGoRealm }: KilnViewProps) {
+export default function KilnView({ onGoTreasure }: KilnViewProps) {
   const characterId = useAppStore((s) => s.characterId)
   const items = useCodexStore((s) => s.items)
   const load = useCodexStore((s) => s.load)
@@ -111,7 +111,7 @@ export default function KilnView({ onGoRealm }: KilnViewProps) {
       setPhase('saved')
       fire(emotionForConfirm(isNew))
     } catch (err) {
-      setError(err instanceof Error ? err.message : '妖精界への登録に失敗しました')
+      setError(err instanceof Error ? err.message : 'たからばこへの登録に失敗しました')
     } finally {
       setSaving(false)
     }
@@ -231,7 +231,7 @@ export default function KilnView({ onGoRealm }: KilnViewProps) {
             disabled={saving}
             className="rounded-full bg-mint px-8 py-2.5 font-bold text-slate-900 shadow-pop transition active:scale-95 disabled:opacity-50"
           >
-            {saving ? '登録中…' : '妖精界にしまう'}
+            {saving ? '登録中…' : 'たからばこにしまう'}
           </button>
           <div className="flex items-center gap-3">
             <button
@@ -254,24 +254,24 @@ export default function KilnView({ onGoRealm }: KilnViewProps) {
         </div>
       )}
 
-      {/* 保存後：妖精界へ誘導 */}
+      {/* 保存後：たからばこへ誘導 */}
       {phase === 'saved' && (
         <div className="flex flex-col items-center gap-3 py-6 text-center">
           <p className="flex items-center gap-1.5 text-sm font-bold text-slate-600">
             <SparkleIcon className="h-4 w-4 text-mint" />
-            妖精界にあらわれたよ
+            たからばこに増えたよ
           </p>
           <div className="flex items-center gap-3">
-            {onGoRealm && (
+            {onGoTreasure && (
               <button
                 type="button"
                 onClick={() => {
                   resetToSelect()
-                  onGoRealm()
+                  onGoTreasure()
                 }}
                 className="rounded-full bg-mint px-6 py-2.5 font-bold text-slate-900 shadow-pop transition active:scale-95"
               >
-                妖精界で見る
+                たからばこで見る
               </button>
             )}
             <button

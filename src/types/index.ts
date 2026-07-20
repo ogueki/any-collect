@@ -57,7 +57,7 @@ export interface CollectionEntry {
   lastSeenAt: string
 }
 
-/** アイテム（召喚魔法＝図鑑エントリから作る透過アイテム。窯の合成でも生まれる／妖精界に出現する） */
+/** アイテム（召喚魔法＝図鑑エントリから作る透過アイテム。窯の合成でも生まれる／たからばこに入る） */
 export interface Item {
   id: string
   name: string
@@ -69,7 +69,8 @@ export interface Item {
   sourcePhotoId?: string
   /** 由来の図鑑エントリ ID（v2・召喚は図鑑エントリを入力にアイテム化する。将来の記憶/系譜用） */
   sourceCollectionId?: string
-  /** 妖精界での配置（正規化座標 0..1。未配置なら未定義＝コレットが自動配置） */
+  /** たからばこでの配置（正規化座標 0..1。未配置なら未定義＝コレットが自動配置）。
+   *  フィールド名 realmX/Y は既存 IndexedDB データとの互換のため据え置き（意味は同じ）。 */
   realmX?: number
   realmY?: number
   /** ISO 8601 */

@@ -8,7 +8,7 @@ import { useFairyReaction } from '../lib/character/useFairyReaction'
 import { ShellFairyContext } from './shellFairy'
 
 /**
- * 作業画面（図鑑・アルバム・窯・妖精界）の共通シェル。
+ * 作業画面（図鑑・アルバム・窯・たからばこ）の共通シェル。
  * 上部＝左に「ホームへ戻る」／中央にタイトル／右に声 ON/OFF（全画面で同じ位置＝導線の共通化）。
  * 右下に **コレット（1体）** を常駐させ、子ビューからの感情リアクションを表示する
  * （各ビューが自前スプライトを描く二重化をやめ、シェルに一本化＝mock の「作業画面＝右下コレット」）。

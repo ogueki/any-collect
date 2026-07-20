@@ -21,7 +21,7 @@ import type { CollectionEntry, ItemCategory } from '../../types'
  * 並び替え（カテゴリ順/新しい順）＋カテゴリ絞り込みは旧 CodexView のパターンを踏襲。
  *
  * 新IA（レイアウト再構成 ②）：図鑑は「召喚魔法」の起点でもある。まほうパワーが満タンの
- * ときだけ、図鑑エントリ1つ → 透過アイテムを Gemini で生成し妖精界に出現させる
+ * ときだけ、図鑑エントリ1つ → 透過アイテムを Gemini で生成しコレットのたからばこに入れる
  * （旧 KilnView の単体化ロジックをここへ移設）。生成は成功時だけまほうパワーを消費・図鑑は消費しない。
  */
 
@@ -31,7 +31,7 @@ function formatDate(iso: string): string {
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('ja-JP')
 }
 
-/** 召喚結果プレビューの背景＝妖精界を思わせるやわらかいパステル地（透過アイテムが映える）。 */
+/** 召喚結果プレビューの背景＝やわらかいパステル地（透過アイテムが映える）。 */
 const PREVIEW_BG_STYLE: React.CSSProperties = {
   background: 'linear-gradient(to bottom, #dbeafe 0%, #ede9fe 45%, #d1fae5 100%)',
 }
@@ -146,7 +146,7 @@ export default function CollectionView() {
     }
   }
 
-  // 召喚：図鑑エントリ1つ → 透過アイテムを生成し妖精界に出現させる。
+  // 召喚：図鑑エントリ1つ → 透過アイテムを生成しコレットのたからばこに入れる。
   // 成功時だけまほうパワーを消費（失敗なら満タンのまま再挑戦できる）。図鑑エントリは消費しない。
   const handleSummon = useCallback(
     async (entry: CollectionEntry) => {
@@ -404,7 +404,7 @@ export default function CollectionView() {
             </p>
             <p className="mt-2 flex items-center justify-center gap-1 text-center text-xs text-mint">
               <SparkleIcon className="h-3.5 w-3.5" />
-              妖精界にあらわれたよ
+              たからばこに増えたよ
             </p>
 
             <div className="mt-4 flex items-center justify-center gap-3">
@@ -412,11 +412,11 @@ export default function CollectionView() {
                 type="button"
                 onClick={() => {
                   closeSummonResult()
-                  go('realm')
+                  go('treasure')
                 }}
                 className="rounded-full bg-mint px-6 py-2.5 font-bold text-slate-900 shadow-pop transition active:scale-95"
               >
-                妖精界で見る
+                たからばこで見る
               </button>
               <button
                 type="button"

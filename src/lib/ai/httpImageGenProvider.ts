@@ -75,7 +75,7 @@ export const httpImageGenProvider: ImageGenProvider = {
     }
 
     // 合成も召喚と同じ＝サーバは単色マゼンタ背景で描くので、クライアントでクロマキー除去して
-    // 透過 PNG にする（妖精界で他のアイテムと同じく背景なしで飾れる）。失敗時は元画像のまま。
+    // 透過 PNG にする（たからばこで他のアイテムと同じく背景なしで浮かべられる）。失敗時は元画像のまま。
     let imageUrl = data.imageUrl
     try {
       imageUrl = await removeMagentaToPng(imageUrl)

@@ -79,13 +79,14 @@ export function BookIcon(props: IconProps) {
   )
 }
 
-/** 妖精界（世界＝グローブ）。 */
-export function GlobeIcon(props: IconProps) {
+/** たからばこ（宝箱＝ふた付きの箱）。 */
+export function TreasureBoxIcon(props: IconProps) {
   return (
     <Base {...props}>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M3 12h18" />
-      <path d="M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" />
+      <path d="M3 10.5A2.5 2.5 0 0 1 5.5 8h13A2.5 2.5 0 0 1 21 10.5V19a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-8.5z" />
+      <path d="M3 8.5 5 4h14l2 4.5" />
+      <path d="M3 12.5h18" />
+      <path d="M10.5 12.5h3v3h-3z" />
     </Base>
   )
 }

@@ -9,7 +9,7 @@ export interface ItemRepository {
   list(): Promise<Item[]>
   get(id: string): Promise<Item | null>
   add(item: Omit<Item, 'id' | 'createdAt'>): Promise<Item>
-  /** 既存アイテムを部分更新する（妖精界の配置更新など）。id / createdAt は不変 */
+  /** 既存アイテムを部分更新する（たからばこの配置更新など）。id / createdAt は不変 */
   update(id: string, patch: Partial<Omit<Item, 'id' | 'createdAt'>>): Promise<Item>
   remove(id: string): Promise<void>
   recordSynthesis(s: Omit<Synthesis, 'id' | 'createdAt'>): Promise<Synthesis>

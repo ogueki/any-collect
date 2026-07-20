@@ -301,7 +301,7 @@ export async function createFlappyGame(
   const render = (now: number) => {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-    // 空（妖精界と同じパステルグラデ）。
+    // 空（召喚プレビューと同じパステルグラデ）。
     const sky = ctx.createLinearGradient(0, 0, 0, H)
     sky.addColorStop(0, '#dbeafe')
     sky.addColorStop(0.45, '#ede9fe')

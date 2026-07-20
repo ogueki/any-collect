@@ -41,7 +41,7 @@ export const indexedDbItemRepository: ItemRepository = {
   },
 
   async update(id, patch) {
-    // 1トランザクション内で get → put（妖精界の配置更新などの部分更新用）。
+    // 1トランザクション内で get → put（たからばこの配置更新などの部分更新用）。
     return withStore(ITEMS_STORE, 'readwrite', async (store) => {
       const current = await requestToPromise(store.get(id) as IDBRequest<Item | undefined>)
       if (!current) throw new Error('更新対象のアイテムが見つかりません')

@@ -16,7 +16,7 @@ import {
   HeartIcon,
   SparkleIcon,
   BookIcon,
-  GlobeIcon,
+  TreasureBoxIcon,
   GridIcon,
 } from '../../components/icons'
 import type { MemoryFact } from '../../types'
@@ -25,7 +25,7 @@ import ChatPanel from './ChatPanel'
 /**
  * ホーム（新IA・リデザイン）。会話が主役＝コレットの最新の一言を中央に大きく見せる。
  * 上部＝状態を SELF 風の一本バー（なつき＋まほうパワー）に集約。あいさつで名前を呼ぶ（記憶の見せ場）。
- * 下部の入口＝図鑑・妖精界・メニュー、左上でカメラへ切替。会話ログは控えめ（ChatPanel 側で折りたたみ）。
+ * 下部の入口＝図鑑・たからばこ・メニュー、左上でカメラへ切替。会話ログは控えめ（ChatPanel 側で折りたたみ）。
  */
 
 /** 大セリフのスクリムのフェザーマスク（中心は不透明・78%で完全に背景へ溶ける）。 */
@@ -245,7 +245,7 @@ export default function HomeMode() {
           />
         </div>
 
-        {/* 入口：図鑑・妖精界・メニュー（カメラは上の切替に昇格） */}
+        {/* 入口：図鑑・たからばこ・メニュー（カメラは上の切替に昇格） */}
         <div className="flex w-full max-w-xs shrink-0 justify-between gap-2">
           <EntryButton
             label="ずかん"
@@ -253,7 +253,11 @@ export default function HomeMode() {
             onClick={() => go('collection')}
             highlight={gaugeFull}
           />
-          <EntryButton label="妖精界" icon={<GlobeIcon className="h-6 w-6" />} onClick={() => go('realm')} />
+          <EntryButton
+            label="たからばこ"
+            icon={<TreasureBoxIcon className="h-6 w-6" />}
+            onClick={() => go('treasure')}
+          />
           <EntryButton label="メニュー" icon={<GridIcon className="h-6 w-6" />} onClick={openMenu} />
         </div>
 
