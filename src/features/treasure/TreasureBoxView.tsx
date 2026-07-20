@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useCodexStore } from '../../store/codexStore'
+import { useAppStore } from '../../store/appStore'
 import type { Item } from '../../types'
+import TreasureOpening from './TreasureOpening'
 
 /**
  * たからばこ（コレットの宝箱の中・v2・STEP5）。召喚/合成した透過アイテムが浮かぶ収納ビュー。
@@ -97,6 +99,8 @@ export default function TreasureBoxView() {
   const updatePlacement = useCodexStore((s) => s.updatePlacement)
   const remove = useCodexStore((s) => s.remove)
 
+  const characterId = useAppStore((s) => s.characterId)
+
   const containerRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<{ id: string; startX: number; startY: number } | null>(null)
   const movedRef = useRef(false)
@@ -104,6 +108,9 @@ export default function TreasureBoxView() {
   const [dragPos, setDragPos] = useState<{ id: string; x: number; y: number } | null>(null)
   const [selected, setSelected] = useState<Item | null>(null)
   const [deleting, setDeleting] = useState(false)
+  // 入室の演出（宝箱を開ける一枚絵）。絵が未配置なら中で即 onDone が呼ばれる。
+  const [opening, setOpening] = useState(true)
+  const finishOpening = useCallback(() => setOpening(false), [])
 
   useEffect(() => {
     void load()
@@ -327,6 +334,9 @@ export default function TreasureBoxView() {
           </div>
         </div>
       )}
+
+      {/* 入室演出。中の空間より前面に出し、終わると unmount される。 */}
+      {opening && <TreasureOpening characterId={characterId} onDone={finishOpening} />}
     </>
   )
 }

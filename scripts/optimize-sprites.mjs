@@ -4,8 +4,8 @@
 //      表示サイズに合わせて WebP に落とすと画質を保ったまま激減する。
 //      背景（ホーム全画面）はスプライトより大きく映るので上限を 1536px にしている。
 //
-// ルール: `src/characters/<id>/sprites/` または `backgrounds/` に画像（png/jpg）を追加したら
-//        必ず `npm run sprites:optimize` を実行してから commit する（claude.md 参照）。
+// ルール: `src/characters/<id>/sprites/` `backgrounds/` `transitions/` に画像（png/jpg）を
+//        追加したら必ず `npm run sprites:optimize` を実行してから commit する（claude.md 参照）。
 //        既に webp のものは対象外なので、何度実行しても安全（冪等）。
 
 import { readdir, rm, stat } from 'node:fs/promises'
@@ -35,7 +35,13 @@ let savedBytes = 0
 for await (const file of walk(CHARACTERS_DIR)) {
   const normalized = file.replaceAll('\\', '/')
   const isBackground = normalized.includes('/backgrounds/')
-  if (!normalized.includes('/sprites/') && !isBackground) continue // sprites / backgrounds 配下のみ
+  // sprites / backgrounds / transitions 配下のみ（transitions＝場面転換の一枚絵）
+  if (
+    !normalized.includes('/sprites/') &&
+    !isBackground &&
+    !normalized.includes('/transitions/')
+  )
+    continue
   if (!SOURCE_EXTENSIONS.has(extname(file).toLowerCase())) continue
 
   const max = isBackground ? MAX_BACKGROUND_DIMENSION : MAX_DIMENSION

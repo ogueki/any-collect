@@ -29,8 +29,8 @@
 - `src/lib/character/` … キャラ表示の抽象化（今は2Dスプライト、将来3D/Live2D差し替え）
 - `src/lib/storage/` … Repositoryパターン。現状＝`ItemRepository`/`PhotoRepository`/`CollectionRepository`（IndexedDB 実装済）。記憶・好感度・まほうパワーは軽量値なので現状 localStorage ストア直（`MemoryRepository`/`AffinityRepository` は Supabase 移行＝STEP6 で切る）。**インターフェースを先に切って** IndexedDB（先行）↔ Supabase（後続）を同一抽象の裏に吸収。
 - `src/store/` … Zustand ストア（`appStore` / `chatStore` / `albumStore` / `collectionStore`（図鑑） / `codexStore`（生成アイテム） / `gaugeStore` / `affinityStore` / `memoryStore` / `gameStore`）。`src/components/` … モード横断の共有UI（`WorkingScreen`/`MenuSheet`/`icons` 等）。`src/types/` … 共有型。
-- `src/characters/<id>/` … キャラ定義一式。デフォルト＝`default`（コレット）。`persona.md`（**好奇心旺盛・冒険好き・欲・決め台詞多め**）＋ `sprites/<感情>/*.webp`（感情フォルダ式・好感度 level-aware）＋ `backgrounds/<背景ID>/*.webp`（ホーム背景＝時間帯4枚 morning/day/evening/night・`src/lib/character/homeBackground.ts` が切替）＋ `voice.json`（音声設定・稼働）。
-  - **画像素材のルール**：本番素材は **WebP**（スプライト＝最大1024px／背景＝最大1536px）。`sprites/` や `backgrounds/` に png/jpg を追加したら **`npm run sprites:optimize` を実行してから commit**（`scripts/optimize-sprites.mjs` が WebP 化＝1枚~1MB→~120KB、冪等）。大きい元 png をそのままコミットしない。
+- `src/characters/<id>/` … キャラ定義一式。デフォルト＝`default`（コレット）。`persona.md`（**好奇心旺盛・冒険好き・欲・決め台詞多め**）＋ `sprites/<感情>/*.webp`（感情フォルダ式・好感度 level-aware）＋ `backgrounds/<背景ID>/*.webp`（ホーム背景＝時間帯4枚 morning/day/evening/night・`src/lib/character/homeBackground.ts` が切替）＋ `transitions/`（場面転換の一枚絵＝たからばこ入室など・透過前提）＋ `voice.json`（音声設定・稼働）。
+  - **画像素材のルール**：本番素材は **WebP**（スプライト＝最大1024px／背景＝最大1536px）。`sprites/` `backgrounds/` `transitions/` に png/jpg を追加したら **`npm run sprites:optimize` を実行してから commit**（`scripts/optimize-sprites.mjs` が WebP 化＝1枚~1MB→~120KB、冪等）。大きい元 png をそのままコミットしない。
 
 ## アーキテクチャ原則（重要）
 1. **シークレットをクライアントに出さない。** APIキーを使う処理はすべて `api/`（Vercel Functions）経由。フロントから直接 Gemini/Claude/Fish Audio を叩かない。
