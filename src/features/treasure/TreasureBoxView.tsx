@@ -5,6 +5,7 @@ import type { Item } from '../../types'
 /**
  * たからばこ（コレットの宝箱の中・v2・STEP5）。召喚/合成した透過アイテムが浮かぶ収納ビュー。
  * 見た目より中が広い「4次元空間」＝背景はコード生成（アート素材に依存しない）。
+ * **画面いっぱいに敷く**（`WorkingScreen` の bleed／枠も影も無し＝没入感。実機フィードバック 2026-07-21）。
  *
  * アイテムは正規化座標 realmX/Y をアンカーに **ふわふわ漂い**（CSS の drift・id 由来の周期/位相で
  * 個体差）、掴むと漂いが止まってドラッグでき、離すと新しいアンカーを永続（codexStore.updatePlacement）。
@@ -142,8 +143,9 @@ export default function TreasureBoxView() {
     const rect = containerRef.current?.getBoundingClientRect()
     if (!rect || rect.width === 0 || rect.height === 0) return { x: 0.5, y: 0.5 }
     return {
+      // 上端はヘッダー（← ホーム／タイトル）の裏に潜り込ませない、下端は右下コレットに被せない。
       x: clamp((clientX - rect.left) / rect.width, 0.06, 0.94),
-      y: clamp((clientY - rect.top) / rect.height, 0.08, 0.92),
+      y: clamp((clientY - rect.top) / rect.height, 0.12, 0.9),
     }
   }, [])
 
@@ -196,15 +198,15 @@ export default function TreasureBoxView() {
   }, [selected, deleting, remove])
 
   return (
-    <div className="flex w-full max-w-md flex-col items-center gap-3">
-      {/* たからばこの中＝4次元空間（背景はコード生成＝アート素材に依存しない） */}
+    <>
+      {/* たからばこの中＝4次元空間。画面いっぱいに敷く（枠も影も無し＝没入感）。 */}
       <div
         ref={containerRef}
-        className="relative aspect-[3/4] w-full max-w-xs overflow-hidden rounded-3xl shadow-pop"
+        className="relative h-full w-full overflow-hidden"
         style={{
           background:
-            'radial-gradient(120% 80% at 50% 8%, rgba(196,181,253,0.45) 0%, rgba(129,140,248,0.18) 38%, rgba(30,27,75,0) 70%),' +
-            'radial-gradient(90% 60% at 18% 88%, rgba(110,231,183,0.22) 0%, rgba(30,27,75,0) 65%),' +
+            'radial-gradient(120% 60% at 50% 4%, rgba(196,181,253,0.42) 0%, rgba(129,140,248,0.16) 40%, rgba(30,27,75,0) 72%),' +
+            'radial-gradient(80% 45% at 14% 92%, rgba(110,231,183,0.20) 0%, rgba(30,27,75,0) 68%),' +
             'linear-gradient(160deg, #1e1b4b 0%, #312e81 45%, #4c1d95 100%)',
         }}
       >
@@ -277,15 +279,17 @@ export default function TreasureBoxView() {
             </p>
           </div>
         )}
-      </div>
-      <p className="text-xs text-slate-400">
-        アイテムをつかんで動かせるよ・タップで詳細（遊ぶはメニューから）
-      </p>
 
-      {/* 詳細（名前＋説明＋削除） */}
+        {/* 操作ヒント（右下コレットを避けて左寄せ・空間に沈むトーン） */}
+        <p className="pointer-events-none absolute inset-x-0 bottom-3 pl-4 pr-36 text-xs text-indigo-200/60">
+          アイテムをつかんで動かせるよ・タップで詳細
+        </p>
+      </div>
+
+      {/* 詳細（名前＋説明＋削除）。全画面レイヤーの上に出す。 */}
       {selected && (
         <div
-          className="fixed inset-0 z-10 flex items-center justify-center bg-slate-900/60 px-6"
+          className="fixed inset-0 z-30 flex items-center justify-center bg-slate-900/70 px-6"
           onClick={() => setSelected(null)}
         >
           <div
@@ -323,6 +327,6 @@ export default function TreasureBoxView() {
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }

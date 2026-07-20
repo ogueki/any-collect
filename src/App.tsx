@@ -37,7 +37,7 @@ export default function App() {
         </WorkingScreen>
       )}
       {screen === 'treasure' && (
-        <WorkingScreen title="たからばこ">
+        <WorkingScreen title="たからばこ" bleed tone="dark">
           <TreasureBoxView />
         </WorkingScreen>
       )}
