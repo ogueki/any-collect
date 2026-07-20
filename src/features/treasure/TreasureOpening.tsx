@@ -62,12 +62,13 @@ export default function TreasureOpening({
           transition: `transform ${FADE_MS}ms cubic-bezier(0.32, 0, 0.67, 0)`,
         }}
       >
+        {/* `filter: drop-shadow` は使わない（合成レイヤー上で影が矩形化する＝アイテムと同じ理由）。
+            背景側の放射グラデで十分に浮いて見えるので、絵はそのまま出す。 */}
         <img
           src={src}
           alt="たからばこを開ける"
           draggable={false}
           className="w-4/5 max-w-xs animate-reveal select-none"
-          style={{ filter: 'drop-shadow(0 0 30px rgba(196,181,253,0.45))' }}
         />
       </div>
     </div>

@@ -260,16 +260,30 @@ export default function TreasureBoxView() {
                 onPointerDown={(e) => onPointerDown(e, item)}
                 onPointerMove={onPointerMove}
                 onPointerUp={() => onPointerUp(item)}
-                className={`block h-16 w-16 touch-none select-none transition-transform active:scale-110 ${
+                className={`relative block h-16 w-16 touch-none select-none transition-transform active:scale-110 ${
                   isDragging ? '' : 'animate-drift'
                 }`}
                 style={isDragging ? undefined : v?.drift}
               >
+                {/* 淡い光。`filter: drop-shadow` は使わない＝iOS Safari では
+                    漂いアニメで合成レイヤーに載った瞬間、影がアルファ形状ではなく
+                    **要素の矩形**に対して描かれ「四角い光」になるため（ドラッグして
+                    アニメが外れると直る、という実機の症状で確定・2026-07-21）。
+                    背景の放射グラデならレイヤー化の影響を受けず、常に同じ見えになる。 */}
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 rounded-full"
+                  style={{
+                    background:
+                      'radial-gradient(circle, rgba(196,181,253,0.40) 0%, rgba(196,181,253,0.16) 45%, rgba(196,181,253,0) 72%)',
+                    transform: `scale(${depth.scale * 1.45})`,
+                  }}
+                />
                 <img
                   src={item.iconUrl}
                   alt={item.name}
                   draggable={false}
-                  className="h-full w-full object-contain drop-shadow-[0_0_10px_rgba(196,181,253,0.55)]"
+                  className="relative h-full w-full object-contain"
                   style={{ transform: `scale(${depth.scale})`, opacity: depth.opacity }}
                 />
               </button>
