@@ -203,11 +203,16 @@ export default function HomeMode() {
               文字の周りだけ白がふわっと滲み、端はフェザーで背景に溶ける。
               マスク非対応環境では自動で角丸の半透過カードに落ちる（rounded/bg はその保険）。
               max-h＋overflow-y-auto＝長文の返事は一定の高さで頭打ちにして中でスクロール
-              （高さを固定＝端末が変わってもクラスタ全体の見た目が動かない）。 */}
+              （高さを固定＝端末が変わってもクラスタ全体の見た目が動かない）。
+
+              ⚠️ backdrop-blur は使わない：iOS Safari では **backdrop-filter が mask で
+              クリップされない**ため、白い背景だけが楕円に溶けてぼかし領域は四角のまま残り、
+              暗い背景で「四角い枠」として見えてしまう（実機FB 2026-07-21）。
+              ぼかしの代わりに白を少し濃くして可読性を担保する。 */}
           <div className="relative flex w-full flex-col">
             <div
               aria-hidden
-              className="absolute -inset-3 rounded-3xl bg-white/55 backdrop-blur-md"
+              className="absolute -inset-3 rounded-3xl bg-white/65"
               style={{ maskImage: SCRIM_MASK, WebkitMaskImage: SCRIM_MASK }}
             />
             <div className="relative max-h-40 overflow-y-auto px-5 py-4">

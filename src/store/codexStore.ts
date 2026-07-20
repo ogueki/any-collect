@@ -76,6 +76,12 @@ export const useCodexStore = create<CodexState>((set, get) => ({
   },
 
   updatePlacement: async (id, realmX, realmY) => {
+    // 先にメモリを更新してから永続化する（楽観的更新）。await してから set にすると、
+    // 保存待ちの数フレームだけ**移動前の座標**で描かれて位置が戻って見える
+    // （たからばこでドラッグ後に一瞬ワープする、の原因・実機FB 2026-07-21）。
+    set((s) => ({
+      items: s.items.map((it) => (it.id === id ? { ...it, realmX, realmY } : it)),
+    }))
     const updated = await itemRepository.update(id, { realmX, realmY })
     set((s) => ({ items: s.items.map((it) => (it.id === id ? updated : it)) }))
   },
