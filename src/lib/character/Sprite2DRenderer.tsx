@@ -160,16 +160,30 @@ export default function Sprite2DRenderer({
 
   return (
     // 外側ラッパは常時フワフワ浮遊（idle の生命感）。
-    <div className={`${SIZE_CLASS[size]} animate-float`}>
+    <div className={`${SIZE_CLASS[size]} relative animate-float`}>
       {url ? (
-        <img
-          ref={imgRef}
-          src={url}
-          alt="妖精"
-          draggable={false}
-          decoding="async"
-          className="h-full w-full select-none object-contain drop-shadow-[0_8px_16px_rgba(196,181,253,0.5)]"
-        />
+        <>
+          {/* 背景から分離させる淡い光。`filter: drop-shadow` は使わない＝常時の
+              animate-float で合成レイヤーに載ると、iOS Safari が影をアルファ形状ではなく
+              **要素の矩形**に対して描き「四角い光」になるため（暗背景のたからばこで発覚・
+              2026-07-21）。背景の放射グラデならレイヤー化の影響を受けない。 */}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                'radial-gradient(ellipse 42% 38% at 50% 70%, rgba(196,181,253,0.42) 0%, rgba(196,181,253,0.12) 55%, rgba(196,181,253,0) 78%)',
+            }}
+          />
+          <img
+            ref={imgRef}
+            src={url}
+            alt="妖精"
+            draggable={false}
+            decoding="async"
+            className="relative h-full w-full select-none object-contain"
+          />
+        </>
       ) : (
         <div
           className="flex h-full w-full items-center justify-center rounded-full bg-white/70 shadow-pop"

@@ -275,8 +275,8 @@ export default function TreasureBoxView() {
                   className="pointer-events-none absolute inset-0 rounded-full"
                   style={{
                     background:
-                      'radial-gradient(circle, rgba(196,181,253,0.40) 0%, rgba(196,181,253,0.16) 45%, rgba(196,181,253,0) 72%)',
-                    transform: `scale(${depth.scale * 1.45})`,
+                      'radial-gradient(circle, rgba(196,181,253,0.30) 0%, rgba(196,181,253,0.09) 34%, rgba(196,181,253,0) 62%)',
+                    transform: `scale(${depth.scale * 1.15})`,
                   }}
                 />
                 <img
