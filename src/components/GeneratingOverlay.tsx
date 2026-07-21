@@ -30,12 +30,12 @@ export default function GeneratingOverlay({
 
   const [progress, setProgress] = useState(0)
   const [tipIdx, setTipIdx] = useState(() => Math.floor(Math.random() * tips.length))
-  const startRef = useRef(Date.now())
+  // 開始時刻はマウント時に effect 内で入れる（レンダー中に Date.now() を読むと不純）。
+  const startRef = useRef(0)
 
   // 経過時間ベースの漸近プログレス。
   useEffect(() => {
     startRef.current = Date.now()
-    setProgress(0)
     const timer = setInterval(() => {
       const elapsed = Date.now() - startRef.current
       setProgress(Math.min(MAX_PROGRESS, 1 - Math.exp(-elapsed / TAU_MS)))
