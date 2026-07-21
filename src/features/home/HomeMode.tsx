@@ -42,6 +42,20 @@ const HERO_TEXT_HALO = [
 ].join(', ')
 
 /**
+ * 大セリフの後ろの白い雲（丸い滲み）。**箱の内側で完全に 0 まで落ちる楕円**として描くのが肝で、
+ * 半径を箱の 50%×50% に明示＝上下左右どの辺でも縁に達する前に透明になる（＝画面幅に依存しない）。
+ * 楕円なので四隅までは届かないが、そこは文字側のハロー（`HERO_TEXT_HALO`）が受け持つ。
+ * マスクではなく背景グラデーションで描く＝iOS Safari の mask 互換問題も踏まない。
+ */
+const HERO_CLOUD = [
+  'radial-gradient(ellipse 50% 50% at 50% 50%',
+  'rgba(255,255,255,0.72) 0%',
+  'rgba(255,255,255,0.66) 40%',
+  'rgba(255,255,255,0.34) 72%',
+  'rgba(255,255,255,0) 100%)',
+].join(', ')
+
+/**
  * 検証用のタップ領域。`?debug=1` のときだけ button（＝タップで効く）になり、通常は同じ見た目の div。
  * 表示は一切変えずに操作だけ殺すので、検証用の仕掛けを本番に載せたままにできる（`lib/debug.ts`）。
  */
@@ -235,18 +249,23 @@ export default function HomeMode() {
               {prevUser.content}
             </div>
           )}
-          {/* 大セリフ＝**文字ごとの白いハロー**で背景から浮かせる（枠なし見え・実機FB 2026-07-21）。
+          {/* 大セリフ＝**白い雲（丸い滲み）＋文字ごとのハロー**の二段構え（枠なし見え・実機FB 2026-07-22）。
               max-h＋overflow-y-auto＝長文の返事は一定の高さで頭打ちにして中でスクロール
               （高さを固定＝端末が変わってもクラスタ全体の見た目が動かない）。
 
-              ⚠️ 「箱＋フェザーマスク」方式に戻さないこと（3回失敗している）：
+              ⚠️ 「箱＋フェザーマスク」方式に戻さないこと（実機で2回失敗している）：
               ①backdrop-blur は iOS Safari で backdrop-filter が mask にクリップされず四角が残る。
-              ②ぼかしを外しても、この箱は `max-w-xs`＋`-inset-3` ＝ ほぼ画面幅ぴったり（370+24≒394px
-                 に対し iPhone は 393px）なので、**楕円マスクが透明になりきる前に画面の縁で切れる**。
-                 縦も箱が横長すぎて楕円が扁平になり、上下のグラデが圧縮されて直線に見える＝帯が出る。
-              テキストは端まで使いたい以上、横方向に逃げ場が作れない。**箱を持たない**のが唯一の解。 */}
-          <div className="flex w-full flex-col">
-            <div className="max-h-40 overflow-y-auto px-5 py-4">
+              ②ぼかしを外しても、`max-w-xs`＋`-inset-3` の箱は**ほぼ画面幅ぴったり**（370+24≒394px に
+                 対し iPhone は 393px）なので、**楕円が透明になりきる前に画面の縁で切れて帯に見える**。
+              → 雲は `inset-x-0`（＝箱を画面より必ず狭く保つ）＋半径 50%/50% の明示で、**縁に達する前に
+                 必ず 0 まで落とす**。届かない四隅は文字側のハローが受け持つ。 */}
+          <div className="relative flex w-full flex-col">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 -inset-y-8"
+              style={{ backgroundImage: HERO_CLOUD }}
+            />
+            <div className="relative max-h-40 overflow-y-auto px-5 py-4">
               {sending || (opening && !heroFairy) ? (
                 <span className="flex justify-center gap-1.5 py-1">
                   {[0, 150, 300].map((d) => (
