@@ -29,8 +29,17 @@ import ChatPanel from './ChatPanel'
  * 下部の入口＝図鑑・たからばこ・メニュー、左上でカメラへ切替。会話ログは控えめ（ChatPanel 側で折りたたみ）。
  */
 
-/** 大セリフのスクリムのフェザーマスク（中心は不透明・78%で完全に背景へ溶ける）。 */
-const SCRIM_MASK = 'radial-gradient(ellipse at center, black 45%, transparent 78%)'
+/**
+ * 大セリフの白いにじみ＝**文字ごとのハロー**（text-shadow を重ねて滲ませる）。
+ * 箱を一切作らないので「四角い枠」が原理的に出ない（実機FB 2026-07-21・下の注記参照）。
+ * 内側の濃い影で輪郭を立て、外側の薄い影で背景を白く飛ばして可読性を確保する。
+ */
+const HERO_TEXT_HALO = [
+  '0 1px 2px rgba(255,255,255,0.95)',
+  '0 0 6px rgba(255,255,255,0.9)',
+  '0 0 14px rgba(255,255,255,0.75)',
+  '0 0 26px rgba(255,255,255,0.5)',
+].join(', ')
 
 /**
  * 検証用のタップ領域。`?debug=1` のときだけ button（＝タップで効く）になり、通常は同じ見た目の div。
@@ -226,38 +235,45 @@ export default function HomeMode() {
               {prevUser.content}
             </div>
           )}
-          {/* 大セリフ＝縁が溶けるスクリム（枠なし見え・実機FB 2026-07-19）。
-              文字の周りだけ白がふわっと滲み、端はフェザーで背景に溶ける。
-              マスク非対応環境では自動で角丸の半透過カードに落ちる（rounded/bg はその保険）。
+          {/* 大セリフ＝**文字ごとの白いハロー**で背景から浮かせる（枠なし見え・実機FB 2026-07-21）。
               max-h＋overflow-y-auto＝長文の返事は一定の高さで頭打ちにして中でスクロール
               （高さを固定＝端末が変わってもクラスタ全体の見た目が動かない）。
 
-              ⚠️ backdrop-blur は使わない：iOS Safari では **backdrop-filter が mask で
-              クリップされない**ため、白い背景だけが楕円に溶けてぼかし領域は四角のまま残り、
-              暗い背景で「四角い枠」として見えてしまう（実機FB 2026-07-21）。
-              ぼかしの代わりに白を少し濃くして可読性を担保する。 */}
-          <div className="relative flex w-full flex-col">
-            <div
-              aria-hidden
-              className="absolute -inset-3 rounded-3xl bg-white/65"
-              style={{ maskImage: SCRIM_MASK, WebkitMaskImage: SCRIM_MASK }}
-            />
-            <div className="relative max-h-40 overflow-y-auto px-5 py-4">
+              ⚠️ 「箱＋フェザーマスク」方式に戻さないこと（3回失敗している）：
+              ①backdrop-blur は iOS Safari で backdrop-filter が mask にクリップされず四角が残る。
+              ②ぼかしを外しても、この箱は `max-w-xs`＋`-inset-3` ＝ ほぼ画面幅ぴったり（370+24≒394px
+                 に対し iPhone は 393px）なので、**楕円マスクが透明になりきる前に画面の縁で切れる**。
+                 縦も箱が横長すぎて楕円が扁平になり、上下のグラデが圧縮されて直線に見える＝帯が出る。
+              テキストは端まで使いたい以上、横方向に逃げ場が作れない。**箱を持たない**のが唯一の解。 */}
+          <div className="flex w-full flex-col">
+            <div className="max-h-40 overflow-y-auto px-5 py-4">
               {sending || (opening && !heroFairy) ? (
                 <span className="flex justify-center gap-1.5 py-1">
                   {[0, 150, 300].map((d) => (
                     <span
                       key={d}
-                      className="h-2 w-2 animate-bounce rounded-full bg-slate-300"
-                      style={{ animationDelay: `${d}ms` }}
+                      className="h-2 w-2 animate-bounce rounded-full bg-slate-400"
+                      /* box-shadow は border-radius に沿う＝丸いまま光る（drop-shadow と違い矩形化しない）。 */
+                      style={{
+                        animationDelay: `${d}ms`,
+                        boxShadow: '0 0 10px 5px rgba(255,255,255,0.75)',
+                      }}
                     />
                   ))}
                 </span>
               ) : heroFairy ? (
-                <p className="text-lg font-bold leading-relaxed text-slate-700">{heroFairy.content}</p>
+                <p
+                  className="text-lg font-bold leading-relaxed text-slate-700"
+                  style={{ textShadow: HERO_TEXT_HALO }}
+                >
+                  {heroFairy.content}
+                </p>
               ) : (
                 /* 第一声（openConversation）が失敗したときだけ出る固定挨拶フォールバック */
-                <p className="text-lg font-bold leading-relaxed text-slate-700">
+                <p
+                  className="text-lg font-bold leading-relaxed text-slate-700"
+                  style={{ textShadow: HERO_TEXT_HALO }}
+                >
                   {name && <span className="text-violet-500">{name}</span>}
                   {name ? '、おかえりっ！' : 'おかえりっ！'}{' '}
                   {gaugeFull
