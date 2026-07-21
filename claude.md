@@ -19,7 +19,8 @@
 ## 開発コマンド
 - `npm run dev` … 開発サーバ
 - `npm run build` … 型チェック＋本番ビルド
-- `npm run lint` … ESLint
+- `npm run lint` … ESLint（**0 problems が基準**。警告を「既知」として残さない）
+- `?debug=1` … 検証用ツールの有効化（なつき/まほうパワーの手動操作・記憶の「いま覚えて」）。実機＝本番Vercel で使うため URL クエリ方式＝`src/lib/debug.ts`・localStorage に永続・`?debug=0` で解除
 
 ## ディレクトリ方針
 > 「現状」＝実在するもの、「将来/後続」＝対応STEPで追加予定（最終形の案は `spec.md §8`）。

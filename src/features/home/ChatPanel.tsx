@@ -4,12 +4,14 @@ import { useAppStore } from '../../store/appStore'
 import { useMemoryStore } from '../../store/memoryStore'
 import { speak, primeAudio } from '../../lib/audio/useSpeak'
 import { SoundOnIcon, SendIcon } from '../../components/icons'
+import { debugTools } from '../../lib/debug'
 
 /**
  * ホームの会話UI（リデザイン）。**最新の返事はホーム中央の大セリフ**に出るので、
  * ここは「入力」を主役にし、会話ログ＋記憶パネルは**ボトムシート**（MenuSheet と同型）に格納
  * ＝ホームを1画面固定に保つ（通常フローに縦に伸びる要素を置かない）。
- * 記憶パネルは検証用（TODO(verify)・将来ユーザー向け記憶管理UIに格上げしうる）。
+ * 記憶パネル（何を覚えているかの一覧＋「忘れる」）はユーザー向け＝プライバシー方針「エクスポート・削除は
+ * 一級機能」の入口。手動要約の「いま覚えて」だけが検証用で、`?debug=1` のときに出る（`lib/debug.ts`）。
  */
 export default function ChatPanel() {
   const messages = useChatStore((s) => s.messages)
@@ -135,19 +137,21 @@ export default function ChatPanel() {
         </div>
 
         {/* コレットが覚えていること（会話・撮影・アイテム化で自然に増える）。
-            TODO(verify): 「いま覚えて」「忘れる」は検証用。将来ユーザー向けの記憶管理UIに格上げしうる。 */}
+            一覧と「忘れる」はユーザー向け。「いま覚えて」（手動要約）は検証用＝`?debug=1` のときだけ。 */}
         <div className="mt-3 rounded-2xl bg-slate-50 p-3 text-left">
           <div className="mb-1 flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500">💭 コレットが覚えていること</span>
             <div className="flex gap-1.5">
-              <button
-                type="button"
-                onClick={() => void consolidateMemoryNow()}
-                disabled={consolidating}
-                className="rounded-full bg-mint px-2.5 py-0.5 text-[11px] font-bold text-slate-900 transition active:scale-95 disabled:opacity-50"
-              >
-                {consolidating ? '覚え中…' : 'いま覚えて'}
-              </button>
+              {debugTools() && (
+                <button
+                  type="button"
+                  onClick={() => void consolidateMemoryNow()}
+                  disabled={consolidating}
+                  className="rounded-full bg-mint px-2.5 py-0.5 text-[11px] font-bold text-slate-900 transition active:scale-95 disabled:opacity-50"
+                >
+                  {consolidating ? '覚え中…' : 'いま覚えて'}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={forget}

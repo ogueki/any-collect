@@ -9,6 +9,7 @@ import type { FairyExpression } from '../../lib/character/CharacterRenderer'
 import { useFairyReaction } from '../../lib/character/useFairyReaction'
 import { homeBackgroundUrl } from '../../lib/character/homeBackground'
 import { primeAudio } from '../../lib/audio/useSpeak'
+import { debugTools } from '../../lib/debug'
 import {
   SoundOnIcon,
   SoundOffIcon,
@@ -30,6 +31,34 @@ import ChatPanel from './ChatPanel'
 
 /** 大セリフのスクリムのフェザーマスク（中心は不透明・78%で完全に背景へ溶ける）。 */
 const SCRIM_MASK = 'radial-gradient(ellipse at center, black 45%, transparent 78%)'
+
+/**
+ * 検証用のタップ領域。`?debug=1` のときだけ button（＝タップで効く）になり、通常は同じ見た目の div。
+ * 表示は一切変えずに操作だけ殺すので、検証用の仕掛けを本番に載せたままにできる（`lib/debug.ts`）。
+ */
+function DebugTap({
+  onTap,
+  className,
+  ariaLabel,
+  children,
+}: {
+  onTap: () => void
+  className: string
+  ariaLabel: string
+  children: React.ReactNode
+}) {
+  if (!debugTools()) return <div className={className}>{children}</div>
+  return (
+    <button
+      type="button"
+      onClick={onTap}
+      aria-label={ariaLabel}
+      className={`${className} transition active:scale-95`}
+    >
+      {children}
+    </button>
+  )
+}
 
 /** 記憶ファクトから「呼び名」を拾う（あれば挨拶で名前を呼ぶ）。 */
 const NAME_KEY = /呼び名|名前|なまえ|ニックネーム/
@@ -139,13 +168,12 @@ export default function HomeMode() {
         </div>
 
         {/* 状態を一本バーに：なつき（左）＋まほうパワー（右）。
-            TODO(verify): なつき＝タップでLv循環／まほうパワー＝タップで満タン。リリース前に外す。 */}
+            `?debug=1` のときだけ なつき＝タップでLv循環／まほうパワー＝タップで満タン（検証用の近道）。 */}
         <div className="flex w-full max-w-xs shrink-0 items-center gap-3 rounded-2xl bg-white/80 px-3.5 py-2.5 shadow-pop backdrop-blur-sm">
-          <button
-            type="button"
-            onClick={() => (affinityLevel >= MAX_LEVEL ? resetAffinity() : bumpAffinity())}
-            className="flex shrink-0 items-center gap-1.5 transition active:scale-95"
-            aria-label="なつき度"
+          <DebugTap
+            onTap={() => (affinityLevel >= MAX_LEVEL ? resetAffinity() : bumpAffinity())}
+            className="flex shrink-0 items-center gap-1.5"
+            ariaLabel="なつき度"
           >
             <HeartIcon className="h-5 w-5 text-rose-400" />
             <span className="text-sm font-extrabold text-rose-400">Lv.{affinityLevel}</span>
@@ -157,13 +185,12 @@ export default function HomeMode() {
                 />
               ))}
             </span>
-          </button>
+          </DebugTap>
           <span className="h-6 w-px shrink-0 bg-slate-100" />
-          <button
-            type="button"
-            onClick={() => addGauge(GAUGE_MAX)}
-            className="min-w-0 flex-1 text-left transition active:scale-95"
-            aria-label="まほうパワー"
+          <DebugTap
+            onTap={() => addGauge(GAUGE_MAX)}
+            className="min-w-0 flex-1 text-left"
+            ariaLabel="まほうパワー"
           >
             <div className="mb-1 flex items-center justify-between">
               <span className="flex items-center gap-1 text-xs font-extrabold text-emerald-600">
@@ -180,7 +207,7 @@ export default function HomeMode() {
                 style={{ width: `${gaugePct}%` }}
               />
             </div>
-          </button>
+          </DebugTap>
         </div>
 
         {pendingLevelUp && (

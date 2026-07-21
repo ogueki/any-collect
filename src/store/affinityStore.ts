@@ -60,9 +60,9 @@ interface AffinityState {
   add: (amount: number) => void
   /** レベルアップ演出を消化済みにする */
   clearLevelUp: () => void
-  /** 検証用：次のレベルまで一気に上げる（TODO(verify) リリース前に外す） */
+  /** 検証用：次のレベルまで一気に上げる（呼び出しは `?debug=1` のときだけ＝`lib/debug.ts`） */
   bumpLevel: () => void
-  /** 検証用：絆を 0（Lv.1）に戻す（tier 比較用。TODO(verify) リリース前に外す） */
+  /** 検証用：絆を 0（Lv.1）に戻す（tier 比較用。呼び出しは `?debug=1` のときだけ） */
   reset: () => void
 }
 
