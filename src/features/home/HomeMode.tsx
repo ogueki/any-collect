@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useAppStore } from '../../store/appStore'
 import { useChatStore } from '../../store/chatStore'
 import { useGaugeStore, GAUGE_MAX } from '../../store/gaugeStore'
-import { useAffinityStore, levelForScore, MAX_LEVEL } from '../../store/affinityStore'
+import { useAffinityStore, levelForScore, levelProgress } from '../../store/affinityStore'
 import { useMemoryStore } from '../../store/memoryStore'
 import Sprite2DRenderer from '../../lib/character/Sprite2DRenderer'
 import type { FairyExpression } from '../../lib/character/CharacterRenderer'
@@ -54,6 +54,9 @@ const HERO_CLOUD = [
   'rgba(255,255,255,0.34) 72%',
   'rgba(255,255,255,0) 100%)',
 ].join(', ')
+
+/** 検証用：なつきチップのタップで上げるレベルの上限（ここまで行ったら 0 に戻す）。なつき自体に上限は無い。 */
+const DEBUG_LEVEL_CYCLE = 5
 
 /**
  * 検証用のタップ領域。`?debug=1` のときだけ button（＝タップで効く）になり、通常は同じ見た目の div。
@@ -114,6 +117,7 @@ export default function HomeMode() {
   const gaugePct = Math.min(100, Math.round((gaugeValue / GAUGE_MAX) * 100))
   const gaugeFull = gaugeValue >= GAUGE_MAX
   const affinityLevel = levelForScore(affinityScore)
+  const affinityPct = levelProgress(affinityScore)
   const sending = status === 'sending'
   const name = nameFromFacts(facts)
 
@@ -193,20 +197,20 @@ export default function HomeMode() {
         {/* 状態を一本バーに：なつき（左）＋まほうパワー（右）。
             `?debug=1` のときだけ なつき＝タップでLv循環／まほうパワー＝タップで満タン（検証用の近道）。 */}
         <div className="flex w-full max-w-xs shrink-0 items-center gap-3 rounded-2xl bg-white/80 px-3.5 py-2.5 shadow-pop backdrop-blur-sm">
+          {/* なつきレベルに上限は無い（節目がずっと訪れ続ける）ので、
+              固定の段数ドットでなく「次のレベルまで」の細いバーで進みを見せる。 */}
           <DebugTap
-            onTap={() => (affinityLevel >= MAX_LEVEL ? resetAffinity() : bumpAffinity())}
+            onTap={() => (affinityLevel >= DEBUG_LEVEL_CYCLE ? resetAffinity() : bumpAffinity())}
             className="flex shrink-0 items-center gap-1.5"
             ariaLabel="なつき度"
           >
             <HeartIcon className="h-5 w-5 text-rose-400" />
             <span className="text-sm font-extrabold text-rose-400">Lv.{affinityLevel}</span>
-            <span className="flex gap-1">
-              {Array.from({ length: MAX_LEVEL }).map((_, i) => (
-                <span
-                  key={i}
-                  className={`h-1.5 w-1.5 rounded-full ${i < affinityLevel ? 'bg-rose-400' : 'bg-rose-200'}`}
-                />
-              ))}
+            <span className="h-1.5 w-8 overflow-hidden rounded-full bg-rose-200">
+              <span
+                className="block h-full rounded-full bg-rose-400 transition-all"
+                style={{ width: `${Math.round(affinityPct * 100)}%` }}
+              />
             </span>
           </DebugTap>
           <span className="h-6 w-px shrink-0 bg-slate-100" />

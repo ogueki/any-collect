@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react'
 import { useAppStore } from '../store/appStore'
-import { useAffinityStore, levelForScore } from '../store/affinityStore'
+import { useAffinityStore, toneTierForLevel, levelForScore } from '../store/affinityStore'
 import { primeAudio } from '../lib/audio/useSpeak'
 import { SoundOnIcon, SoundOffIcon } from './icons'
 import Sprite2DRenderer from '../lib/character/Sprite2DRenderer'
@@ -34,7 +34,8 @@ export default function WorkingScreen({
   const voiceEnabled = useAppStore((s) => s.voiceEnabled)
   const toggleVoice = useAppStore((s) => s.toggleVoice)
   const characterId = useAppStore((s) => s.characterId)
-  const affinityLevel = useAffinityStore((s) => levelForScore(s.score))
+  // 立ち絵の tier 絵は3段までなので、無限に伸びるレベルでなく tier を渡す。
+  const affinityLevel = useAffinityStore((s) => toneTierForLevel(levelForScore(s.score)))
   const { expression, animateKey, fire } = useFairyReaction()
 
   const dark = tone === 'dark'

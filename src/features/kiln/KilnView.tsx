@@ -107,7 +107,7 @@ export default function KilnView({ onGoTreasure }: KilnViewProps) {
       const isNew = isNewCategory(result.category)
       await addFromSynthesis(result, selected[0], selected[1])
       // 合成は特別な体験＝絆も大きめに増やす。
-      addAffinity(AFFINITY_PER_ITEM)
+      addAffinity(AFFINITY_PER_ITEM, 'item')
       setPhase('saved')
       fire(emotionForConfirm(isNew))
     } catch (err) {

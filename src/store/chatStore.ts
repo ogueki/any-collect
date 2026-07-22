@@ -139,7 +139,8 @@ function persist(messages: ChatMessage[], consolidatedCount: number): void {
 
 /** 会話に載せる接地文脈（好感度・記憶・図鑑/アルバム傾向・時間帯）を集める。send/opening 共用。 */
 async function gatherChatContext() {
-  const affinityLevel = useAffinityStore.getState().level()
+  // persona の「好感度別の口調」は3段しか無いので、無限に伸びるレベルでなく tier を渡す。
+  const affinityLevel = useAffinityStore.getState().toneTier()
   const memoryFacts = useMemoryStore.getState().facts
 
   // 図鑑・アルバムの傾向を接地ノートに（STEP2c）。会話タブ単独起動でも接地できるよう、
@@ -256,7 +257,7 @@ export const useChatStore = create<ChatState>((set, get) => {
         // 会話は「安い日常行動」＝まほうパワー＋絆を少し貯める（返事が来たときだけ）。
         // ライフサイクルでなくイベント側で加算し、タブ再マウントでの二重加算を避ける。
         useGaugeStore.getState().add(GAUGE_PER_CHAT)
-        useAffinityStore.getState().add(AFFINITY_PER_CHAT)
+        useAffinityStore.getState().add(AFFINITY_PER_CHAT, 'chat')
 
         // 数往復ごとに記憶を要約（非ブロッキング＝会話は待たせない）。
         if (get().messages.length - get().consolidatedCount >= CONSOLIDATE_EVERY) {

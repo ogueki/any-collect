@@ -159,7 +159,7 @@ export default function CollectionView() {
         spendGauge()
         await addFromGenerated(generated, entry.id)
         // 召喚は特別な体験＝絆も大きめに増やす。
-        addAffinity(AFFINITY_PER_ITEM)
+        addAffinity(AFFINITY_PER_ITEM, 'item')
         setSummonResult(generated)
         setSummonPhase('result')
         fire(emotionForGenerated()) // 右下コレットが大喜び

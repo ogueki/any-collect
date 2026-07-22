@@ -8,7 +8,7 @@ import { cropToBlob } from '../../lib/image/crop'
 import { useAlbumStore } from '../../store/albumStore'
 import { useCollectionStore } from '../../store/collectionStore'
 import { useGaugeStore, GAUGE_PER_CAPTURE, GAUGE_MAX } from '../../store/gaugeStore'
-import { useAffinityStore, AFFINITY_PER_CAPTURE, levelForScore } from '../../store/affinityStore'
+import { useAffinityStore, AFFINITY_PER_CAPTURE, toneTierForLevel, levelForScore } from '../../store/affinityStore'
 import { speak, primeAudio } from '../../lib/audio/useSpeak'
 import { SoundOnIcon, SoundOffIcon, SparkleIcon } from '../../components/icons'
 
@@ -66,7 +66,8 @@ export default function CameraMode() {
   const updatePhoto = useCollectionStore((s) => s.updatePhoto)
   const addGauge = useGaugeStore((s) => s.add)
   const addAffinity = useAffinityStore((s) => s.add)
-  const affinityLevel = useAffinityStore((s) => levelForScore(s.score))
+  // 立ち絵の tier 絵は3段までなので、無限に伸びるレベルでなく tier を渡す。
+  const affinityLevel = useAffinityStore((s) => toneTierForLevel(levelForScore(s.score)))
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -186,7 +187,7 @@ export default function CameraMode() {
       // 常時バーは出さず、貯まった瞬間だけポップアップで見せる（ファインダーを主役に）。
       const gaugeBefore = useGaugeStore.getState().value
       addGauge(GAUGE_PER_CAPTURE)
-      addAffinity(AFFINITY_PER_CAPTURE)
+      addAffinity(AFFINITY_PER_CAPTURE, 'capture')
       setGainKey((k) => k + 1)
       setShowGain(true)
       // この撮影で 0..MAX 未満 → 満タンに達したら、大きめのお祝い＝召喚解禁を知らせる。
