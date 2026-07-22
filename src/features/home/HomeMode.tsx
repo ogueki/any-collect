@@ -266,7 +266,9 @@ export default function HomeMode() {
               style={{ backgroundImage: HERO_CLOUD }}
             />
             <div className="relative max-h-40 overflow-y-auto px-5 py-4">
-              {sending || (opening && !heroFairy) ? (
+              {/* 第一声の生成中は、前回のセリフが残っていてもドットに切り替える
+                  ＝会話を永続するようになったので、無言のまま突然セリフが差し替わるのを防ぐ。 */}
+              {sending || opening ? (
                 <span className="flex justify-center gap-1.5 py-1">
                   {[0, 150, 300].map((d) => (
                     <span

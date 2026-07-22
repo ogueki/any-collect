@@ -18,6 +18,9 @@ export default function ChatPanel() {
   const status = useChatStore((s) => s.status)
   const error = useChatStore((s) => s.error)
   const send = useChatStore((s) => s.send)
+  const clearError = useChatStore((s) => s.clearError)
+  const resetChat = useChatStore((s) => s.reset)
+  const debugAgeHistory = useChatStore((s) => s.debugAgeHistory)
   const consolidateMemoryNow = useChatStore((s) => s.consolidateMemoryNow)
   const characterId = useAppStore((s) => s.characterId)
   const facts = useMemoryStore((s) => s.facts)
@@ -35,11 +38,11 @@ export default function ChatPanel() {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, status, showLog])
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input.trim() || sending) return
     primeAudio() // 送信タップ（ユーザー操作）内で音声再生をアンロックしておく
-    void send(input, characterId)
-    setInput('')
+    // 送れたときだけ入力を消す（失敗したら打ち直さずにもう一度送れる）。
+    if (await send(input, characterId)) setInput('')
   }
 
   return (
@@ -49,12 +52,15 @@ export default function ChatPanel() {
         {/* 文字サイズは text-base(16px) 以上。iOS Safari は 16px 未満の input にフォーカスすると自動ズームしてしまう。 */}
         <input
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(e) => {
+            setInput(e.target.value)
+            clearError() // 打ち直したらエラー表示は引っ込める
+          }}
           onKeyDown={(e) => {
             // 日本語入力（IME）の変換確定 Enter では送信しない。
             if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
               e.preventDefault()
-              handleSend()
+              void handleSend()
             }
           }}
           disabled={sending}
@@ -64,7 +70,7 @@ export default function ChatPanel() {
         />
         <button
           type="button"
-          onClick={handleSend}
+          onClick={() => void handleSend()}
           disabled={sending || !input.trim()}
           aria-label="送信"
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-lavender text-white shadow-pop transition active:scale-95 disabled:opacity-40"
@@ -101,7 +107,31 @@ export default function ChatPanel() {
         }`}
       >
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-200" />
-        <h2 className="mb-2 font-display text-sm font-bold text-slate-700">これまでの会話</h2>
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="font-display text-sm font-bold text-slate-700">これまでの会話</h2>
+          {/* 会話は端末に残る（STEP2e）ので、消す手段もユーザーの手に置く（spec §9）。 */}
+          <div className="flex gap-1.5">
+            {debugTools() && (
+              <button
+                type="button"
+                onClick={() => debugAgeHistory(24)}
+                disabled={messages.length === 0}
+                title="履歴を24時間前にずらす（リロードで「おかえり」を確認）"
+                className="rounded-full bg-mint px-2.5 py-0.5 text-[11px] font-bold text-slate-900 transition active:scale-95 disabled:opacity-50"
+              >
+                1日前にする
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={resetChat}
+              disabled={sending || messages.length === 0}
+              className="rounded-full border border-slate-300 px-2.5 py-0.5 text-[11px] font-bold text-slate-400 transition active:scale-95 disabled:opacity-40"
+            >
+              会話を消す
+            </button>
+          </div>
+        </div>
         <div
           ref={listRef}
           className="flex max-h-[45vh] flex-col gap-2 overflow-y-auto rounded-2xl bg-slate-50 p-3"
@@ -136,7 +166,7 @@ export default function ChatPanel() {
           )}
         </div>
 
-        {/* コレットが覚えていること（会話・撮影・アイテム化で自然に増える）。
+        {/* コレットが覚えていること（数往復ごとに会話から自動で要約されて増える）。
             一覧と「忘れる」はユーザー向け。「いま覚えて」（手動要約）は検証用＝`?debug=1` のときだけ。 */}
         <div className="mt-3 rounded-2xl bg-slate-50 p-3 text-left">
           <div className="mb-1 flex items-center justify-between">

@@ -27,10 +27,19 @@ interface ChatRequestBody {
   timeOfDay?: unknown
   /** まほうパワーが満タンか（opening で召喚に誘う判断に使う） */
   gaugeFull?: unknown
+  /** どんな再会か（first/back/days）。opening の温度感に使う。allowlist 検証する */
+  reunion?: unknown
 }
 
 /** timeOfDay として受け付ける値（自由文字列を system prompt に入れない） */
 const TIME_OF_DAY_VALUES = ['朝', '昼', '夕方', '夜', '深夜'] as const
+
+/** reunion として受け付ける値（同上。クライアントの ReunionBucket と対応） */
+const REUNION_VALUES = ['first', 'back', 'days'] as const
+
+/** モデルに渡す履歴の上限（クライアントは窓で絞って送るが、サーバ側でも信用しない） */
+const MAX_HISTORY_TURNS = 20
+const MAX_TURN_CHARS = 1000
 
 /** opening のとき Gemini に渡す固定のユーザーターン（contents は空にできないため） */
 const OPENING_USER_TURN =
@@ -78,7 +87,8 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
   }
 
   const opening = body.mode === 'opening'
-  const userInput = typeof body.userInput === 'string' ? body.userInput.trim() : ''
+  const userInput =
+    typeof body.userInput === 'string' ? body.userInput.trim().slice(0, MAX_TURN_CHARS) : ''
   if (!userInput && !opening) {
     sendJson(res, 400, { error: 'userInput が空です' })
     return
@@ -87,7 +97,8 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
   const history: ChatTurn[] = Array.isArray(body.history)
     ? body.history
         .filter((m) => m && (m.role === 'user' || m.role === 'fairy'))
-        .map((m) => ({ role: m.role, content: String(m.content ?? '') }))
+        .map((m) => ({ role: m.role, content: String(m.content ?? '').slice(0, MAX_TURN_CHARS) }))
+        .slice(-MAX_HISTORY_TURNS)
     : []
 
   try {
@@ -112,6 +123,11 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
       (TIME_OF_DAY_VALUES as readonly string[]).includes(body.timeOfDay)
         ? body.timeOfDay
         : undefined
+    const reunion =
+      typeof body.reunion === 'string' &&
+      (REUNION_VALUES as readonly string[]).includes(body.reunion)
+        ? (body.reunion as (typeof REUNION_VALUES)[number])
+        : undefined
     const systemPrompt = buildSystemPrompt(loadPersona(body.personaId), {
       affinityLevel,
       memoryFacts,
@@ -119,6 +135,7 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
       timeOfDay,
       opening,
       gaugeFull: body.gaugeFull === true,
+      reunion,
     })
     const { text, emotion } = await generateChatReply({
       apiKey,

@@ -57,6 +57,7 @@ export const httpChatProvider: ChatProvider = {
       groundingNotes: opts?.groundingNotes,
       timeOfDay: opts?.timeOfDay,
       gaugeFull: opts?.gaugeFull,
+      reunion: opts?.reunion,
     })
   },
 }

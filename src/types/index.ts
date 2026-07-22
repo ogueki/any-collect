@@ -107,3 +107,10 @@ export interface ChatMessage {
   /** 妖精メッセージに添えられた感情（立ち絵の表情に反映）。user では未使用 */
   emotion?: FairyExpression
 }
+
+/**
+ * どんな再会か（第一声の温度感・STEP2e）。会話履歴を永続するようになったので、
+ * 「まだ何も話していない」だけでなく「前回からどれだけ空いたか」で声かけを変える。
+ * サーバ（api/chat.ts）は自由文字列を prompt に入れないよう、この値だけを allowlist で受ける。
+ */
+export type ReunionBucket = 'first' | 'back' | 'days'

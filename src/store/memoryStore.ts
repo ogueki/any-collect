@@ -42,8 +42,11 @@ interface MemoryState {
   facts: MemoryFact[]
   /** 要約中フラグ（再入防止＋UI表示に使える） */
   consolidating: boolean
-  /** 直近の会話から facts を更新する（再入ガード・失敗は握りつぶして会話を止めない） */
-  consolidate: (messages: ChatMessage[]) => Promise<void>
+  /**
+   * 直近の会話から facts を更新する（再入ガード・失敗は握りつぶして会話を止めない）。
+   * 成功したら true。呼び出し側（chatStore）は成功時だけ「どこまで要約済みか」を進める。
+   */
+  consolidate: (messages: ChatMessage[]) => Promise<boolean>
   /** 記憶を消す（削除。spec「削除を一級」の芽・検証にも使う） */
   forget: () => void
 }
@@ -53,16 +56,18 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
   consolidating: false,
 
   consolidate: async (messages) => {
-    if (get().consolidating) return
+    if (get().consolidating) return false
     // ユーザー発話が無ければ覚えることは無い（無駄な API 呼び出しを避ける）。
-    if (!messages.some((m) => m.role === 'user' && m.content.trim())) return
+    if (!messages.some((m) => m.role === 'user' && m.content.trim())) return false
     set({ consolidating: true })
     try {
       const updated = await memoryProvider.consolidate(messages, get().facts)
       persist(updated)
       set({ facts: updated })
+      return true
     } catch {
       // 記憶更新の失敗は会話を止めない（次の機会に再挑戦）。
+      return false
     } finally {
       set({ consolidating: false })
     }

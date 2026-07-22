@@ -1,4 +1,4 @@
-import type { ChatMessage, MemoryFact } from '../../types'
+import type { ChatMessage, MemoryFact, ReunionBucket } from '../../types'
 import type { FairyExpression } from '../character/CharacterRenderer'
 
 /** 妖精の返事。テキストに加え、立ち絵の表情に使う感情を伴う。 */
@@ -27,5 +27,7 @@ export interface ChatProvider {
   /** 会話履歴とユーザー入力から、妖精としての応答（テキスト＋感情）を返す */
   sendMessage(history: ChatMessage[], userInput: string, opts?: ChatOpts): Promise<ChatReply>
   /** 会話の始まりに、コレットからの第一声を生成する（ホームを開いたとき等） */
-  openConversation(opts?: ChatOpts & { gaugeFull?: boolean }): Promise<ChatReply>
+  openConversation(
+    opts?: ChatOpts & { gaugeFull?: boolean; reunion?: ReunionBucket },
+  ): Promise<ChatReply>
 }
