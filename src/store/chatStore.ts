@@ -100,7 +100,8 @@ function isChatMessage(v: unknown): v is ChatMessage {
     (r.role === 'user' || r.role === 'fairy') &&
     typeof r.content === 'string' &&
     typeof r.createdAt === 'string' &&
-    (r.emotion === undefined || isFairyExpression(r.emotion))
+    (r.emotion === undefined || isFairyExpression(r.emotion)) &&
+    (r.voiceDirection === undefined || typeof r.voiceDirection === 'string')
   )
 }
 
@@ -196,6 +197,7 @@ function createMessage(
   role: ChatMessage['role'],
   content: string,
   emotion?: ChatMessage['emotion'],
+  voiceDirection?: ChatMessage['voiceDirection'],
 ): ChatMessage {
   return {
     id: crypto.randomUUID(),
@@ -203,6 +205,7 @@ function createMessage(
     content,
     createdAt: new Date().toISOString(),
     emotion,
+    voiceDirection,
   }
 }
 
@@ -250,7 +253,7 @@ export const useChatStore = create<ChatState>((set, get) => {
           personaId,
           ...context,
         })
-        const next = [...get().messages, createMessage('fairy', reply.text, reply.emotion)]
+        const next = [...get().messages, createMessage('fairy', reply.text, reply.emotion, reply.voiceDirection)]
         const trimmed = trimMessages(next, get().consolidatedCount)
         persist(trimmed.messages, trimmed.consolidatedCount)
         set((s) => ({ ...trimmed, status: 'idle', replyNonce: s.replyNonce + 1 }))
@@ -296,7 +299,7 @@ export const useChatStore = create<ChatState>((set, get) => {
 
         // 生成中にユーザーが先に話し始めていたら、第一声は捨てる（会話に割り込まない）。
         if (get().messages.length === started.length) {
-          const next = [...get().messages, createMessage('fairy', reply.text, reply.emotion)]
+          const next = [...get().messages, createMessage('fairy', reply.text, reply.emotion, reply.voiceDirection)]
           const trimmed = trimMessages(next, get().consolidatedCount)
           persist(trimmed.messages, trimmed.consolidatedCount)
           set((s) => ({ ...trimmed, replyNonce: s.replyNonce + 1 }))

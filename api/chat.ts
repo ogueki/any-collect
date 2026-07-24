@@ -137,13 +137,13 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
       gaugeFull: body.gaugeFull === true,
       reunion,
     })
-    const { text, emotion } = await generateChatReply({
+    const { text, emotion, voiceDirection } = await generateChatReply({
       apiKey,
       systemPrompt,
       history,
       userInput: opening ? OPENING_USER_TURN : userInput,
     })
-    sendJson(res, 200, { reply: text, emotion })
+    sendJson(res, 200, { reply: text, emotion, voiceDirection })
   } catch (err) {
     const message = err instanceof Error ? err.message : '会話の生成に失敗しました'
     sendJson(res, 502, { error: message })

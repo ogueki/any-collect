@@ -10,6 +10,11 @@ export interface TtsSpeechOptions {
    * 感情→タグ／感情→声 の対応表はサーバ側（voice.json）が持つ＝クライアントは知らない。
    */
   expression?: string
+  /**
+   * その返事だけの演出指示（AI 生成・日本語の自由文）。あれば感情別の固定タグより優先される。
+   * サニタイズはサーバ側（api/tts.ts）が行う。
+   */
+  direction?: string
 }
 
 export interface TtsProvider {

@@ -106,6 +106,11 @@ export interface ChatMessage {
   createdAt: string
   /** 妖精メッセージに添えられた感情（立ち絵の表情に反映）。user では未使用 */
   emotion?: FairyExpression
+  /**
+   * この返事だけの「読み方の演出指示」（TTS 用・日本語の自由文）。🔊 再生時にサーバへ渡す。
+   * 無ければ voice.json の感情別タグにフォールバックするので、旧い履歴とも互換。
+   */
+  voiceDirection?: string
 }
 
 /**

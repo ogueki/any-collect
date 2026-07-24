@@ -10,6 +10,8 @@ import { FAIRY_EXPRESSIONS, type FairyExpression } from '../character/CharacterR
 interface ChatApiResponse {
   reply?: string
   emotion?: string
+  /** その返事だけの演出指示（TTS 用）。無ければ感情別の固定タグにフォールバックする。 */
+  voiceDirection?: string
   error?: string
 }
 
@@ -31,7 +33,14 @@ async function postChat(payload: Record<string, unknown>) {
   if (!res.ok || !data.reply) {
     throw new Error(data.error ?? `会話に失敗しました (${res.status})`)
   }
-  return { text: data.reply, emotion: toFairyExpression(data.emotion) }
+  return {
+    text: data.reply,
+    emotion: toFairyExpression(data.emotion),
+    voiceDirection:
+      typeof data.voiceDirection === 'string' && data.voiceDirection.trim()
+        ? data.voiceDirection.trim()
+        : undefined,
+  }
 }
 
 export const httpChatProvider: ChatProvider = {

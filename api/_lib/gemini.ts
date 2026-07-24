@@ -39,6 +39,12 @@ export type ChatEmotion = (typeof CHAT_EMOTIONS)[number]
 export interface ChatReply {
   text: string
   emotion: ChatEmotion
+  /**
+   * その返事だけの「読み方の演出指示」（TTS 用・日本語の自由文）。
+   * 固定の感情タグでは出せない機微（例：悲しいけど励ましたい）を1件ごとに表現する。
+   * 未取得なら voice.json の感情別タグにフォールバックする（api/tts.ts）。
+   */
+  voiceDirection?: string
 }
 
 interface GenerateArgs {
@@ -109,6 +115,13 @@ export async function generateChatReply({
               description:
                 'ペルソナの「感情の出し方」を参考に、返事の気持ちに最も合う感情を1つだけ選ぶ',
             },
+            voiceDirection: {
+              type: 'STRING',
+              description:
+                'この返事の読み方を声優に指示するつもりで、日本語の短い一文で書く（15〜40字・体言止めや「〜して」の形）。' +
+                '感情語を並べるのではなく情景や様子で描く。例:「宝物を見つけた子どもみたいに、はしゃいで」「泣きそうな声で、無理に平気なふりをして」。' +
+                'セリフ本文は絶対に含めない。角括弧も付けない。',
+            },
           },
           required: ['text', 'emotion'],
         },
@@ -156,7 +169,13 @@ export async function generateChatReply({
       ? (parsed.emotion as ChatEmotion)
       : 'neutral'
 
-  return { text, emotion }
+  // 演出指示は「あれば使う」任意項目。壊れていても会話は成立させる（サニタイズは api/tts.ts 側）。
+  const voiceDirection =
+    typeof parsed.voiceDirection === 'string' && parsed.voiceDirection.trim()
+      ? parsed.voiceDirection.trim()
+      : undefined
+
+  return { text, emotion, voiceDirection }
 }
 
 /** コレットが覚える「きみについての短い事実」（api/client ミラー＝src/types MemoryFact）。 */

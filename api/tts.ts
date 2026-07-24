@@ -15,11 +15,34 @@ const FISH_TTS_URL = 'https://api.fish.audio/v1/tts'
 /** chunk_length（100-300）の上限＝1リクエストの上限。コスト/レイテンシの安全弁。 */
 const MAX_TEXT_LEN = 300
 
+/** 演出指示の最大長。長い指示は本文より目立って不安定になるので切る。 */
+const MAX_DIRECTION_LEN = 60
+
 interface TtsRequestBody {
   text?: string
   personaId?: string
   /** 立ち絵と同じ感情（FairyExpression）。voice.json の対応表でタグ／声に変換する。 */
   expression?: string
+  /**
+   * その返事だけの演出指示（AI 生成・日本語の自由文）。あれば感情別の固定タグより優先する。
+   * LLM 由来の自由文なので、ここで必ずサニタイズしてから読み上げ文に混ぜる。
+   */
+  direction?: string
+}
+
+/**
+ * AI が書いた演出指示を安全な形に整える。
+ * 角括弧を除去（タグの入れ子・脱出を防ぐ）・改行を潰す・長さを制限する。
+ * 空になったら undefined＝呼び出し側は固定タグにフォールバックする。
+ */
+function sanitizeDirection(raw: unknown): string | undefined {
+  if (typeof raw !== 'string') return undefined
+  const cleaned = raw
+    .replace(/[[\]]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, MAX_DIRECTION_LEN)
+  return cleaned || undefined
 }
 
 type NodeReq = IncomingMessage & { body?: unknown }
@@ -88,9 +111,13 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
       voice,
       typeof body.expression === 'string' ? body.expression : undefined,
     )
+    // その返事だけの演出指示があればそれを優先し、無ければ感情別の固定タグに落とす。
+    // ＝AI の機微（例「悲しいけど励ましたい」）を活かしつつ、下限は必ず担保する。
+    const direction = sanitizeDirection(body.direction)
+    const prefix = direction ? `[${direction}]` : tag
     // タグは slice の後に前置する（先に付けるとタグ自体が切り落とされうる）。
     // 表示テキストには混ぜない＝ここ（TTS 経路）だけで付ける。
-    const spokenText = tag ? `${tag} ${text}` : text
+    const spokenText = prefix ? `${prefix} ${text}` : text
 
     const fishRes = await fetch(FISH_TTS_URL, {
       method: 'POST',

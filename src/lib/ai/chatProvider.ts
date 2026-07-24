@@ -6,6 +6,11 @@ export interface ChatReply {
   text: string
   /** モデルが選んだ感情。未取得/不正なら undefined（表示側で neutral 等にフォールバック） */
   emotion?: FairyExpression
+  /**
+   * この返事だけの「読み方の演出指示」（TTS 用・日本語の自由文）。
+   * 固定の感情タグでは出せない機微を1件ごとに表現する。未取得なら感情別の固定タグに落ちる。
+   */
+  voiceDirection?: string
 }
 
 /** 会話に載せる接地オプション（好感度・記憶・図鑑/アルバム傾向・時間帯）。 */

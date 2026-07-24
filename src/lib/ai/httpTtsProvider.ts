@@ -10,11 +10,12 @@ async function fetchTts(text: string, opts?: TtsSpeechOptions): Promise<Response
   const res = await fetch('/api/tts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    // expression は「読み方のヒント」＝未指定でもサーバ側で素の声にフォールバックする。
+    // expression / direction は「読み方のヒント」＝未指定でもサーバ側で素の声にフォールバックする。
     body: JSON.stringify({
       text,
       personaId: opts?.personaId ?? 'default',
       expression: opts?.expression,
+      direction: opts?.direction,
     }),
   })
   if (!res.ok) {
