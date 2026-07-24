@@ -2,5 +2,18 @@
   "provider": "fish",
   "referenceId": "4ce52daf766e42bba31d45211f0f62d9",
   "model": "s2.1-pro-free",
-  "format": "mp3"
+  "format": "mp3",
+  "expressionTag": {
+    "happy": "[うれしそうに、声を明るくして]",
+    "excited": "[宝物を見つけた子どもみたいに、はしゃいで]",
+    "surprised": "[目を丸くして、思わず声が高くなって]",
+    "sad": "[さびしそうに、声を落として]",
+    "angry": "[ぷんぷんと怒って、頬をふくらませて]",
+    "confused": "[困って、首をかしげながら]",
+    "thinking": "[考えこみながら、ゆっくりと]",
+    "searching": "[わくわくしながら、あたりを探るように]",
+    "shy": "[照れて、もじもじしながら小さな声で]",
+    "exasperated": "[やれやれと呆れたように、ため息まじりに]",
+    "salute": "[びしっと胸を張って、誇らしげに]"
+  }
 }

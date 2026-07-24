@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { loadVoice } from './_lib/voice.js'
+import { loadVoice, resolveVoice } from './_lib/voice.js'
 
 /**
  * 音声合成 API プロキシ（STEP3・Fish Audio）。
@@ -18,6 +18,8 @@ const MAX_TEXT_LEN = 300
 interface TtsRequestBody {
   text?: string
   personaId?: string
+  /** 立ち絵と同じ感情（FairyExpression）。voice.json の対応表でタグ／声に変換する。 */
+  expression?: string
 }
 
 type NodeReq = IncomingMessage & { body?: unknown }
@@ -81,6 +83,15 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
 
   try {
     const voice = loadVoice(body.personaId)
+    // 立ち絵と同じ感情から「使う声」と「前置するタグ」を決める（対応表は voice.json）。
+    const { referenceId, tag } = resolveVoice(
+      voice,
+      typeof body.expression === 'string' ? body.expression : undefined,
+    )
+    // タグは slice の後に前置する（先に付けるとタグ自体が切り落とされうる）。
+    // 表示テキストには混ぜない＝ここ（TTS 経路）だけで付ける。
+    const spokenText = tag ? `${tag} ${text}` : text
+
     const fishRes = await fetch(FISH_TTS_URL, {
       method: 'POST',
       headers: {
@@ -92,8 +103,8 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
       // reference_id が undefined のときは JSON から自然に落ちる（Fish 既定話者）。
       // latency:'low'＝発話開始（TTFA）優先。音質は既定 mp3_bitrate のまま落とさない。
       body: JSON.stringify({
-        text,
-        reference_id: voice.referenceId,
+        text: spokenText,
+        reference_id: referenceId,
         format: voice.format,
         latency: 'low',
       }),

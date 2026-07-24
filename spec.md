@@ -94,6 +94,11 @@
 - TTS は **Fish Audio**（`TtsProvider`）。ON/OFF 切替。好感度で声を段階解禁しうる。
   - **STEP3a 実装（動的TTS の MVP）**＝`api/tts.ts`（Fish `POST /v1/tts` プロキシ・鍵はサーバのみ・raw 音声返却）／`api/_lib/voice.ts` `loadVoice`（`src/characters/<id>/voice.json` の `referenceId`/`model`/`format`＝声の差し替えはこのファイル1つ・`loadPersona` ミラー）／`TtsProvider` 実装 `httpTtsProvider`＋差し替え点 `tts.ts`（scene 三点セットのミラー）／`src/lib/audio/useSpeak.ts`（`speak(text)` 共有・`appStore.voiceEnabled` でゲート・直前再生を停止・`primeAudio()` で iOS 自動再生アンロック）。配線＝**カメラ反応を自動読み上げ**＋**会話返信は 🔊 タップ再生**（ユーザー操作内で確実）＋ホーム/カメラに ON/OFF トグル。**検証中は無料モデル `s2.1-pro-free`（$0）**、品質は voice.json で pro に差し替え（free/pro は同一モデル＝音質・単発速度同じ、差は SLA/非学習/提供期限のみ）。
   - **STEP3a 仕上げ（安定化＋低レイテンシ化）**：①**自動再生バグ修正**＝`useSpeak.ts` を「使い回す**単一の永続 `<audio>`**をユーザー操作で一度アンロック→以後 `src` 差し替えで再生」に作り替え（旧＝毎回 `new Audio` で操作から時間が経つと iOS/Chrome にブロックされ、カメラ初回・放置後が無音だった）。声トグルON でも `primeAudio()`。②**ストリーミング化**＝`api/tts.ts` を Fish 応答の全バッファ（`arrayBuffer`）から **chunked passthrough**（届いたチャンクを即 `res.write`）に、Fish body に `latency:'low'`。クライアントは対応環境で **MediaSource／ManagedMediaSource** に逐次流し込み**最初のチャンクで再生開始**（`TtsProvider.synthesizeSpeechStream?()` 追加・`httpTtsProvider` 実装）、**非対応（Safari の mp3×MSE 不可等）は Blob 全バッファへ自動フォールバック**。dev 実測で TTFB 0.83s / 全体 3.96s（＝約3s早く鳴り出す）。
+  - **STEP3c 実装（感情表現）**＝**立ち絵と同じ感情で読み方を変える**。返事ごとの `emotion`（`FairyExpression`・§4.3）を `speak(text, { expression })` → `/api/tts` へ流し、サーバが `voice.json` の `expressionTag` で **Fish の感情タグ**を本文の先頭に前置する（Fish S2 は文頭の文レベル感情キューが最も効く／タグは**トークン非計上・レイテンシ増なし・全価格帯で利用可**）。**タグは TTS 経路でのみ付与**＝会話ログ・大セリフの表示には混ぜない。感情名は小文字英字のみの allowlist で検証し、未知・未定義（`neutral`）は**タグなし＝素の声**にフォールバック。
+    - ⚠️ **実証で判明した肝：タグは"日本語の自由文"で書く**。英語のコアタグ（`[excited]`/`[sad]`）は**日本語本文にはほぼ効かない**（出力のブレと区別できないレベル）。公式も「タグはスクリプトと同じ言語で」と推奨しており、**声優への演技指示のように書く**と明確に効く（例：`[宝物を見つけた子どもみたいに、はしゃいで]`／`[泣きそうな声で、無理に平気なふりをして]`＝後者は実際に泣き声が入る）。`s2.1-pro-free` でも効く（S2.1-Pro と機能同一）。
+    - `latency:'low'`（STEP3a の低レイテンシ設定）でも**感情表現は落ちない**ことを実測で確認＝**起動の速さと表現力は両取り**。
+    - **声そのものの切替も同じ経路で可能**：`voice.json` に `variants`（名前つき別音声）＋`expressionVariant`（感情→variant）を書くと、その感情だけ別のクローンで喋る（例：`excited`/`happy` を"元気テイク"の声に）。**タグ主体・声切替主体・併用のいずれもコード無改修で JSON だけ**で切り替えられる。
+    - 正典ボイスは**つくよみちゃんコーパスの全感情テイクから作ったクローン**（権利は §9 / 要クレジット表記）。
 - **3b（ホーム＝事前収録パートボイス＝AI下書き→Fish一括生成→静的キャッシュ→実行時ゼロ円）は後続。**
 
 ### 4.6 妖精キャラクター

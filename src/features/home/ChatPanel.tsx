@@ -149,7 +149,7 @@ export default function ChatPanel() {
               {m.role !== 'user' && (
                 <button
                   type="button"
-                  onClick={() => void speak(m.content)}
+                  onClick={() => void speak(m.content, { expression: m.emotion })}
                   aria-label="声で聞く"
                   title="声で聞く"
                   className="ml-1 inline-flex align-middle text-slate-400 transition hover:text-lavender active:scale-95"

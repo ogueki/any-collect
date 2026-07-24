@@ -1,4 +1,5 @@
 import { ttsProvider } from '../ai/tts'
+import type { TtsSpeechOptions } from '../ai/ttsProvider'
 import { useAppStore } from '../../store/appStore'
 
 /**
@@ -84,8 +85,13 @@ function appendChunk(sb: SourceBuffer, chunk: BufferSource): Promise<void> {
 }
 
 /** 低レイテンシ経路：ストリームを MediaSource に流し込み、最初のチャンクで再生開始。 */
-async function speakStreaming(text: string, myReq: number, MS: MediaSourceCtor): Promise<void> {
-  const res = await ttsProvider.synthesizeSpeechStream!(text)
+async function speakStreaming(
+  text: string,
+  myReq: number,
+  MS: MediaSourceCtor,
+  opts?: TtsSpeechOptions,
+): Promise<void> {
+  const res = await ttsProvider.synthesizeSpeechStream!(text, opts)
   if (myReq !== requestSeq) return
   const body = res.body
   if (!body) {
@@ -144,8 +150,8 @@ async function speakStreaming(text: string, myReq: number, MS: MediaSourceCtor):
 }
 
 /** フォールバック経路：全バッファの Blob を作ってから再生。 */
-async function speakBuffered(text: string, myReq: number): Promise<void> {
-  const blob = await ttsProvider.synthesizeSpeech(text)
+async function speakBuffered(text: string, myReq: number, opts?: TtsSpeechOptions): Promise<void> {
+  const blob = await ttsProvider.synthesizeSpeech(text, opts)
   if (myReq !== requestSeq) return
   await playBlob(blob, myReq)
 }
@@ -165,8 +171,11 @@ async function playBlob(blob: Blob, myReq: number): Promise<void> {
  * text を音声化して再生する。`voiceEnabled` が false なら何もしない。
  * 直前の再生は停止（重ならない）。生成失敗・再生ブロックは黙って諦める
  * ＝声はベストエフォート（本文はテキストで既に出ている）。
+ *
+ * `opts.expression` に立ち絵と同じ感情を渡すと、その感情に応じた読み方になる
+ * （感情→タグ／感情→声 の対応表はサーバ側の voice.json が持つ）。
  */
-export async function speak(text: string): Promise<void> {
+export async function speak(text: string, opts?: TtsSpeechOptions): Promise<void> {
   const t = text.trim()
   if (!t) return
   if (!useAppStore.getState().voiceEnabled) return
@@ -183,9 +192,9 @@ export async function speak(text: string): Promise<void> {
 
   try {
     if (canStream) {
-      await speakStreaming(t, myReq, MS as MediaSourceCtor)
+      await speakStreaming(t, myReq, MS as MediaSourceCtor, opts)
     } else {
-      await speakBuffered(t, myReq)
+      await speakBuffered(t, myReq, opts)
     }
   } catch {
     if (myReq === requestSeq) revokeUrl()

@@ -151,7 +151,9 @@ export default function CameraMode() {
         emotion = result.emotion
         setComment(result.comment)
         fireReaction(result.emotion ?? 'happy')
-        void speak(result.comment) // 反応を動的TTSで読み上げ（voiceEnabled は speak 内でゲート）
+        // 反応を動的TTSで読み上げ（voiceEnabled は speak 内でゲート）。
+        // 立ち絵と同じ感情を渡す＝表情と声の温度を揃える。
+        void speak(result.comment, { expression: result.emotion })
 
         // 主役が採れたら bbox でクロップして図鑑に収集（無料・無制限）。
         if (result.subject) {

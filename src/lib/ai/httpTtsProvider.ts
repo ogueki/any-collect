@@ -1,4 +1,4 @@
-import type { TtsProvider } from './ttsProvider'
+import type { TtsProvider, TtsSpeechOptions } from './ttsProvider'
 
 /**
  * /api/tts プロキシ経由で音声合成する TtsProvider 実装（Fish Audio）。
@@ -6,11 +6,16 @@ import type { TtsProvider } from './ttsProvider'
  * クライアントは知らない（claude.md 原則1・2）。返りは再生用の音声 Blob。
  */
 /** /api/tts を叩いて Response を得る（成否判定込み）。stream/blob 経路の共通部。 */
-async function fetchTts(text: string, personaId?: string): Promise<Response> {
+async function fetchTts(text: string, opts?: TtsSpeechOptions): Promise<Response> {
   const res = await fetch('/api/tts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text, personaId: personaId ?? 'default' }),
+    // expression は「読み方のヒント」＝未指定でもサーバ側で素の声にフォールバックする。
+    body: JSON.stringify({
+      text,
+      personaId: opts?.personaId ?? 'default',
+      expression: opts?.expression,
+    }),
   })
   if (!res.ok) {
     const data = (await res.json().catch(() => ({}))) as { error?: string }
@@ -21,11 +26,11 @@ async function fetchTts(text: string, personaId?: string): Promise<Response> {
 
 export const httpTtsProvider: TtsProvider = {
   async synthesizeSpeech(text, opts) {
-    const res = await fetchTts(text, opts?.personaId)
+    const res = await fetchTts(text, opts)
     return await res.blob()
   },
   // 低レイテンシ経路：Response をそのまま返し、呼び出し側が body を逐次再生に流す。
   async synthesizeSpeechStream(text, opts) {
-    return await fetchTts(text, opts?.personaId)
+    return await fetchTts(text, opts)
   },
 }
