@@ -11,7 +11,7 @@ import { useGaugeStore, GAUGE_PER_CAPTURE, GAUGE_MAX } from '../../store/gaugeSt
 import { useAffinityStore, AFFINITY_PER_CAPTURE, toneTierForLevel, levelForScore } from '../../store/affinityStore'
 import { speak, primeAudio } from '../../lib/audio/useSpeak'
 import { useOnboardingStore } from '../../store/onboardingStore'
-import { CAMERA_HINT } from '../onboarding/script'
+import { CAMERA_HINT_TEXT } from '../onboarding/script'
 import { SoundOnIcon, SoundOffIcon, SparkleIcon } from '../../components/icons'
 
 /**
@@ -102,8 +102,8 @@ export default function CameraMode() {
   const { expression: reactionExpression, animateKey, fire: fireReaction } = useFairyReaction()
 
   // 初回オンボの撮影ガイド（phase='shoot' のときだけ）。最初の一枚を後押しする。
+  // 操作説明は画面のナレーションで行い、コレットには喋らせない/反応させない（世界観優先）。
   const shootGuide = useOnboardingStore((s) => s.phase === 'shoot')
-  const hintSpokenRef = useRef(false)
 
   // マウント時にライブカメラを開始（背面カメラ優先）。アンマウントで停止。
   useEffect(() => {
@@ -288,25 +288,9 @@ export default function CameraMode() {
     }
   }, [pendingUpdate])
 
-  // 撮影ガイドに入ったら、コレットが一度だけ声で後押しする（導入で音声はアンロック済み）。
-  useEffect(() => {
-    if (!shootGuide || cameraError || hintSpokenRef.current) return
-    hintSpokenRef.current = true
-    void speak(CAMERA_HINT.text, {
-      expression: CAMERA_HINT.expression,
-      direction: CAMERA_HINT.direction,
-    })
-  }, [shootGuide, cameraError])
-
   // ベース表情（状態由来）。リアクション中はそれを一時的に上書きする。
-  // 撮影ガイド中はコレットもわくわく顔で「撮って！」を後押しする。
-  const baseExpression: FairyExpression = busy
-    ? 'thinking'
-    : cameraError
-      ? 'sad'
-      : shootGuide
-        ? 'excited'
-        : 'neutral'
+  // 撮影ガイド中もコレットは特別な反応をしない（UIの案内はナレーションの役目）。
+  const baseExpression: FairyExpression = busy ? 'thinking' : cameraError ? 'sad' : 'neutral'
   const expression = reactionExpression ?? baseExpression
 
   return (
@@ -337,6 +321,23 @@ export default function CameraMode() {
       >
         {voiceEnabled ? <SoundOnIcon className="h-5 w-5" /> : <SoundOffIcon className="h-5 w-5" />}
       </button>
+
+      {/* オンボの撮影ガイド＝画面上部のナレーション（コレットとは被らない・声も出さない）。
+          操作説明はシステムの案内として出し、キャラの世界観を保つ。シャッターを押すと消える。 */}
+      {shootGuide && !cameraError && (
+        <div className="pointer-events-none absolute inset-x-0 top-16 z-10 flex justify-center px-6">
+          <div className="animate-reveal pointer-events-auto flex items-center gap-2 rounded-2xl bg-white/95 px-4 py-2 text-slate-700 shadow-pop">
+            <span className="text-sm font-bold">📷 {CAMERA_HINT_TEXT}</span>
+            <button
+              type="button"
+              onClick={() => useOnboardingStore.getState().finish()}
+              className="shrink-0 text-xs font-bold text-slate-400 transition active:scale-95"
+            >
+              スキップ
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* カメラ不可時のフォールバック */}
       {cameraError && (
@@ -427,19 +428,6 @@ export default function CameraMode() {
       {/* 撮影ボタン */}
       {!cameraError && (
         <div className="absolute inset-x-0 bottom-8 flex flex-col items-center gap-2">
-          {/* オンボの撮影ガイド：シャッターを押す一歩を後押しする吹き出し（初回だけ）。 */}
-          {shootGuide && (
-            <div className="mb-1 flex items-center gap-2 rounded-2xl bg-white/95 px-4 py-2 text-slate-700 shadow-pop">
-              <span className="text-sm font-bold">📷 このボタンで、見つけたものを見せて！</span>
-              <button
-                type="button"
-                onClick={() => useOnboardingStore.getState().finish()}
-                className="shrink-0 text-xs font-bold text-slate-400 transition active:scale-95"
-              >
-                スキップ
-              </button>
-            </div>
-          )}
           {savedFlash && (
             <p className="rounded-full bg-mint/90 px-4 py-1 text-sm font-bold text-slate-900 shadow-pop">
               ✓ アルバムに保存したよ
