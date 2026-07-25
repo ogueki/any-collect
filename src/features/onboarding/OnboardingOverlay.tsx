@@ -20,6 +20,7 @@ export default function OnboardingOverlay() {
   const go = useAppStore((s) => s.go)
   const step = useOnboardingStore((s) => s.step)
   const next = useOnboardingStore((s) => s.next)
+  const beginShoot = useOnboardingStore((s) => s.beginShoot)
   const finish = useOnboardingStore((s) => s.finish)
 
   // 「はじめる」を押すまでは音声をアンロックできない（自動再生ポリシー）。
@@ -45,9 +46,9 @@ export default function OnboardingOverlay() {
       next()
       return
     }
-    // 最後＝本編へ手渡し。カメラを開いて「撮ってみせて」に繋ぐ。
+    // 最後＝本編へ手渡し。撮影ガイド（phase='shoot'）に移してカメラを開く。
     stopSpeaking()
-    finish()
+    beginShoot()
     go('camera')
   }
   const handleSkip = () => {

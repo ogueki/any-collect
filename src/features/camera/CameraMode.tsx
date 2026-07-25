@@ -10,6 +10,8 @@ import { useCollectionStore } from '../../store/collectionStore'
 import { useGaugeStore, GAUGE_PER_CAPTURE, GAUGE_MAX } from '../../store/gaugeStore'
 import { useAffinityStore, AFFINITY_PER_CAPTURE, toneTierForLevel, levelForScore } from '../../store/affinityStore'
 import { speak, primeAudio } from '../../lib/audio/useSpeak'
+import { useOnboardingStore } from '../../store/onboardingStore'
+import { CAMERA_HINT } from '../onboarding/script'
 import { SoundOnIcon, SoundOffIcon, SparkleIcon } from '../../components/icons'
 
 /**
@@ -99,6 +101,10 @@ export default function CameraMode() {
   // 撮影に対する妖精の一時リアクション（数秒でベース表情へ戻る）。共有フックに集約。
   const { expression: reactionExpression, animateKey, fire: fireReaction } = useFairyReaction()
 
+  // 初回オンボの撮影ガイド（phase='shoot' のときだけ）。最初の一枚を後押しする。
+  const shootGuide = useOnboardingStore((s) => s.phase === 'shoot')
+  const hintSpokenRef = useRef(false)
+
   // マウント時にライブカメラを開始（背面カメラ優先）。アンマウントで停止。
   useEffect(() => {
     let active = true
@@ -138,6 +144,10 @@ export default function CameraMode() {
     setPendingUpdate(null) // 前回の「更新する？」は次の撮影で閉じる
     fireReaction('thinking') // 「見てるね…」の即時フィードバック
     primeAudio() // 撮影タップ（ユーザー操作）内で iOS 自動再生をアンロック
+    // オンボの撮影ガイド中なら、シャッターを押した時点でガイドを終える（＝案内は役目を果たした）。
+    // 以後は本編の反応（identify のひとこと）が体験の山になる。
+    const ob = useOnboardingStore.getState()
+    if (ob.phase === 'shoot') ob.finish()
     try {
       const photo = await captureFrame(video)
       // テキスト先行：判定（ひとこと＋感情＋主役）を取りに行く。演出なので失敗しても写真は残す。
@@ -278,8 +288,25 @@ export default function CameraMode() {
     }
   }, [pendingUpdate])
 
+  // 撮影ガイドに入ったら、コレットが一度だけ声で後押しする（導入で音声はアンロック済み）。
+  useEffect(() => {
+    if (!shootGuide || cameraError || hintSpokenRef.current) return
+    hintSpokenRef.current = true
+    void speak(CAMERA_HINT.text, {
+      expression: CAMERA_HINT.expression,
+      direction: CAMERA_HINT.direction,
+    })
+  }, [shootGuide, cameraError])
+
   // ベース表情（状態由来）。リアクション中はそれを一時的に上書きする。
-  const baseExpression: FairyExpression = busy ? 'thinking' : cameraError ? 'sad' : 'neutral'
+  // 撮影ガイド中はコレットもわくわく顔で「撮って！」を後押しする。
+  const baseExpression: FairyExpression = busy
+    ? 'thinking'
+    : cameraError
+      ? 'sad'
+      : shootGuide
+        ? 'excited'
+        : 'neutral'
   const expression = reactionExpression ?? baseExpression
 
   return (
@@ -400,6 +427,19 @@ export default function CameraMode() {
       {/* 撮影ボタン */}
       {!cameraError && (
         <div className="absolute inset-x-0 bottom-8 flex flex-col items-center gap-2">
+          {/* オンボの撮影ガイド：シャッターを押す一歩を後押しする吹き出し（初回だけ）。 */}
+          {shootGuide && (
+            <div className="mb-1 flex items-center gap-2 rounded-2xl bg-white/95 px-4 py-2 text-slate-700 shadow-pop">
+              <span className="text-sm font-bold">📷 このボタンで、見つけたものを見せて！</span>
+              <button
+                type="button"
+                onClick={() => useOnboardingStore.getState().finish()}
+                className="shrink-0 text-xs font-bold text-slate-400 transition active:scale-95"
+              >
+                スキップ
+              </button>
+            </div>
+          )}
           {savedFlash && (
             <p className="rounded-full bg-mint/90 px-4 py-1 text-sm font-bold text-slate-900 shadow-pop">
               ✓ アルバムに保存したよ
@@ -413,15 +453,24 @@ export default function CameraMode() {
           {error && (
             <p className="rounded-full bg-slate-900/80 px-3 py-1 text-xs text-peach">{error}</p>
           )}
-          <button
-            type="button"
-            onClick={() => void handleCapture()}
-            disabled={busy}
-            aria-label="撮ってコレットに見せる"
-            className="h-20 w-20 rounded-full border-4 border-white bg-mint p-1 shadow-pop transition active:scale-95 disabled:opacity-50"
-          >
-            <span className="block h-full w-full rounded-full bg-mint ring-2 ring-slate-900/10" />
-          </button>
+          <div className="relative">
+            {/* ガイド中はシャッターの周りを光らせて視線を誘導する。 */}
+            {shootGuide && (
+              <span
+                aria-hidden
+                className="pointer-events-none absolute -inset-1.5 animate-ping rounded-full border-4 border-mint/70"
+              />
+            )}
+            <button
+              type="button"
+              onClick={() => void handleCapture()}
+              disabled={busy}
+              aria-label="撮ってコレットに見せる"
+              className="relative h-20 w-20 rounded-full border-4 border-white bg-mint p-1 shadow-pop transition active:scale-95 disabled:opacity-50"
+            >
+              <span className="block h-full w-full rounded-full bg-mint ring-2 ring-slate-900/10" />
+            </button>
+          </div>
         </div>
       )}
 
