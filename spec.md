@@ -197,7 +197,7 @@ any-collect/
     _lib/               # persona/gemini/gemini-image/fal-image/item-prompt/voice
   src/
     components/         # モード横断の共有UI（WorkingScreen/MenuSheet/GeneratingOverlay/icons）
-    features/{camera,home,collection,album,kiln,treasure,game}/   # onboarding は STEP4 で追加予定
+    features/{camera,home,collection,album,kiln,treasure,game,onboarding}/   # onboarding＝初回オーバーレイ(STEP4a)
     lib/
       ai/{imageProvider,chatProvider,sceneProvider,identifyProvider,ttsProvider,memoryProvider}.ts
       audio/useSpeak.ts # TTS 再生（永続 audio・MediaSource ストリーミング）

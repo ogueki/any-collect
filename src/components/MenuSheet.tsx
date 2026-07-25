@@ -1,4 +1,6 @@
 import { useAppStore } from '../store/appStore'
+import { useOnboardingStore } from '../store/onboardingStore'
+import { debugTools } from '../lib/debug'
 
 /**
  * メニュー（ボトムシート）。ホームの「メニュー」から開く、二次機能の受け皿。
@@ -9,6 +11,7 @@ export default function MenuSheet() {
   const close = useAppStore((s) => s.closeMenu)
   const go = useAppStore((s) => s.go)
   const openGame = useAppStore((s) => s.openGame)
+  const resetOnboarding = useOnboardingStore((s) => s.resetOnboarding)
 
   return (
     <>
@@ -32,6 +35,17 @@ export default function MenuSheet() {
         <MenuRow title="アルバム" desc="撮った思い出の写真" onClick={() => go('album')} />
         <MenuRow title="積んで遊ぶ" desc="アイテムでタワー" onClick={() => openGame('tower')} />
         <MenuRow title="とんで遊ぶ" desc="アイテムでフラッピー" onClick={() => openGame('flappy')} />
+        {/* 検証用：オンボは初回一度きり＝再テスト用の再表示（`?debug=1` のときだけ）。 */}
+        {debugTools() && (
+          <MenuRow
+            title="オンボをもう一度（debug）"
+            desc="初回チュートリアルを再表示"
+            onClick={() => {
+              resetOnboarding()
+              close()
+            }}
+          />
+        )}
       </div>
     </>
   )

@@ -1,4 +1,6 @@
 import { useAppStore } from './store/appStore'
+import { useOnboardingStore } from './store/onboardingStore'
+import OnboardingOverlay from './features/onboarding/OnboardingOverlay'
 import HomeMode from './features/home/HomeMode'
 import CameraMode from './features/camera/CameraMode'
 import WorkingScreen from './components/WorkingScreen'
@@ -15,6 +17,8 @@ export default function App() {
   const game = useAppStore((s) => s.game)
   const go = useAppStore((s) => s.go)
   const closeGame = useAppStore((s) => s.closeGame)
+  // 初回だけ：コレット主導のオンボを最前面に出す（済んだら二度と出ない）。
+  const onboardingDone = useOnboardingStore((s) => s.done)
 
   return (
     // max-w-md＋中央寄せ＝タブレット/PC でも SP レイアウトのまま表示（iPad 専用レイアウトは作らない・2026-07-19）
@@ -45,6 +49,8 @@ export default function App() {
       <MenuSheet />
       {game === 'tower' && <TowerGame onClose={closeGame} />}
       {game === 'flappy' && <FlappyGame onClose={closeGame} />}
+
+      {!onboardingDone && <OnboardingOverlay />}
     </div>
   )
 }

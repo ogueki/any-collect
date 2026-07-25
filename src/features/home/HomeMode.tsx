@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useAppStore } from '../../store/appStore'
+import { useOnboardingStore } from '../../store/onboardingStore'
 import { useChatStore } from '../../store/chatStore'
 import { useGaugeStore, GAUGE_MAX } from '../../store/gaugeStore'
 import { useAffinityStore, levelForScore, levelProgress } from '../../store/affinityStore'
@@ -112,6 +113,7 @@ export default function HomeMode() {
   const bumpAffinity = useAffinityStore((s) => s.bumpLevel)
   const resetAffinity = useAffinityStore((s) => s.reset)
   const facts = useMemoryStore((s) => s.facts)
+  const onboardingDone = useOnboardingStore((s) => s.done)
   const { expression: reactionExpression, animateKey, fire } = useFairyReaction()
 
   const gaugePct = Math.min(100, Math.round((gaugeValue / GAUGE_MAX) * 100))
@@ -140,9 +142,11 @@ export default function HomeMode() {
   }, [replyNonce, lastFairyEmotion, fire])
 
   // ホームに来たら、コレットの方から第一声（会話が空のとき・セッション1回・失敗は固定挨拶のまま）。
+  // オンボ中はオーバーレイが前面なので鳴らさない（済んだら done が変わって発火する）。
   useEffect(() => {
+    if (!onboardingDone) return
     void openConversation(characterId)
-  }, [openConversation, characterId])
+  }, [openConversation, characterId, onboardingDone])
 
   // 絆レベルアップ＝コレットが大喜び＋お祝い表示。表示はストアの pendingLevelUp から直接出し、
   // 数秒後に clearLevelUp() で消す（ローカル state を effect 内で同期 set しない）。
