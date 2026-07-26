@@ -18,6 +18,7 @@ import { ONBOARDING_STEPS } from './script'
 export default function OnboardingOverlay() {
   const characterId = useAppStore((s) => s.characterId)
   const go = useAppStore((s) => s.go)
+  const setVoice = useAppStore((s) => s.setVoice)
   const step = useOnboardingStore((s) => s.step)
   const next = useOnboardingStore((s) => s.next)
   const beginShoot = useOnboardingStore((s) => s.beginShoot)
@@ -37,8 +38,11 @@ export default function OnboardingOverlay() {
     void speak(current.text, { expression: current.expression, direction: current.direction })
   }, [started, step, current])
 
-  const begin = () => {
-    primeAudio() // ユーザー操作の中で永続 <audio> をアンロック
+  // 最初に音声の ON/OFF をやさしく選んでもらう。「はい」のタップの中で自動再生をアンロックする
+  // （音を鳴らせない場所で開く人が、コレットが喋り出す前に静かに始められるように）。
+  const begin = (withVoice: boolean) => {
+    setVoice(withVoice) // 選択を永続（あとで 🔊 トグルで変更できる）
+    if (withVoice) primeAudio() // ユーザー操作の中で永続 <audio> をアンロック
     setStarted(true)
   }
   const handleNext = () => {
@@ -118,16 +122,33 @@ export default function OnboardingOverlay() {
           />
         </div>
 
-        {/* 下：主ボタン。 */}
+        {/* 下：主ボタン。最初だけ音声の ON/OFF をやさしく選んでもらう。 */}
         <div className="flex w-full max-w-xs shrink-0 flex-col items-center gap-2">
           {!started ? (
-            <button
-              type="button"
-              onClick={begin}
-              className="w-full rounded-full bg-lavender py-3.5 text-base font-bold text-white shadow-pop transition active:scale-95"
-            >
-              はじめる
-            </button>
+            <>
+              <p className="text-sm font-bold text-slate-600">
+                音声を再生しますか？
+                <span className="ml-1 text-xs font-bold text-slate-400">（あとで変更できます）</span>
+              </p>
+              <div className="flex w-full gap-2">
+                <button
+                  type="button"
+                  onClick={() => begin(true)}
+                  aria-label="音声を再生してはじめる"
+                  className="flex-1 rounded-full bg-lavender py-3.5 text-base font-bold text-white shadow-pop transition active:scale-95"
+                >
+                  はい
+                </button>
+                <button
+                  type="button"
+                  onClick={() => begin(false)}
+                  aria-label="音声なしではじめる"
+                  className="flex-1 rounded-full bg-white py-3.5 text-base font-bold text-slate-600 shadow-pop ring-1 ring-slate-200 transition active:scale-95"
+                >
+                  いいえ
+                </button>
+              </div>
+            </>
           ) : (
             <button
               type="button"
