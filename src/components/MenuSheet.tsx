@@ -1,6 +1,7 @@
 import { useAppStore } from '../store/appStore'
 import { useOnboardingStore } from '../store/onboardingStore'
 import { debugTools } from '../lib/debug'
+import { resetAllData } from '../lib/storage/reset'
 
 /**
  * メニュー（ボトムシート）。ホームの「メニュー」から開く、二次機能の受け皿。
@@ -35,16 +36,33 @@ export default function MenuSheet() {
         <MenuRow title="アルバム" desc="撮った思い出の写真" onClick={() => go('album')} />
         <MenuRow title="積んで遊ぶ" desc="アイテムでタワー" onClick={() => openGame('tower')} />
         <MenuRow title="とんで遊ぶ" desc="アイテムでフラッピー" onClick={() => openGame('flappy')} />
-        {/* 検証用：オンボは初回一度きり＝再テスト用の再表示（`?debug=1` のときだけ）。 */}
+        {/* 検証用（`?debug=1` のときだけ）。 */}
         {debugTools() && (
-          <MenuRow
-            title="オンボをもう一度（debug）"
-            desc="初回チュートリアルを再表示"
-            onClick={() => {
-              resetOnboarding()
-              close()
-            }}
-          />
+          <>
+            {/* オンボは初回一度きり＝再テスト用に再表示（データは消さない）。 */}
+            <MenuRow
+              title="オンボをもう一度（debug）"
+              desc="初回チュートリアルを再表示"
+              onClick={() => {
+                resetOnboarding()
+                close()
+              }}
+            />
+            {/* 完全な初期環境で見る＝アイテム/図鑑/会話/記憶を全消し→リロード（debug 状態は残す）。 */}
+            <MenuRow
+              title="初期化（全部消す・debug）"
+              desc="アイテム・図鑑・会話・記憶を消して初回状態へ"
+              onClick={() => {
+                if (
+                  !window.confirm(
+                    'すべてのアイテム・図鑑・会話・記憶を消して、初回状態に戻します。よろしいですか？',
+                  )
+                )
+                  return
+                void resetAllData().then(() => window.location.reload())
+              }}
+            />
+          </>
         )}
       </div>
     </>

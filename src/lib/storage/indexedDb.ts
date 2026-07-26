@@ -42,6 +42,24 @@ export function openDb(): Promise<IDBDatabase> {
   })
 }
 
+/**
+ * DB ごと削除する（検証用の「初期化」）。openDb/withStore は操作ごとに開いて即 db.close() する
+ * 設計で長寿命コネクションを持たないため、アイドル時なら通常ブロックされずに消せる。
+ * 念のため blocked も「解決」扱い（呼び出し側は直後に reload＝接続が閉じ、空 DB から作り直される）。
+ */
+export function deleteDb(): Promise<void> {
+  return new Promise((resolve) => {
+    try {
+      const req = indexedDB.deleteDatabase(DB_NAME)
+      req.onsuccess = () => resolve()
+      req.onerror = () => resolve() // 失敗しても reload で作り直され、ほぼ空になる
+      req.onblocked = () => resolve()
+    } catch {
+      resolve()
+    }
+  })
+}
+
 /** IDBRequest を Promise 化する小ヘルパ。 */
 export function requestToPromise<T>(req: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
