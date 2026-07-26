@@ -15,6 +15,12 @@ import { create } from 'zustand'
  */
 
 const STORAGE_KEY = 'anycollect.onboarding.v1'
+/**
+ * 初期シード（＝「はじめての召喚」に届く後押し）を配ったか。オンボの done とは別キーにして、
+ * 導入をスキップ／中断した新規ユーザーでも「最初の一枚」で必ず一度だけ効くようにする
+ * （＝空のたからばこで放り出さない、を phase に依存させない）。
+ */
+const SEED_KEY = 'anycollect.onboarding.seed.v1'
 
 export type OnboardingPhase = 'intro' | 'shoot' | 'done'
 
@@ -32,6 +38,20 @@ function persistDone(): void {
     // 保存できなくても本編は動く（次回また出るだけ）。
   }
 }
+function readSeedGranted(): boolean {
+  try {
+    return typeof localStorage !== 'undefined' && localStorage.getItem(SEED_KEY) === 'done'
+  } catch {
+    return false // 読めなければ「未配布」扱い＝最悪もう一度後押しするだけ（無害）。
+  }
+}
+function persistSeedGranted(): void {
+  try {
+    localStorage.setItem(SEED_KEY, 'done')
+  } catch {
+    // 保存できなくてもゲージ自体は動く（次回また後押しされるだけ）。
+  }
+}
 
 interface OnboardingState {
   /** 現在のフェーズ。`intro` のときだけオーバーレイ、`shoot` のときだけ撮影ガイドを出す。 */
@@ -44,7 +64,13 @@ interface OnboardingState {
   beginShoot: () => void
   /** 完全終了（導入スキップ／初撮影完了／ガイドを閉じる）。 */
   finish: () => void
-  /** 検証用：オンボをもう一度見る（`?debug=1` のメニューから）。 */
+  /**
+   * 初期シードの後押しを「まだ配っていなければ配る」＝以後 false（端末に一度きり・永続）。
+   * 呼び出し側（初回撮影）は true が返ったときだけ、まほうパワーを満タンにして
+   * 「はじめての召喚」に届かせる。二度目以降は本来の配給ペースに戻す。
+   */
+  claimSeed: () => boolean
+  /** 検証用：オンボをもう一度見る（`?debug=1` のメニューから）。初期シードの後押しも再武装する。 */
   resetOnboarding: () => void
 }
 
@@ -60,9 +86,15 @@ export const useOnboardingStore = create<OnboardingState>((set) => ({
     persistDone()
     set({ phase: 'done' })
   },
+  claimSeed: () => {
+    if (readSeedGranted()) return false // すでに配布済み＝以後は本来の配給ペース。
+    persistSeedGranted() // 返す前に永続＝再入や二度押しでも一度きりを担保。
+    return true
+  },
   resetOnboarding: () => {
     try {
       localStorage.removeItem(STORAGE_KEY)
+      localStorage.removeItem(SEED_KEY) // 後押しも再武装＝debug でシードから通しで検証できる。
     } catch {
       // noop
     }

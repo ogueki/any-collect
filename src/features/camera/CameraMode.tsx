@@ -98,6 +98,8 @@ export default function CameraMode() {
   const [showGain, setShowGain] = useState(false)
   // この撮影でまほうパワーが満タンになった瞬間の大きめお祝い演出。
   const [powerMax, setPowerMax] = useState(false)
+  // 初期シード（端末で最初の一枚）の後押しで満タンにした回か＝お祝い文面を温かく差し替える。
+  const [seedGifted, setSeedGifted] = useState(false)
   // 撮影に対する妖精の一時リアクション（数秒でベース表情へ戻る）。共有フックに集約。
   const { expression: reactionExpression, animateKey, fire: fireReaction } = useFairyReaction()
 
@@ -141,6 +143,7 @@ export default function CameraMode() {
     setError(null)
     setComment(null)
     setFoundToast(null)
+    setSeedGifted(false) // お祝い文面は各撮影に閉じる（前回の贈り物フラグを持ち越さない）
     setPendingUpdate(null) // 前回の「更新する？」は次の撮影で閉じる
     fireReaction('thinking') // 「見てるね…」の即時フィードバック
     primeAudio() // 撮影タップ（ユーザー操作）内で iOS 自動再生をアンロック
@@ -202,6 +205,13 @@ export default function CameraMode() {
       addAffinity(AFFINITY_PER_CAPTURE, 'capture')
       setGainKey((k) => k + 1)
       setShowGain(true)
+      // 初期シード（オンボの続き＝空のたからばこで放り出さない）：端末で最初の一枚のときだけ、
+      // コレットのまほうを満タンまで後押しして「はじめての召喚」に必ず届かせる。これで既存の導線
+      // （このお祝い→ホームの「ずかん」強調→図鑑の召喚バナー）が初日から灯る。二度目以降は本来の配給ペース。
+      if (useOnboardingStore.getState().claimSeed()) {
+        addGauge(GAUGE_MAX) // 満タンまで（clamp 済み）
+        setSeedGifted(true)
+      }
       // この撮影で 0..MAX 未満 → 満タンに達したら、大きめのお祝い＝召喚解禁を知らせる。
       if (gaugeBefore < GAUGE_MAX && useGaugeStore.getState().value >= GAUGE_MAX) {
         setPowerMax(true)
@@ -258,7 +268,10 @@ export default function CameraMode() {
   // まほうパワー満タンのお祝いは少し長めに出す。
   useEffect(() => {
     if (!powerMax) return
-    const timer = setTimeout(() => setPowerMax(false), 2800)
+    const timer = setTimeout(() => {
+      setPowerMax(false)
+      setSeedGifted(false) // 次に自然に満タンへ達したときは通常文面に戻す。
+    }, 2800)
     return () => clearTimeout(timer)
   }, [powerMax])
 
@@ -419,8 +432,17 @@ export default function CameraMode() {
         <div className="pointer-events-none absolute inset-x-0 top-1/3 flex justify-center px-6">
           <div className="animate-reveal flex flex-col items-center gap-1 rounded-3xl bg-white/95 px-6 py-4 text-center text-slate-800 shadow-pop">
             <SparkleIcon className="h-7 w-7 text-mint" />
-            <p className="font-display text-lg font-bold text-mint">まほうパワーが満タン！</p>
-            <p className="text-xs font-bold text-slate-500">ずかんから召喚できるよ</p>
+            {seedGifted ? (
+              <>
+                <p className="font-display text-lg font-bold text-mint">コレットのまほうがあふれた！</p>
+                <p className="text-xs font-bold text-slate-500">さっそく、ずかんから召喚してみよう</p>
+              </>
+            ) : (
+              <>
+                <p className="font-display text-lg font-bold text-mint">まほうパワーが満タン！</p>
+                <p className="text-xs font-bold text-slate-500">ずかんから召喚できるよ</p>
+              </>
+            )}
           </div>
         </div>
       )}
