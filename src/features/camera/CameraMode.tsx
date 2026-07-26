@@ -87,6 +87,8 @@ export default function CameraMode() {
   const [savedFlash, setSavedFlash] = useState(false)
   // 初発見の「はじめて見つけた！」演出（クロップ縮小＋名前）。数秒で消える。
   const [discovery, setDiscovery] = useState<{ name: string; url: string } | null>(null)
+  // オンボ初回スキャンで「何を撮ったか」を手渡しカードに見せるためのクロップ＋名前（reveal 中だけ）。
+  const [firstScan, setFirstScan] = useState<{ name: string; url: string } | null>(null)
   // 既知種を再発見したとき、新しいクロップで「写真を更新する？」を選ばせるプロンプト。
   const [pendingUpdate, setPendingUpdate] = useState<
     { id: string; name: string; count: number; url: string; blob: Blob } | null
@@ -179,11 +181,12 @@ export default function CameraMode() {
             const crop = await cropToBlob(photo, result.subject.bbox)
             const { entry, isNew } = await collect(result.subject, crop)
             collected = true // 図鑑に入った＝オンボは reveal へ進んでよい
-            if (isNew) {
-              if (!isOnboardingShoot) {
-                setDiscovery({ name: entry.name, url: URL.createObjectURL(crop) })
-                fireReaction('excited')
-              }
+            if (isOnboardingShoot) {
+              // オンボ初回は「何を撮ったか」を手渡しカードで見せる（コレットの「書いておくね」の対象）。
+              setFirstScan({ name: entry.name, url: URL.createObjectURL(crop) })
+            } else if (isNew) {
+              setDiscovery({ name: entry.name, url: URL.createObjectURL(crop) })
+              fireReaction('excited')
             } else {
               // 再発見：新しいクロップを見せて「写真を更新する？」を選ばせる（自動では差し替えない）。
               setPendingUpdate({
@@ -297,6 +300,13 @@ export default function CameraMode() {
       if (url) URL.revokeObjectURL(url)
     }
   }, [discovery])
+  // 手渡しカードのクロップは自動では消さない（reveal 中ずっと見せる）。差し替え/アンマウントで解放。
+  useEffect(() => {
+    const url = firstScan?.url
+    return () => {
+      if (url) URL.revokeObjectURL(url)
+    }
+  }, [firstScan])
 
   // 「写真を更新する？」プロンプトは操作が要るので長めに出し、放置なら閉じる（＝このまま）。
   useEffect(() => {
@@ -365,8 +375,20 @@ export default function CameraMode() {
       {/* オンボ：初スキャン後の「図鑑へ橋渡し」カード（phase='reveal'）。
           コレットのセリフ（FIRST_SCAN_LINE）＋「図鑑をひらく」で図鑑（＝メインコンテンツ）へ手渡す。 */}
       {onboardingReveal && !cameraError && (
-        <div className="absolute inset-x-0 top-24 z-10 flex justify-center px-6">
+        <div className="absolute inset-x-0 top-20 z-10 flex justify-center px-6">
           <div className="animate-reveal flex max-w-xs flex-col items-center gap-3 rounded-3xl bg-white/95 px-6 py-5 text-center shadow-pop">
+            {firstScan && (
+              <>
+                <img
+                  src={firstScan.url}
+                  alt={firstScan.name}
+                  className="h-24 w-24 rounded-2xl object-cover shadow-pop"
+                />
+                <p className="font-display text-base font-bold leading-tight text-slate-800">
+                  {firstScan.name}
+                </p>
+              </>
+            )}
             <p className="text-sm font-bold leading-relaxed text-slate-700">{FIRST_SCAN_LINE.text}</p>
             <button
               type="button"
