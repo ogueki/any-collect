@@ -214,8 +214,8 @@ export default function CameraMode() {
       addAffinity(AFFINITY_PER_CAPTURE, 'capture')
       if (isOnboardingShoot && collected) {
         // オンボの最初の一枚＝図鑑への橋渡し。コレットが「図鑑に書いておくね」と言い、
-        // 手渡しカード（下）＋図鑑リビールへ。ここではまほうを満タンにしない（推奨A＝
-        // 初期シードは図鑑リビールを閉じた"後"に発火＝召喚は図鑑を理解した次の発見にする）。
+        // 手渡しカード（下）＋図鑑リビールへ。まほうは満タンにせず撮影/会話で自然に貯める
+        // （召喚コーチは満タンに到達した図鑑で出る）。
         // ※判定/収集に失敗した回は collected=false → phase は 'shoot' のまま＝撮り直せる
         //   （空の図鑑を指す行き止まりを防ぐ）。
         fireReaction(FIRST_SCAN_LINE.expression)

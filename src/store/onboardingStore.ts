@@ -18,16 +18,11 @@ import { create } from 'zustand'
 
 const STORAGE_KEY = 'anycollect.onboarding.v1'
 /**
- * 初期シード（＝「はじめての召喚」に届く後押し）を配ったか。オンボの done とは別キーにして、
- * 導入をスキップ／中断した新規ユーザーでも「最初の一枚」で必ず一度だけ効くようにする
- * （＝空のたからばこで放り出さない、を phase に依存させない）。
- */
-const SEED_KEY = 'anycollect.onboarding.seed.v1'
-/**
  * コア導線の各ビートのコーチ（召喚／たからばこ／会話）を見せたか。図鑑リビールが phase で進むのに対し、
  * これらは「まほう満タン→召喚→たからばこ→ホームに戻って会話」がユーザー行動次第で phase の一本道に
- * 乗らない（長い＝途中で閉じ得る）ため、claimSeed と同型の**永続の一度きりフラグ**で扱う（phase 非依存・
- * リロードや翌日でも各画面の初回で必ず一度出る）。順番は自然な操作の流れで担保される。
+ * 乗らない（長い＝途中で閉じ得る）ため、**永続の一度きりフラグ**で扱う（phase 非依存・リロードや翌日でも
+ * 各画面の初回で必ず一度出る）。順番は自然な操作の流れで担保される。
+ * ※まほうパワーはシードで満タンにせず撮影/会話で自然に貯める（召喚コーチは満タン到達時に出る）。
  */
 const SUMMON_KEY = 'anycollect.onboarding.summon.v1'
 const TREASURE_KEY = 'anycollect.onboarding.treasure.v1'
@@ -47,20 +42,6 @@ function persistDone(): void {
     localStorage.setItem(STORAGE_KEY, 'done')
   } catch {
     // 保存できなくても本編は動く（次回また出るだけ）。
-  }
-}
-function readSeedGranted(): boolean {
-  try {
-    return typeof localStorage !== 'undefined' && localStorage.getItem(SEED_KEY) === 'done'
-  } catch {
-    return false // 読めなければ「未配布」扱い＝最悪もう一度後押しするだけ（無害）。
-  }
-}
-function persistSeedGranted(): void {
-  try {
-    localStorage.setItem(SEED_KEY, 'done')
-  } catch {
-    // 保存できなくてもゲージ自体は動く（次回また後押しされるだけ）。
   }
 }
 // コーチ用の汎用「一度きりフラグ」。読めなければ未表示扱い（最悪もう一度出るだけ＝無害）。
@@ -93,12 +74,6 @@ interface OnboardingState {
   /** 完全終了（導入スキップ／図鑑リビールを閉じる／ガイドを閉じる）。 */
   finish: () => void
   /**
-   * 初期シードの後押しを「まだ配っていなければ配る」＝以後 false（端末に一度きり・永続）。
-   * 呼び出し側（初回撮影）は true が返ったときだけ、まほうパワーを満タンにして
-   * 「はじめての召喚」に届かせる。二度目以降は本来の配給ペースに戻す。
-   */
-  claimSeed: () => boolean
-  /**
    * コア導線の各コーチを「もう見せたか」＝reactive な store 状態（localStorage 初期化）。
    * 表示側は **レンダー時にこの値から導出**する（effect 内で local setState しない＝図鑑リビールと同流儀）。
    * それぞれ Beat4 召喚／Beat5 たからばこ／Beat6 会話。閉じるときに mark で true＋永続。
@@ -109,7 +84,7 @@ interface OnboardingState {
   markSummonCoachSeen: () => void
   markTreasureIntroSeen: () => void
   markChatCoachSeen: () => void
-  /** 検証用：オンボをもう一度見る（`?debug=1` のメニューから）。初期シード・各コーチも再武装する。 */
+  /** 検証用：オンボをもう一度見る（`?debug=1` のメニューから）。各コーチも再武装する。 */
   resetOnboarding: () => void
 }
 
@@ -125,11 +100,6 @@ export const useOnboardingStore = create<OnboardingState>((set) => ({
   finish: () => {
     persistDone()
     set({ phase: 'done' })
-  },
-  claimSeed: () => {
-    if (readSeedGranted()) return false // すでに配布済み＝以後は本来の配給ペース。
-    persistSeedGranted() // 返す前に永続＝再入や二度押しでも一度きりを担保。
-    return true
   },
   summonCoachSeen: readOnceFlag(SUMMON_KEY),
   treasureIntroSeen: readOnceFlag(TREASURE_KEY),
@@ -149,8 +119,8 @@ export const useOnboardingStore = create<OnboardingState>((set) => ({
   resetOnboarding: () => {
     try {
       localStorage.removeItem(STORAGE_KEY)
-      // 初期シード・各コーチも再武装＝debug で頭から通しで検証できる。
-      ;[SEED_KEY, SUMMON_KEY, TREASURE_KEY, CHAT_KEY].forEach((k) => localStorage.removeItem(k))
+      // 各コーチも再武装＝debug で頭から通しで検証できる。
+      ;[SUMMON_KEY, TREASURE_KEY, CHAT_KEY].forEach((k) => localStorage.removeItem(k))
     } catch {
       // noop
     }

@@ -78,7 +78,6 @@ export default function CollectionView() {
   const addFromGenerated = useCodexStore((s) => s.addFromGenerated)
   const gaugeValue = useGaugeStore((s) => s.value)
   const spendGauge = useGaugeStore((s) => s.spend)
-  const addGauge = useGaugeStore((s) => s.add) // オンボの初期シード（リビール後の満タン）で使う
   const addAffinity = useAffinityStore((s) => s.add)
   const { fire } = useShellFairy() // 召喚成功→右下コレットが反応
 
@@ -118,16 +117,14 @@ export default function CollectionView() {
     })
   }, [showReveal, fire])
 
-  // リビールを閉じる＝オンボ完了＋推奨A：ここで初めて初期シード発火（まほうを満タン）。
-  // 図鑑（メインコンテンツ）を理解した"後"に、召喚が「次の発見」として現れるようにする。
+  // リビールを閉じる＝オンボ完了。まほうパワーは撮影/会話で自然に貯める（シードで満タンにはしない）。
+  // 満タンに到達したら召喚コーチ（Beat4）が出る＝召喚は図鑑を理解した先の"自然な発見"になる。
   const dismissReveal = useCallback(() => {
-    const ob = useOnboardingStore.getState()
-    ob.finish()
-    if (ob.claimSeed()) addGauge(GAUGE_MAX)
-  }, [addGauge])
+    useOnboardingStore.getState().finish()
+  }, [])
 
   // オンボ Beat4：まほうパワーが初めて満タンになったとき、召喚（＋まほうパワー）を一度だけ教える。
-  // 図鑑リビールの直後（seed で満タン化）に自然に続く。リビール表示中/召喚中は出さない。
+  // まほうが自然に満タンになった図鑑で一度だけ。リビール表示中/召喚中は出さない。
   // 表示は store の seen から**レンダー時に導出**（effect 内で local setState しない）。
   const summonCoachSeen = useOnboardingStore((s) => s.summonCoachSeen)
   const showSummonCoach = gaugeFull && !showReveal && summonPhase === 'idle' && !summonCoachSeen
@@ -491,7 +488,7 @@ export default function CollectionView() {
       )}
 
       {/* オンボ：図鑑を初めて開いたときのヒーローリビール（③）。
-          「ふたりで図鑑をつくろう」を伝え、閉じた瞬間に初期シード（まほう満タン）を発火する。 */}
+          「ふたりで図鑑をつくろう」を伝える。閉じるとオンボ完了（まほうは撮影/会話で自然に貯める）。 */}
       {showReveal && (
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-900/50 px-6">
           <div className="animate-reveal flex w-full max-w-xs flex-col items-center gap-4 rounded-3xl bg-white px-6 py-6 text-center shadow-pop">
