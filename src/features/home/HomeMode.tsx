@@ -107,6 +107,7 @@ export default function HomeMode() {
   const openConversation = useChatStore((s) => s.openConversation)
   const gaugeValue = useGaugeStore((s) => s.value)
   const addGauge = useGaugeStore((s) => s.add)
+  const spendGauge = useGaugeStore((s) => s.spend) // 検証用トグル（満タン⇄0）で使う
   const affinityScore = useAffinityStore((s) => s.score)
   const pendingLevelUp = useAffinityStore((s) => s.pendingLevelUp)
   const clearLevelUp = useAffinityStore((s) => s.clearLevelUp)
@@ -199,7 +200,7 @@ export default function HomeMode() {
         </div>
 
         {/* 状態を一本バーに：なつき（左）＋まほうパワー（右）。
-            `?debug=1` のときだけ なつき＝タップでLv循環／まほうパワー＝タップで満タン（検証用の近道）。 */}
+            `?debug=1` のときだけ なつき＝タップでLv循環／まほうパワー＝タップで満タン⇄0 トグル（検証用の近道）。 */}
         <div className="flex w-full max-w-xs shrink-0 items-center gap-3 rounded-2xl bg-white/80 px-3.5 py-2.5 shadow-pop backdrop-blur-sm">
           {/* なつきレベルに上限は無い（節目がずっと訪れ続ける）ので、
               固定の段数ドットでなく「次のレベルまで」の細いバーで進みを見せる。 */}
@@ -219,7 +220,7 @@ export default function HomeMode() {
           </DebugTap>
           <span className="h-6 w-px shrink-0 bg-slate-100" />
           <DebugTap
-            onTap={() => addGauge(GAUGE_MAX)}
+            onTap={() => (gaugeFull ? spendGauge() : addGauge(GAUGE_MAX))}
             className="min-w-0 flex-1 text-left"
             ariaLabel="まほうパワー"
           >
