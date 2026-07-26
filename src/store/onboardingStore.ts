@@ -6,12 +6,14 @@ import { create } from 'zustand'
  * と同様に localStorage 直（Repository は使わない）。step/phase の細部は再訪で復元不要＝メモリのみ。
  *
  * フェーズ：
- * - `intro` … コレット主導の導入オーバーレイ（自己紹介→「見せて」）。
- * - `shoot` … カメラを開いた先の「撮ってみて」ガイド（初回の一枚を後押し）。
- * - `done`  … 完了（以後は何も出さない）。
+ * - `intro`  … コレット主導の導入オーバーレイ（自己紹介→「見せて」）。
+ * - `shoot`  … カメラを開いた先の「撮ってみて」ガイド（初回の一枚を後押し）。
+ * - `reveal` … 初スキャン後の「図鑑へ橋渡し」＝カメラの手渡しカード＋図鑑を初めて開いた時の
+ *              ヒーローリビール（＝メインコンテンツ「図鑑をつくる」を体で分からせる）。
+ * - `done`   … 完了（以後は何も出さない）。
  *
  * 導入を最後まで見て「カメラをひらく」に達したら（beginShoot）その時点で永続完了扱いにする
- * ＝導入は二度と繰り返さない。撮影ガイドは"同じセッション内"の演出で、再起動後は出さない割り切り。
+ * ＝導入は二度と繰り返さない。撮影ガイド〜リビールは"同じセッション内"の演出で、再起動後は出さない割り切り。
  */
 
 const STORAGE_KEY = 'anycollect.onboarding.v1'
@@ -22,7 +24,7 @@ const STORAGE_KEY = 'anycollect.onboarding.v1'
  */
 const SEED_KEY = 'anycollect.onboarding.seed.v1'
 
-export type OnboardingPhase = 'intro' | 'shoot' | 'done'
+export type OnboardingPhase = 'intro' | 'shoot' | 'reveal' | 'done'
 
 function readDone(): boolean {
   try {
@@ -62,7 +64,9 @@ interface OnboardingState {
   next: () => void
   /** 導入完了→撮影ガイドへ（＝「カメラをひらく」）。この時点で永続完了にし、導入は二度と出さない。 */
   beginShoot: () => void
-  /** 完全終了（導入スキップ／初撮影完了／ガイドを閉じる）。 */
+  /** 初スキャン成功→図鑑リビールへ（カメラの手渡し＋図鑑のヒーロー表示）。まだ finish しない。 */
+  beginReveal: () => void
+  /** 完全終了（導入スキップ／図鑑リビールを閉じる／ガイドを閉じる）。 */
   finish: () => void
   /**
    * 初期シードの後押しを「まだ配っていなければ配る」＝以後 false（端末に一度きり・永続）。
@@ -82,6 +86,7 @@ export const useOnboardingStore = create<OnboardingState>((set) => ({
     persistDone()
     set({ phase: 'shoot' })
   },
+  beginReveal: () => set({ phase: 'reveal' }),
   finish: () => {
     persistDone()
     set({ phase: 'done' })

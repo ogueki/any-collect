@@ -307,7 +307,7 @@ export default function HomeMode() {
                   {name && <span className="text-violet-500">{name}</span>}
                   {name ? '、おかえりっ！' : 'おかえりっ！'}{' '}
                   {gaugeFull
-                    ? 'まほうパワー満タンだよ。ずかんの子、召喚してみない？'
+                    ? 'まほうパワー満タンだよ。ずかんから召喚してみない？'
                     : 'きょうは何を見つけた？'}
                 </p>
               )}

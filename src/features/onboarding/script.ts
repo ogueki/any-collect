@@ -45,4 +45,25 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
  * "中の人"感が出て世界観が冷めるため。コレットは撮ったものに反応する側に徹する（＝体験の山）。
  * 声も演技指示も持たない（読み上げない）＝ただの画面テキスト。
  */
-export const CAMERA_HINT_TEXT = '下の丸いボタンで、写真を撮ってみよう'
+export const CAMERA_HINT_TEXT = '下の丸いボタンで、身の回りの物を撮ってみよう'
+
+/**
+ * 初スキャン成功の直後、コレットが「図鑑に書いておくね」と知らせる一言（②）。
+ * 図鑑は**コレットとユーザーふたりのもの**という設定＝コレットが記す側。
+ * イントロと同じ `OnboardingStep`（text/expression/direction）なので声・表情が自動で乗る。
+ */
+export const FIRST_SCAN_LINE: OnboardingStep = {
+  text: 'わぁ、すごいすごい！ いまのアイテム、図鑑に書いておくね！',
+  expression: 'excited',
+  direction: 'はしゃいで、うれしそうに書き留めるように',
+}
+
+/**
+ * 図鑑を初めて開いたときのヒーローの一言（③）。ふたりで図鑑を埋める＝協力のさそい。
+ * ここが「メインコンテンツ＝図鑑をつくる」を体で分からせるリビール。
+ */
+export const COLLECTION_REVEAL_LINE: OnboardingStep = {
+  text: 'この図鑑をきみの世界の物でいっぱいにするのが、わたしの夢なんだ！協力してくれる？',
+  expression: 'happy',
+  direction: '夢を語るようにきらきらと、最後は少し甘えて誘うように',
+}

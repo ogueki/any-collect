@@ -1,11 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAppStore } from '../../store/appStore'
 import { useCollectionStore } from '../../store/collectionStore'
 import { useCodexStore } from '../../store/codexStore'
 import { useGaugeStore, GAUGE_MAX } from '../../store/gaugeStore'
 import { useAffinityStore, AFFINITY_PER_ITEM } from '../../store/affinityStore'
+import { useOnboardingStore } from '../../store/onboardingStore'
 import { imageGenProvider } from '../../lib/ai/imageGen'
 import { emotionForGenerated } from '../../lib/character/reaction'
+import { speak } from '../../lib/audio/useSpeak'
+import { COLLECTION_REVEAL_LINE } from '../onboarding/script'
 import GeneratingOverlay from '../../components/GeneratingOverlay'
 import { useShellFairy } from '../../components/shellFairy'
 import { SparkleIcon } from '../../components/icons'
@@ -75,8 +78,12 @@ export default function CollectionView() {
   const addFromGenerated = useCodexStore((s) => s.addFromGenerated)
   const gaugeValue = useGaugeStore((s) => s.value)
   const spendGauge = useGaugeStore((s) => s.spend)
+  const addGauge = useGaugeStore((s) => s.add) // オンボの初期シード（リビール後の満タン）で使う
   const addAffinity = useAffinityStore((s) => s.add)
   const { fire } = useShellFairy() // 召喚成功→右下コレットが反応
+
+  // オンボ：図鑑を初めて開いたときのヒーローリビール（phase='reveal' かつ 1件以上）。
+  const onboardingReveal = useOnboardingStore((s) => s.phase === 'reveal')
 
   const [selected, setSelected] = useState<CollectionEntry | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -95,6 +102,29 @@ export default function CollectionView() {
   useEffect(() => {
     void load()
   }, [load])
+
+  // リビールは「オンボの reveal フェーズ」かつ「図鑑に1件以上ある」ときだけ（空の図鑑では出さない）。
+  const showReveal = onboardingReveal && entries.length > 0
+
+  // 表示された瞬間に一度だけコレットのセリフを読み上げ＋立ち絵を反応させる（再発火しないよう ref ガード）。
+  const revealSpoke = useRef(false)
+  useEffect(() => {
+    if (!showReveal || revealSpoke.current) return
+    revealSpoke.current = true
+    fire(COLLECTION_REVEAL_LINE.expression)
+    void speak(COLLECTION_REVEAL_LINE.text, {
+      expression: COLLECTION_REVEAL_LINE.expression,
+      direction: COLLECTION_REVEAL_LINE.direction,
+    })
+  }, [showReveal, fire])
+
+  // リビールを閉じる＝オンボ完了＋推奨A：ここで初めて初期シード発火（まほうを満タン）。
+  // 図鑑（メインコンテンツ）を理解した"後"に、召喚が「次の発見」として現れるようにする。
+  const dismissReveal = useCallback(() => {
+    const ob = useOnboardingStore.getState()
+    ob.finish()
+    if (ob.claimSeed()) addGauge(GAUGE_MAX)
+  }, [addGauge])
 
   // チップに出すのは「実際に1件以上あるカテゴリ」だけ（CATEGORY_ORDER 順）。
   const availableCategories = useMemo(() => {
@@ -198,7 +228,7 @@ export default function CollectionView() {
       {entries.length > 0 && gaugeFull && summonPhase === 'idle' && (
         <div className="mb-3 rounded-2xl bg-mint/20 px-3 py-2 text-center ring-1 ring-mint">
           <p className="text-xs font-bold text-emerald-700">
-            まほうパワーが満タン！ 図鑑の子を1つえらんで召喚しよう
+            まほうパワーが満タン！ 図鑑から1つえらんで召喚しよう
           </p>
         </div>
       )}
@@ -320,11 +350,11 @@ export default function CollectionView() {
                   onClick={() => void handleSummon(selectedLive)}
                   className="mt-4 w-full rounded-full bg-lavender py-2.5 font-bold text-white shadow-pop transition active:scale-95"
                 >
-                  この子を召喚する
+                  召喚する
                 </button>
               ) : (
                 <p className="mt-4 text-center text-xs text-slate-400">
-                  まほうパワーがたまると、この子を召喚できるよ
+                  まほうパワーがたまると、召喚できるよ
                 </p>
               ))}
 
@@ -426,6 +456,26 @@ export default function CollectionView() {
                 とじる
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* オンボ：図鑑を初めて開いたときのヒーローリビール（③）。
+          「ふたりで図鑑をつくろう」を伝え、閉じた瞬間に初期シード（まほう満タン）を発火する。 */}
+      {showReveal && (
+        <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-900/50 px-6">
+          <div className="animate-reveal flex w-full max-w-xs flex-col items-center gap-4 rounded-3xl bg-white px-6 py-6 text-center shadow-pop">
+            <SparkleIcon className="h-8 w-8 text-mint" />
+            <p className="text-base font-bold leading-relaxed text-slate-700">
+              {COLLECTION_REVEAL_LINE.text}
+            </p>
+            <button
+              type="button"
+              onClick={dismissReveal}
+              className="rounded-full bg-mint px-7 py-2.5 text-sm font-bold text-slate-900 shadow-pop transition active:scale-95"
+            >
+              うん、いいよ！
+            </button>
           </div>
         </div>
       )}

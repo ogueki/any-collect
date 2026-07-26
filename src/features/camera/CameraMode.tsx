@@ -11,7 +11,7 @@ import { useGaugeStore, GAUGE_PER_CAPTURE, GAUGE_MAX } from '../../store/gaugeSt
 import { useAffinityStore, AFFINITY_PER_CAPTURE, toneTierForLevel, levelForScore } from '../../store/affinityStore'
 import { speak, primeAudio } from '../../lib/audio/useSpeak'
 import { useOnboardingStore } from '../../store/onboardingStore'
-import { CAMERA_HINT_TEXT } from '../onboarding/script'
+import { CAMERA_HINT_TEXT, FIRST_SCAN_LINE } from '../onboarding/script'
 import { SoundOnIcon, SoundOffIcon, SparkleIcon } from '../../components/icons'
 
 /**
@@ -98,14 +98,14 @@ export default function CameraMode() {
   const [showGain, setShowGain] = useState(false)
   // この撮影でまほうパワーが満タンになった瞬間の大きめお祝い演出。
   const [powerMax, setPowerMax] = useState(false)
-  // 初期シード（端末で最初の一枚）の後押しで満タンにした回か＝お祝い文面を温かく差し替える。
-  const [seedGifted, setSeedGifted] = useState(false)
   // 撮影に対する妖精の一時リアクション（数秒でベース表情へ戻る）。共有フックに集約。
   const { expression: reactionExpression, animateKey, fire: fireReaction } = useFairyReaction()
 
   // 初回オンボの撮影ガイド（phase='shoot' のときだけ）。最初の一枚を後押しする。
   // 操作説明は画面のナレーションで行い、コレットには喋らせない/反応させない（世界観優先）。
   const shootGuide = useOnboardingStore((s) => s.phase === 'shoot')
+  // 初スキャン後の図鑑への手渡し（phase='reveal' のときだけ）。コレットのセリフ＋「図鑑をひらく」。
+  const onboardingReveal = useOnboardingStore((s) => s.phase === 'reveal')
 
   // マウント時にライブカメラを開始（背面カメラ優先）。アンマウントで停止。
   useEffect(() => {
@@ -143,14 +143,12 @@ export default function CameraMode() {
     setError(null)
     setComment(null)
     setFoundToast(null)
-    setSeedGifted(false) // お祝い文面は各撮影に閉じる（前回の贈り物フラグを持ち越さない）
     setPendingUpdate(null) // 前回の「更新する？」は次の撮影で閉じる
     fireReaction('thinking') // 「見てるね…」の即時フィードバック
     primeAudio() // 撮影タップ（ユーザー操作）内で iOS 自動再生をアンロック
-    // オンボの撮影ガイド中なら、シャッターを押した時点でガイドを終える（＝案内は役目を果たした）。
-    // 以後は本編の反応（identify のひとこと）が体験の山になる。
-    const ob = useOnboardingStore.getState()
-    if (ob.phase === 'shoot') ob.finish()
+    // オンボの最初の一枚か？ ここでは finish せず、成功後に「図鑑へ橋渡し」（beginReveal）へ移す。
+    // 動的な反応の代わりに固定セリフ FIRST_SCAN_LINE を言い、図鑑（＝メインコンテンツ）へ手渡す。
+    const isOnboardingShoot = useOnboardingStore.getState().phase === 'shoot'
     try {
       const photo = await captureFrame(video)
       // テキスト先行：判定（ひとこと＋感情＋主役）を取りに行く。演出なので失敗しても写真は残す。
@@ -158,15 +156,20 @@ export default function CameraMode() {
       let emotion: FairyExpression | undefined
       let subjectName: string | undefined // アルバムの図鑑的キャプション用（被写体名）
       let caption: string | undefined // 同・被写体そのものの客観的な説明
+      let collected = false // 図鑑に実際に収集できたか（オンボの reveal 前進はこれが真のときだけ）
       try {
         const result = await identifyProvider.identify(photo, { personaId: characterId })
         commentText = result.comment
         emotion = result.emotion
-        setComment(result.comment)
-        fireReaction(result.emotion ?? 'happy')
-        // 反応を動的TTSで読み上げ（voiceEnabled は speak 内でゲート）。
-        // 立ち絵と同じ感情を渡す＝表情と声の温度を揃える。
-        void speak(result.comment, { expression: result.emotion })
+        // オンボの最初の一枚は、動的反応でなく固定セリフ（図鑑への手渡し）を主役にするので
+        // ここでは動的コメント/初発見バナーを出さない（後段で FIRST_SCAN_LINE を言う）。
+        if (!isOnboardingShoot) {
+          setComment(result.comment)
+          fireReaction(result.emotion ?? 'happy')
+          // 反応を動的TTSで読み上げ（voiceEnabled は speak 内でゲート）。
+          // 立ち絵と同じ感情を渡す＝表情と声の温度を揃える。
+          void speak(result.comment, { expression: result.emotion })
+        }
 
         // 主役が採れたら bbox でクロップして図鑑に収集（無料・無制限）。
         if (result.subject) {
@@ -175,9 +178,12 @@ export default function CameraMode() {
           try {
             const crop = await cropToBlob(photo, result.subject.bbox)
             const { entry, isNew } = await collect(result.subject, crop)
+            collected = true // 図鑑に入った＝オンボは reveal へ進んでよい
             if (isNew) {
-              setDiscovery({ name: entry.name, url: URL.createObjectURL(crop) })
-              fireReaction('excited')
+              if (!isOnboardingShoot) {
+                setDiscovery({ name: entry.name, url: URL.createObjectURL(crop) })
+                fireReaction('excited')
+              }
             } else {
               // 再発見：新しいクロップを見せて「写真を更新する？」を選ばせる（自動では差し替えない）。
               setPendingUpdate({
@@ -194,7 +200,7 @@ export default function CameraMode() {
         }
       } catch {
         // 判定失敗＝コレットは黙って受け取る（写真の保存は続ける）。
-        fireReaction('happy')
+        if (!isOnboardingShoot) fireReaction('happy')
       }
       await addPhoto({ blob: photo, comment: commentText, emotion, subjectName, caption })
       setSavedFlash(true)
@@ -203,18 +209,25 @@ export default function CameraMode() {
       const gaugeBefore = useGaugeStore.getState().value
       addGauge(GAUGE_PER_CAPTURE)
       addAffinity(AFFINITY_PER_CAPTURE, 'capture')
-      setGainKey((k) => k + 1)
-      setShowGain(true)
-      // 初期シード（オンボの続き＝空のたからばこで放り出さない）：端末で最初の一枚のときだけ、
-      // コレットのまほうを満タンまで後押しして「はじめての召喚」に必ず届かせる。これで既存の導線
-      // （このお祝い→ホームの「ずかん」強調→図鑑の召喚バナー）が初日から灯る。二度目以降は本来の配給ペース。
-      if (useOnboardingStore.getState().claimSeed()) {
-        addGauge(GAUGE_MAX) // 満タンまで（clamp 済み）
-        setSeedGifted(true)
-      }
-      // この撮影で 0..MAX 未満 → 満タンに達したら、大きめのお祝い＝召喚解禁を知らせる。
-      if (gaugeBefore < GAUGE_MAX && useGaugeStore.getState().value >= GAUGE_MAX) {
-        setPowerMax(true)
+      if (isOnboardingShoot && collected) {
+        // オンボの最初の一枚＝図鑑への橋渡し。コレットが「図鑑に書いておくね」と言い、
+        // 手渡しカード（下）＋図鑑リビールへ。ここではまほうを満タンにしない（推奨A＝
+        // 初期シードは図鑑リビールを閉じた"後"に発火＝召喚は図鑑を理解した次の発見にする）。
+        // ※判定/収集に失敗した回は collected=false → phase は 'shoot' のまま＝撮り直せる
+        //   （空の図鑑を指す行き止まりを防ぐ）。
+        fireReaction(FIRST_SCAN_LINE.expression)
+        void speak(FIRST_SCAN_LINE.text, {
+          expression: FIRST_SCAN_LINE.expression,
+          direction: FIRST_SCAN_LINE.direction,
+        })
+        useOnboardingStore.getState().beginReveal()
+      } else if (!isOnboardingShoot) {
+        setGainKey((k) => k + 1)
+        setShowGain(true)
+        // この撮影で 0..MAX 未満 → 満タンに達したら、大きめのお祝い＝召喚解禁を知らせる。
+        if (gaugeBefore < GAUGE_MAX && useGaugeStore.getState().value >= GAUGE_MAX) {
+          setPowerMax(true)
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存に失敗しました')
@@ -268,10 +281,7 @@ export default function CameraMode() {
   // まほうパワー満タンのお祝いは少し長めに出す。
   useEffect(() => {
     if (!powerMax) return
-    const timer = setTimeout(() => {
-      setPowerMax(false)
-      setSeedGifted(false) // 次に自然に満タンへ達したときは通常文面に戻す。
-    }, 2800)
+    const timer = setTimeout(() => setPowerMax(false), 2800)
     return () => clearTimeout(timer)
   }, [powerMax])
 
@@ -347,6 +357,23 @@ export default function CameraMode() {
               className="shrink-0 text-xs font-bold text-slate-400 transition active:scale-95"
             >
               スキップ
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* オンボ：初スキャン後の「図鑑へ橋渡し」カード（phase='reveal'）。
+          コレットのセリフ（FIRST_SCAN_LINE）＋「図鑑をひらく」で図鑑（＝メインコンテンツ）へ手渡す。 */}
+      {onboardingReveal && !cameraError && (
+        <div className="absolute inset-x-0 top-24 z-10 flex justify-center px-6">
+          <div className="animate-reveal flex max-w-xs flex-col items-center gap-3 rounded-3xl bg-white/95 px-6 py-5 text-center shadow-pop">
+            <p className="text-sm font-bold leading-relaxed text-slate-700">{FIRST_SCAN_LINE.text}</p>
+            <button
+              type="button"
+              onClick={() => go('collection')}
+              className="rounded-full bg-lavender px-6 py-2.5 text-sm font-bold text-white shadow-pop transition active:scale-95"
+            >
+              図鑑をひらく
             </button>
           </div>
         </div>
@@ -432,17 +459,8 @@ export default function CameraMode() {
         <div className="pointer-events-none absolute inset-x-0 top-1/3 flex justify-center px-6">
           <div className="animate-reveal flex flex-col items-center gap-1 rounded-3xl bg-white/95 px-6 py-4 text-center text-slate-800 shadow-pop">
             <SparkleIcon className="h-7 w-7 text-mint" />
-            {seedGifted ? (
-              <>
-                <p className="font-display text-lg font-bold text-mint">コレットのまほうがあふれた！</p>
-                <p className="text-xs font-bold text-slate-500">さっそく、ずかんから召喚してみよう</p>
-              </>
-            ) : (
-              <>
-                <p className="font-display text-lg font-bold text-mint">まほうパワーが満タン！</p>
-                <p className="text-xs font-bold text-slate-500">ずかんから召喚できるよ</p>
-              </>
-            )}
+            <p className="font-display text-lg font-bold text-mint">まほうパワーが満タン！</p>
+            <p className="text-xs font-bold text-slate-500">ずかんから召喚できるよ</p>
           </div>
         </div>
       )}
