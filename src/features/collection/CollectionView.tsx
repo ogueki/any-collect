@@ -474,7 +474,7 @@ export default function CollectionView() {
               onClick={dismissReveal}
               className="rounded-full bg-mint px-7 py-2.5 text-sm font-bold text-slate-900 shadow-pop transition active:scale-95"
             >
-              うん、いいよ！
+              OK
             </button>
           </div>
         </div>
