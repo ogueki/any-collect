@@ -23,6 +23,7 @@ import {
 } from '../../components/icons'
 import type { MemoryFact } from '../../types'
 import ChatPanel from './ChatPanel'
+import { CHAT_COACH_LINE } from '../onboarding/script'
 
 /**
  * ホーム（新IA・リデザイン）。会話が主役＝コレットの最新の一言を中央に大きく見せる。
@@ -148,6 +149,12 @@ export default function HomeMode() {
     if (onboardingPhase !== 'done') return
     void openConversation(characterId)
   }, [openConversation, characterId, onboardingPhase])
+
+  // オンボ Beat6：コア導線を一巡してホームに戻った初回に、会話（ホームの主役）へ誘う一度だけのコーチ。
+  // 第一声（openConversation）と声がぶつからないよう、ここは読み上げず**画面の案内**にとどめる。
+  // 表示は store の seen から**レンダー時に導出**（local state を持たない）。OK で mark→永続。
+  const chatCoachSeen = useOnboardingStore((s) => s.chatCoachSeen)
+  const showChatCoach = onboardingPhase === 'done' && !chatCoachSeen
 
   // 絆レベルアップ＝コレットが大喜び＋お祝い表示。表示はストアの pendingLevelUp から直接出し、
   // 数秒後に clearLevelUp() で消す（ローカル state を effect 内で同期 set しない）。
@@ -341,6 +348,22 @@ export default function HomeMode() {
 
         <ChatPanel />
       </div>
+
+      {/* オンボ Beat6：会話へ誘うコーチ（一度だけ）。第一声を隠さないよう画面下に小さく浮かせる。 */}
+      {showChatCoach && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-24 z-30 flex justify-center px-6">
+          <div className="animate-reveal pointer-events-auto flex max-w-xs flex-col items-center gap-2 rounded-3xl bg-white px-5 py-4 text-center shadow-pop">
+            <p className="text-sm font-bold leading-relaxed text-slate-700">{CHAT_COACH_LINE.text}</p>
+            <button
+              type="button"
+              onClick={() => useOnboardingStore.getState().markChatCoachSeen()}
+              className="rounded-full bg-lavender px-6 py-2 text-xs font-bold text-white shadow-pop transition active:scale-95"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

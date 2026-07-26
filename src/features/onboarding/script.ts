@@ -67,3 +67,33 @@ export const COLLECTION_REVEAL_LINE: OnboardingStep = {
   expression: 'happy',
   direction: '夢を語るようにきらきらと、最後は少し甘えて誘うように',
 }
+
+/**
+ * まほうパワーが満タンになって初めて図鑑を見たときの一言（Beat4＝召喚＋まほうパワーをまとめて教える）。
+ * "召喚"はコレットの魔法（世界内の行い）なので彼女が言ってよい。「どのボタン」は既存のバナー/ボタンが担う。
+ */
+export const SUMMON_COACH_LINE: OnboardingStep = {
+  text: 'まほうがたっぷりたまったよ！ 図鑑のものを"召喚"すると、宝物になってたからばこに増えるの。ひとつ選んでみて！',
+  expression: 'excited',
+  direction: 'とっておきの魔法を披露するように、わくわくと',
+}
+
+/**
+ * たからばこを初めて開いたときの一言（Beat5）。図鑑（実物の記録）との違いを体で分からせる＝
+ * 「召喚した宝物がここに漂う」場所だと教える。背後に召喚したてのアイテムが浮いている状態で言う。
+ */
+export const TREASURE_REVEAL_LINE: OnboardingStep = {
+  text: 'ここはわたしのたからばこ！ きみが召喚した宝物が、ぷかぷか漂ってるでしょ〜？',
+  expression: 'excited',
+  direction: '宝物を自慢するように、うれしそうにはずんで',
+}
+
+/**
+ * コア導線を一巡してホームに戻ったときの一言（Beat6＝会話へ誘う）。ホームの主役＝会話を教える。
+ * 「下から話しかけて」の"どこ"は画面が示し、コレットは"話そう"という気持ちを言う。
+ */
+export const CHAT_COACH_LINE: OnboardingStep = {
+  text: 'おうちにいるときは、いつでもわたしとお話しできるよ。下から気軽に話しかけてね！',
+  expression: 'happy',
+  direction: 'くつろいだ様子で、やさしく誘うように',
+}

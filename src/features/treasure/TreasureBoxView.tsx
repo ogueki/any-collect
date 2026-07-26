@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useCodexStore } from '../../store/codexStore'
 import { useAppStore } from '../../store/appStore'
+import { useOnboardingStore } from '../../store/onboardingStore'
+import { useShellFairy } from '../../components/shellFairy'
+import { speak } from '../../lib/audio/useSpeak'
+import { TREASURE_REVEAL_LINE } from '../onboarding/script'
 import type { Item } from '../../types'
 import TreasureOpening from './TreasureOpening'
 
@@ -112,9 +116,27 @@ export default function TreasureBoxView() {
   const [opening, setOpening] = useState(true)
   const finishOpening = useCallback(() => setOpening(false), [])
 
+  // オンボ Beat5：たからばこ初訪問リビール（入室演出後＋アイテム1つ以上のとき一度だけ）。
+  // 表示は store の seen から**レンダー時に導出**（effect 内で local setState しない）。
+  const { fire } = useShellFairy()
+  const treasureIntroSeen = useOnboardingStore((s) => s.treasureIntroSeen)
+  const showTreasureIntro = !opening && items.length > 0 && !treasureIntroSeen
+  const treasureSpoke = useRef(false)
+
   useEffect(() => {
     void load()
   }, [load])
+
+  // リビールが出た瞬間に一度だけ読み上げ＋立ち絵反応（local setState はしない＝図鑑リビールと同流儀）。
+  useEffect(() => {
+    if (!showTreasureIntro || treasureSpoke.current) return
+    treasureSpoke.current = true
+    fire(TREASURE_REVEAL_LINE.expression)
+    void speak(TREASURE_REVEAL_LINE.text, {
+      expression: TREASURE_REVEAL_LINE.expression,
+      direction: TREASURE_REVEAL_LINE.direction,
+    })
+  }, [showTreasureIntro, fire])
 
   // 未配置アイテムを自動配置（＝コレットがしまう）。配置すると items が変わり再実行するが、
   // 配置済みになれば unplaced が空になって収束する。多重実行は placingRef で防ぐ。
@@ -345,6 +367,24 @@ export default function TreasureBoxView() {
                 {deleting ? '削除中…' : '削除'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* オンボ Beat5：たからばこ初訪問リビール。召喚した宝物が背後に漂う状態で「ここは何の場所か」。 */}
+      {showTreasureIntro && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/60 px-6">
+          <div className="animate-reveal flex w-full max-w-xs flex-col items-center gap-4 rounded-3xl bg-white px-6 py-6 text-center shadow-pop">
+            <p className="text-base font-bold leading-relaxed text-slate-700">
+              {TREASURE_REVEAL_LINE.text}
+            </p>
+            <button
+              type="button"
+              onClick={() => useOnboardingStore.getState().markTreasureIntroSeen()}
+              className="rounded-full bg-mint px-7 py-2.5 text-sm font-bold text-slate-900 shadow-pop transition active:scale-95"
+            >
+              OK
+            </button>
           </div>
         </div>
       )}

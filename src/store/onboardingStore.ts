@@ -23,6 +23,15 @@ const STORAGE_KEY = 'anycollect.onboarding.v1'
  * （＝空のたからばこで放り出さない、を phase に依存させない）。
  */
 const SEED_KEY = 'anycollect.onboarding.seed.v1'
+/**
+ * コア導線の各ビートのコーチ（召喚／たからばこ／会話）を見せたか。図鑑リビールが phase で進むのに対し、
+ * これらは「まほう満タン→召喚→たからばこ→ホームに戻って会話」がユーザー行動次第で phase の一本道に
+ * 乗らない（長い＝途中で閉じ得る）ため、claimSeed と同型の**永続の一度きりフラグ**で扱う（phase 非依存・
+ * リロードや翌日でも各画面の初回で必ず一度出る）。順番は自然な操作の流れで担保される。
+ */
+const SUMMON_KEY = 'anycollect.onboarding.summon.v1'
+const TREASURE_KEY = 'anycollect.onboarding.treasure.v1'
+const CHAT_KEY = 'anycollect.onboarding.chat.v1'
 
 export type OnboardingPhase = 'intro' | 'shoot' | 'reveal' | 'done'
 
@@ -54,6 +63,21 @@ function persistSeedGranted(): void {
     // 保存できなくてもゲージ自体は動く（次回また後押しされるだけ）。
   }
 }
+// コーチ用の汎用「一度きりフラグ」。読めなければ未表示扱い（最悪もう一度出るだけ＝無害）。
+function readOnceFlag(key: string): boolean {
+  try {
+    return typeof localStorage !== 'undefined' && localStorage.getItem(key) === 'done'
+  } catch {
+    return false
+  }
+}
+function persistOnceFlag(key: string): void {
+  try {
+    localStorage.setItem(key, 'done')
+  } catch {
+    // 保存できなくても本編は動く（次回また出るだけ）。
+  }
+}
 
 interface OnboardingState {
   /** 現在のフェーズ。`intro` のときだけオーバーレイ、`shoot` のときだけ撮影ガイドを出す。 */
@@ -74,7 +98,18 @@ interface OnboardingState {
    * 「はじめての召喚」に届かせる。二度目以降は本来の配給ペースに戻す。
    */
   claimSeed: () => boolean
-  /** 検証用：オンボをもう一度見る（`?debug=1` のメニューから）。初期シードの後押しも再武装する。 */
+  /**
+   * コア導線の各コーチを「もう見せたか」＝reactive な store 状態（localStorage 初期化）。
+   * 表示側は **レンダー時にこの値から導出**する（effect 内で local setState しない＝図鑑リビールと同流儀）。
+   * それぞれ Beat4 召喚／Beat5 たからばこ／Beat6 会話。閉じるときに mark で true＋永続。
+   */
+  summonCoachSeen: boolean
+  treasureIntroSeen: boolean
+  chatCoachSeen: boolean
+  markSummonCoachSeen: () => void
+  markTreasureIntroSeen: () => void
+  markChatCoachSeen: () => void
+  /** 検証用：オンボをもう一度見る（`?debug=1` のメニューから）。初期シード・各コーチも再武装する。 */
   resetOnboarding: () => void
 }
 
@@ -96,13 +131,35 @@ export const useOnboardingStore = create<OnboardingState>((set) => ({
     persistSeedGranted() // 返す前に永続＝再入や二度押しでも一度きりを担保。
     return true
   },
+  summonCoachSeen: readOnceFlag(SUMMON_KEY),
+  treasureIntroSeen: readOnceFlag(TREASURE_KEY),
+  chatCoachSeen: readOnceFlag(CHAT_KEY),
+  markSummonCoachSeen: () => {
+    persistOnceFlag(SUMMON_KEY)
+    set({ summonCoachSeen: true })
+  },
+  markTreasureIntroSeen: () => {
+    persistOnceFlag(TREASURE_KEY)
+    set({ treasureIntroSeen: true })
+  },
+  markChatCoachSeen: () => {
+    persistOnceFlag(CHAT_KEY)
+    set({ chatCoachSeen: true })
+  },
   resetOnboarding: () => {
     try {
       localStorage.removeItem(STORAGE_KEY)
-      localStorage.removeItem(SEED_KEY) // 後押しも再武装＝debug でシードから通しで検証できる。
+      // 初期シード・各コーチも再武装＝debug で頭から通しで検証できる。
+      ;[SEED_KEY, SUMMON_KEY, TREASURE_KEY, CHAT_KEY].forEach((k) => localStorage.removeItem(k))
     } catch {
       // noop
     }
-    set({ phase: 'intro', step: 0 })
+    set({
+      phase: 'intro',
+      step: 0,
+      summonCoachSeen: false,
+      treasureIntroSeen: false,
+      chatCoachSeen: false,
+    })
   },
 }))

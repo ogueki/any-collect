@@ -8,7 +8,7 @@ import { useOnboardingStore } from '../../store/onboardingStore'
 import { imageGenProvider } from '../../lib/ai/imageGen'
 import { emotionForGenerated } from '../../lib/character/reaction'
 import { speak } from '../../lib/audio/useSpeak'
-import { COLLECTION_REVEAL_LINE } from '../onboarding/script'
+import { COLLECTION_REVEAL_LINE, SUMMON_COACH_LINE } from '../onboarding/script'
 import GeneratingOverlay from '../../components/GeneratingOverlay'
 import { useShellFairy } from '../../components/shellFairy'
 import { SparkleIcon } from '../../components/icons'
@@ -126,6 +126,22 @@ export default function CollectionView() {
     if (ob.claimSeed()) addGauge(GAUGE_MAX)
   }, [addGauge])
 
+  // オンボ Beat4：まほうパワーが初めて満タンになったとき、召喚（＋まほうパワー）を一度だけ教える。
+  // 図鑑リビールの直後（seed で満タン化）に自然に続く。リビール表示中/召喚中は出さない。
+  // 表示は store の seen から**レンダー時に導出**（effect 内で local setState しない）。
+  const summonCoachSeen = useOnboardingStore((s) => s.summonCoachSeen)
+  const showSummonCoach = gaugeFull && !showReveal && summonPhase === 'idle' && !summonCoachSeen
+  const summonSpoke = useRef(false)
+  useEffect(() => {
+    if (!showSummonCoach || summonSpoke.current) return
+    summonSpoke.current = true
+    fire(SUMMON_COACH_LINE.expression)
+    void speak(SUMMON_COACH_LINE.text, {
+      expression: SUMMON_COACH_LINE.expression,
+      direction: SUMMON_COACH_LINE.direction,
+    })
+  }, [showSummonCoach, fire])
+
   // チップに出すのは「実際に1件以上あるカテゴリ」だけ（CATEGORY_ORDER 順）。
   const availableCategories = useMemo(() => {
     const present = new Set(entries.map((e) => e.category))
@@ -224,8 +240,22 @@ export default function CollectionView() {
         </div>
       )}
 
-      {/* 召喚できるよバナー（まほうパワーが満タンのときだけ） */}
-      {entries.length > 0 && gaugeFull && summonPhase === 'idle' && (
+      {/* オンボ Beat4：召喚コーチ（初めて満タンになった一度だけ・OK で閉じるとバナーに引き継ぐ） */}
+      {showSummonCoach && (
+        <div className="animate-reveal mb-3 flex flex-col items-center gap-2 rounded-2xl bg-white px-4 py-3 text-center shadow-pop ring-1 ring-lavender/40">
+          <p className="text-sm font-bold leading-relaxed text-slate-700">{SUMMON_COACH_LINE.text}</p>
+          <button
+            type="button"
+            onClick={() => useOnboardingStore.getState().markSummonCoachSeen()}
+            className="rounded-full bg-lavender px-6 py-2 text-xs font-bold text-white shadow-pop transition active:scale-95"
+          >
+            やってみる！
+          </button>
+        </div>
+      )}
+
+      {/* 召喚できるよバナー（まほうパワーが満タンのときだけ・コーチ表示中は出さない） */}
+      {entries.length > 0 && gaugeFull && summonPhase === 'idle' && !showSummonCoach && (
         <div className="mb-3 rounded-2xl bg-mint/20 px-3 py-2 text-center ring-1 ring-mint">
           <p className="text-xs font-bold text-emerald-700">
             まほうパワーが満タン！ 図鑑から1つえらんで召喚しよう
