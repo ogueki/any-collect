@@ -84,6 +84,7 @@ export default {
         droop: 'droop 0.5s ease-out 1 forwards',
         reveal: 'reveal 0.5s ease-out 1',
         rise: 'rise 1.4s ease-out 1 forwards',
+        // 秒数はインライン style（WHISPER_MS）で上書きされる前提のデフォルト。
         whisper: 'whisper 2.8s ease-in-out 1 forwards',
         // 秒数はインライン style で上書きする前提のデフォルト。
         drift: 'drift 8s ease-in-out infinite',

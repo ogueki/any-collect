@@ -6,8 +6,11 @@ import { homeBackgroundUrl } from '../../lib/character/homeBackground'
 import { speak, primeAudio, stopSpeaking } from '../../lib/audio/useSpeak'
 import { ONBOARDING_STEPS, WHISPER_LINE } from './script'
 
-/** ささやきを見せている時間（ms）。過ぎたら自動でコレット登場へ（タップでスキップ可）。 */
-const WHISPER_MS = 2800
+/**
+ * ささやきを見せている時間（ms）。過ぎたら自動でコレット登場へ（タップでスキップ可）。
+ * **尺のノブはここ1つ**＝濃さの揺れ（`animate-whisper`）の秒数もこの値をインラインで流し込む。
+ */
+const WHISPER_MS = 4500
 
 /**
  * 初回オンボーディング（STEP4）＝**コレット主導の「最初の一回」**。
@@ -153,7 +156,10 @@ export default function OnboardingOverlay() {
 
           {/* まだ姿は見えず、声だけが届く。白いカードに入れない＝「セリフ」でなく「気配」に見せる。 */}
           {phase === 'whisper' && (
-            <p className="animate-whisper max-w-xs text-lg font-bold leading-loose tracking-[0.18em] text-slate-600 [text-shadow:0_0_12px_rgba(255,255,255,0.9)]">
+            <p
+              style={{ animationDuration: `${WHISPER_MS}ms` }}
+              className="animate-whisper max-w-xs text-lg font-bold leading-loose tracking-[0.18em] text-slate-600 [text-shadow:0_0_12px_rgba(255,255,255,0.9)]"
+            >
               {WHISPER_LINE.text}
             </p>
           )}
