@@ -4,7 +4,10 @@ import { useOnboardingStore } from '../../store/onboardingStore'
 import Sprite2DRenderer from '../../lib/character/Sprite2DRenderer'
 import { homeBackgroundUrl } from '../../lib/character/homeBackground'
 import { speak, primeAudio, stopSpeaking } from '../../lib/audio/useSpeak'
-import { ONBOARDING_STEPS } from './script'
+import { ONBOARDING_STEPS, WHISPER_LINE } from './script'
+
+/** ささやきを見せている時間（ms）。過ぎたら自動でコレット登場へ（タップでスキップ可）。 */
+const WHISPER_MS = 2800
 
 /**
  * 初回オンボーディング（STEP4）＝**コレット主導の「最初の一回」**。
@@ -24,13 +27,25 @@ export default function OnboardingOverlay() {
   const beginShoot = useOnboardingStore((s) => s.beginShoot)
   const finish = useOnboardingStore((s) => s.finish)
 
-  // 「はじめる」を押すまでは音声をアンロックできない（自動再生ポリシー）。
-  const [started, setStarted] = useState(false)
+  /**
+   * 画面の段：`ask`＝音声の選択だけ（世界の説明はしない＝話者のいないナレーションを置かない）→
+   * `whisper`＝遠くの声だけが届くワンクッション（ボタンなし・自動で進む）→ `steps`＝コレット登場。
+   */
+  const [phase, setPhase] = useState<'ask' | 'whisper' | 'steps'>('ask')
+  const started = phase === 'steps'
 
   const total = ONBOARDING_STEPS.length
   const current = ONBOARDING_STEPS[Math.min(step, total - 1)]
   const isLast = step >= total - 1
   const backgroundUrl = homeBackgroundUrl(characterId, new Date().getHours())
+
+  // ささやき＝ボタンを置かずに時間で流す（ここに「つぎへ」を付けるとカードが1枚増えただけになる）。
+  useEffect(() => {
+    if (phase !== 'whisper') return
+    void speak(WHISPER_LINE.text, { direction: WHISPER_LINE.direction })
+    const timer = setTimeout(() => setPhase('steps'), WHISPER_MS)
+    return () => clearTimeout(timer)
+  }, [phase])
 
   // 開始後、ステップが変わるたびに現在のセリフを動的TTSで読む（演技指示つき）。
   useEffect(() => {
@@ -43,7 +58,7 @@ export default function OnboardingOverlay() {
   const begin = (withVoice: boolean) => {
     setVoice(withVoice) // 選択を永続（あとで 🔊 トグルで変更できる）
     if (withVoice) primeAudio() // ユーザー操作の中で永続 <audio> をアンロック
-    setStarted(true)
+    setPhase('whisper')
   }
   const handleNext = () => {
     if (!isLast) {
@@ -75,7 +90,11 @@ export default function OnboardingOverlay() {
       {/* 読みやすさのためのスクリム。 */}
       <div aria-hidden className="absolute inset-0 bg-white/45 backdrop-blur-[2px]" />
 
-      <div className="relative flex h-full flex-col items-center justify-between px-6 py-8 text-center">
+      {/* ささやきの間だけ、どこをタップしても先へ進める（毎回きっちり待たされない＝入室演出と同じ扱い）。 */}
+      <div
+        onPointerDown={phase === 'whisper' ? () => setPhase('steps') : undefined}
+        className="relative flex h-full flex-col items-center justify-between px-6 py-8 text-center"
+      >
         {/* 上：進行ドット（開始後だけ）＋スキップ。 */}
         <div className="flex h-6 w-full max-w-xs items-center justify-between">
           <div className="flex gap-1.5">
@@ -100,35 +119,16 @@ export default function OnboardingOverlay() {
           )}
         </div>
 
-        {/* 中：コレット＋セリフ。 */}
+        {/* 中：段によって中身が変わる。`ask` は音声の質問だけ（背景＝木のうろの部屋が第一印象になる）、
+            `whisper` は遠くの声だけ、`steps` でようやくコレットの姿とセリフが出る。 */}
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4">
-          <div className="rounded-3xl bg-white/85 px-5 py-4 shadow-pop">
-            {started ? (
-              <p className="max-w-xs text-base font-bold leading-relaxed text-slate-700">
-                {current.text}
-              </p>
-            ) : (
-              <p className="max-w-xs text-base font-bold leading-relaxed text-slate-700">
-                はじめまして。コレットがきみを待ってるよ。
-              </p>
-            )}
-          </div>
-          <Sprite2DRenderer
-            characterId={characterId}
-            expression={started ? current.expression : 'excited'}
-            size="lg"
-            animateKey={started ? step : -1}
-            level={1}
-          />
-        </div>
-
-        {/* 下：主ボタン。最初だけ音声の ON/OFF をやさしく選んでもらう。 */}
-        <div className="flex w-full max-w-xs shrink-0 flex-col items-center gap-2">
-          {!started ? (
-            <>
-              <p className="text-sm font-bold text-slate-600">
+          {phase === 'ask' && (
+            <div className="flex w-full max-w-xs flex-col items-center gap-4">
+              <p className="text-lg font-bold text-slate-700">
                 音声を再生しますか？
-                <span className="ml-1 text-xs font-bold text-slate-400">（あとで変更できます）</span>
+                <span className="mt-1 block text-xs font-bold text-slate-400">
+                  （あとで変更できます）
+                </span>
               </p>
               <div className="flex w-full gap-2">
                 <button
@@ -148,8 +148,37 @@ export default function OnboardingOverlay() {
                   いいえ
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* まだ姿は見えず、声だけが届く。白いカードに入れない＝「セリフ」でなく「気配」に見せる。 */}
+          {phase === 'whisper' && (
+            <p className="animate-whisper max-w-xs text-lg font-bold leading-loose tracking-[0.18em] text-slate-600 [text-shadow:0_0_12px_rgba(255,255,255,0.9)]">
+              {WHISPER_LINE.text}
+            </p>
+          )}
+
+          {started && (
+            <>
+              <div className="rounded-3xl bg-white/85 px-5 py-4 shadow-pop">
+                <p className="max-w-xs text-base font-bold leading-relaxed text-slate-700">
+                  {current.text}
+                </p>
+              </div>
+              <Sprite2DRenderer
+                characterId={characterId}
+                expression={current.expression}
+                size="lg"
+                animateKey={step}
+                level={1}
+              />
             </>
-          ) : (
+          )}
+        </div>
+
+        {/* 下：主ボタン。`ask`/`whisper` の間は置かない（選択と気配だけに集中させる）。 */}
+        <div className="flex w-full max-w-xs shrink-0 flex-col items-center gap-2">
+          {started && (
             <button
               type="button"
               onClick={handleNext}

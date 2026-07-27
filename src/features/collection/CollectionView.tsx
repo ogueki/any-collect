@@ -8,7 +8,7 @@ import { useOnboardingStore } from '../../store/onboardingStore'
 import { imageGenProvider } from '../../lib/ai/imageGen'
 import { emotionForGenerated } from '../../lib/character/reaction'
 import { speak } from '../../lib/audio/useSpeak'
-import { COLLECTION_REVEAL_LINE, SUMMON_COACH_LINE } from '../onboarding/script'
+import { COLLECTION_REVEAL_LINE, SUMMON_COACH_LINE, SUMMON_COACH_NOTE } from '../onboarding/script'
 import GeneratingOverlay from '../../components/GeneratingOverlay'
 import { useShellFairy } from '../../components/shellFairy'
 import { SparkleIcon } from '../../components/icons'
@@ -241,6 +241,8 @@ export default function CollectionView() {
       {showSummonCoach && (
         <div className="animate-reveal mb-3 flex flex-col items-center gap-2 rounded-2xl bg-white px-4 py-3 text-center shadow-pop ring-1 ring-lavender/40">
           <p className="text-sm font-bold leading-relaxed text-slate-700">{SUMMON_COACH_LINE.text}</p>
+          {/* 仕組みの説明はシステムの補足として添える（コレットにルールを喋らせない）。 */}
+          <p className="text-xs leading-relaxed text-slate-400">{SUMMON_COACH_NOTE}</p>
           <button
             type="button"
             onClick={() => useOnboardingStore.getState().markSummonCoachSeen()}
