@@ -61,15 +61,6 @@ export default {
           '50%': { opacity: '0.9' },
         },
         // 撮影で貯まった「＋まほうパワー / なつき」がふわっと上がって消える。
-        // 遠くの声がぼんやり届く（オンボ＝コレット登場前のワンクッション）。
-        // 濃さが揺れる＝「はっきり聞こえない」を目で見せる（電波の悪いラジオのように）。
-        whisper: {
-          '0%': { opacity: '0' },
-          '25%': { opacity: '0.9' },
-          '45%': { opacity: '0.45' },
-          '70%': { opacity: '0.95' },
-          '100%': { opacity: '0.8' },
-        },
         rise: {
           '0%': { opacity: '0', transform: 'translateY(8px) scale(0.9)' },
           '18%': { opacity: '1', transform: 'translateY(0) scale(1)' },
@@ -84,8 +75,6 @@ export default {
         droop: 'droop 0.5s ease-out 1 forwards',
         reveal: 'reveal 0.5s ease-out 1',
         rise: 'rise 1.4s ease-out 1 forwards',
-        // 秒数はインライン style（WHISPER_MS）で上書きされる前提のデフォルト。
-        whisper: 'whisper 2.8s ease-in-out 1 forwards',
         // 秒数はインライン style で上書きする前提のデフォルト。
         drift: 'drift 8s ease-in-out infinite',
         twinkle: 'twinkle 3s ease-in-out infinite',
