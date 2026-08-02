@@ -3,8 +3,8 @@ import Sprite2DRenderer from '../lib/character/Sprite2DRenderer'
 import { getStatusStages, getTips, type WaitContext } from '../lib/character/waitLines'
 
 /**
- * 生成待ちの全画面オーバーレイ（鑑定中／合成中）。妖精＋状況ステータス＋進捗バー＋豆知識で
- * 待ち時間の体感を改善する。スキャン（カメラ）と STEP8 の合成で使い回す共有UI。
+ * 生成待ちの全画面オーバーレイ（召喚中／合成中）。妖精＋状況ステータス＋進捗バー＋豆知識で
+ * 待ち時間の体感を改善する。召喚（図鑑）と窯（合成）で使い回す共有UI。
  *
  * 進捗は実シグナルが無い（Gemini/fal は途中経過を返さない）ため、経過時間の漸近カーブ
  * （1 − e^(−t/τ)）で MAX_PROGRESS まで“それっぽく”伸ばす。完了前に満タンにせず・常に動くので
@@ -13,7 +13,7 @@ import { getStatusStages, getTips, type WaitContext } from '../lib/character/wai
 
 interface GeneratingOverlayProps {
   characterId: string
-  /** 待ちの種類（コピー切替）。既定は鑑定中。STEP8 で 'synthesizing' を追加予定。 */
+  /** 待ちの種類（コピー切替）。既定は召喚。 */
   context?: WaitContext
 }
 
@@ -23,7 +23,7 @@ const TIP_INTERVAL_MS = 2600
 
 export default function GeneratingOverlay({
   characterId,
-  context = 'searching',
+  context = 'summoning',
 }: GeneratingOverlayProps) {
   const stages = useMemo(() => getStatusStages(context), [context])
   const tips = useMemo(() => getTips(characterId, context), [characterId, context])

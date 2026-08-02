@@ -432,7 +432,7 @@ export default function CollectionView() {
       {/* 召喚：生成中オーバーレイ */}
       {summonPhase === 'generating' && (
         <div className="fixed inset-0 z-20">
-          <GeneratingOverlay characterId={characterId} context="synthesizing" />
+          <GeneratingOverlay characterId={characterId} context="summoning" />
         </div>
       )}
 
