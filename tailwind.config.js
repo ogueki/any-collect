@@ -8,13 +8,22 @@ export default {
         lavender: '#C4B5FD',
         peach: '#FDA4AF',
         lemon: '#FDE68A',
+        // 図鑑（標本の台紙）だけで使う紙の色。ほかの画面は従来のパステル＋白のまま＝
+        // 「図鑑は別の場所」を色で伝える（spec §10）。
+        paper: '#FBF6EC',
+        paperEdge: '#F0E7D8',
+        ink: '#5A5145',
       },
       fontFamily: {
         sans: ['"Zen Maru Gothic"', '"M PLUS Rounded 1c"', 'sans-serif'],
         display: ['Fredoka', '"Zen Maru Gothic"', 'sans-serif'],
+        // 図鑑だけ別の書体にして「場所が違う」ことを字でも出す（index.html で読み込み済み＝追加コストなし）。
+        zukan: ['"M PLUS Rounded 1c"', '"Zen Maru Gothic"', 'sans-serif'],
       },
       boxShadow: {
         pop: '0 8px 24px -8px rgba(196, 181, 253, 0.6)',
+        // 紙の「厚み」＝浮かせずに下だけへ1本。cozy の pop をそのまま使うとカードが浮いて紙に見えない。
+        paper: '0 1px 0 #E8DECD, 0 2px 3px rgba(90, 81, 69, 0.06)',
       },
       // 妖精の生命感（実行時コストゼロのCSSアニメ）。
       // float = 常時のフワフワ浮遊 / それ以外 = リアクション時に1回だけ再生。

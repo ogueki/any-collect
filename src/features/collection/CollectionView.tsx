@@ -43,6 +43,70 @@ const PREVIEW_BG_STYLE: React.CSSProperties = {
 /** 召喚のフェーズ（idle＝閲覧中／生成中／結果プレビュー）。 */
 type SummonPhase = 'idle' | 'generating' | 'result'
 
+/**
+ * 各章の末尾に見せる空きマスの数（**後退式**＝いま埋まっている数のうしろに、常にこの数だけ足す）。
+ *
+ * 狙い＝**器が有限に見える**こと。埋まっていない枠が視界にあるだけで「集める先がある」と分かる
+ * （＝レビュー #3「"いっぱいにする"が定義されていなくて進捗が見えない」への手当て）。
+ * ⚠️ ただし埋めるたびに先が伸びるので**実際には終わらない**。「終わる器」にしたくなったら、
+ * ここをカテゴリごとの固定目標（例：12マス）に変えて、埋まったら達成表示を出す設計へ切り替える。
+ */
+const EMPTY_SLOT_LOOKAHEAD = 3
+
+/** 図鑑のマス＝紙に貼った標本写真（実写クロップ）。 */
+function SpecimenCard({
+  entry,
+  url,
+  glow,
+  onClick,
+}: {
+  entry: CollectionEntry
+  url?: string
+  glow: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex flex-col items-center transition active:scale-95"
+    >
+      <div className="relative w-full">
+        {/* 画像は矩形の実写クロップ（透過ではない）＝「紙に写真を貼った」見立てで縁と厚みを付ける。
+            将来クロップを切り抜き（透過）にしたら、ここを薄い楕円の座布団に差し替える。 */}
+        <img
+          src={url}
+          alt={entry.name}
+          className={`aspect-square w-full rounded-lg border object-cover shadow-paper ${
+            glow ? 'border-mint' : 'border-paperEdge'
+          }`}
+        />
+        {entry.count > 1 && (
+          <span className="absolute -right-1 -top-1 -rotate-6 rounded-full border border-paperEdge bg-paper px-1.5 py-0.5 text-[10px] font-bold text-ink shadow-paper">
+            ×{entry.count}
+          </span>
+        )}
+      </div>
+      <span className="mt-1 line-clamp-1 w-full text-center text-xs font-bold text-ink">
+        {entry.name}
+      </span>
+    </button>
+  )
+}
+
+/** 空きマス。「まだ見つけていない場所」を見せて、器が有限であるように感じさせる。 */
+function EmptySlot() {
+  return (
+    <div aria-hidden className="flex flex-col items-center">
+      <div className="flex aspect-square w-full items-center justify-center rounded-lg border border-dashed border-paperEdge text-base font-bold text-paperEdge">
+        ？
+      </div>
+      {/* 埋まっているマスと高さを揃える（名前1行ぶん） */}
+      <span className="mt-1 text-xs">&nbsp;</span>
+    </div>
+  )
+}
+
 /** 並び替え/絞り込みのチップ（横スクロールで縮まないよう shrink-0）。 */
 function FilterChip({
   active,
@@ -163,6 +227,29 @@ export default function CollectionView() {
     })
   }, [entries, effectiveFilter, sortMode])
 
+  /**
+   * 章立て（カテゴリ＝ページ）。見出しで区切ると、縦スクロールのままでも「めくっている」感じが出る
+   * ＝見開き/ページめくりを実装しない代わりの構造（実装コストが高く縦スクロールと喧嘩するため）。
+   * 「新しい順」のときは時系列が主役なので章に割らず1枚の紙にする。
+   */
+  const sections = useMemo(() => {
+    if (sortMode === 'recent') {
+      return [{ key: 'recent', label: null as string | null, items: visibleEntries }]
+    }
+    const byCategory = new Map<ItemCategory, CollectionEntry[]>()
+    for (const entry of visibleEntries) {
+      const list = byCategory.get(entry.category)
+      if (list) list.push(entry)
+      else byCategory.set(entry.category, [entry])
+    }
+    // visibleEntries は既にカテゴリ順→初発見順で並んでいるので、章の中の順序はそのままでよい。
+    return CATEGORY_ORDER.filter((c) => byCategory.has(c)).map((c) => ({
+      key: c as string,
+      label: `${CATEGORY_EMOJI[c]} ${CATEGORY_LABEL[c]}`,
+      items: byCategory.get(c) as CollectionEntry[],
+    }))
+  }, [visibleEntries, sortMode])
+
   // Blob → object URL（エントリごと）。entries が変わるたび作り直し、前回分は cleanup で解放する。
   const urls = useMemo(() => {
     const map = new Map<string, string>()
@@ -224,7 +311,8 @@ export default function CollectionView() {
   }
 
   return (
-    <div className="flex w-full max-w-md flex-col">
+    // 図鑑だけ「紙の台紙」にする＝色と書体で"別の場所"を出す（アルバムはカメラロール風のまま＝対比）。
+    <div className="zukan-paper flex w-full max-w-md flex-col rounded-2xl px-3 py-3 font-zukan text-ink shadow-paper">
       {/* 読み込み中 */}
       {status === 'loading' && entries.length === 0 && (
         <p className="mt-10 animate-pulse text-center text-sm text-slate-400">読み込み中…</p>
@@ -308,34 +396,32 @@ export default function CollectionView() {
         </div>
       )}
 
-      {/* グリッド。まほうパワーが満タンのマスは召喚できるヒントとして淡く光らせる。 */}
+      {/* 標本の台紙。章（カテゴリ）ごとに区切り、末尾に空きマスを見せる。
+          まほうパワーが満タンのマスは召喚できるヒントとして縁を色付ける。 */}
       {entries.length > 0 && (
-        <div className="grid grid-cols-3 gap-2">
-          {visibleEntries.map((entry) => (
-            <button
-              key={entry.id}
-              type="button"
-              onClick={() => setSelected(entry)}
-              className={`relative flex flex-col items-center overflow-hidden rounded-2xl bg-white p-1.5 shadow-pop transition active:scale-95 ${
-                gaugeFull ? 'ring-2 ring-mint/60' : ''
-              }`}
-            >
-              <div className="relative w-full">
-                <img
-                  src={urls.get(entry.id)}
-                  alt={entry.name}
-                  className="relative aspect-square w-full rounded-xl object-cover"
-                />
-                {entry.count > 1 && (
-                  <span className="absolute right-1 top-1 rounded-full bg-slate-900/70 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                    ×{entry.count}
-                  </span>
-                )}
+        <div className="flex flex-col gap-4">
+          {sections.map((section) => (
+            <section key={section.key}>
+              {section.label && (
+                <h2 className="zukan-rule mb-2 pb-1 text-xs font-bold tracking-wide text-ink/70">
+                  {section.label}
+                </h2>
+              )}
+              <div className="grid grid-cols-3 gap-x-2 gap-y-3">
+                {section.items.map((entry) => (
+                  <SpecimenCard
+                    key={entry.id}
+                    entry={entry}
+                    url={urls.get(entry.id)}
+                    glow={gaugeFull}
+                    onClick={() => setSelected(entry)}
+                  />
+                ))}
+                {Array.from({ length: EMPTY_SLOT_LOOKAHEAD }, (_, i) => (
+                  <EmptySlot key={`empty-${section.key}-${i}`} />
+                ))}
               </div>
-              <span className="mt-1 line-clamp-1 w-full text-center text-xs font-bold text-slate-700">
-                {entry.name}
-              </span>
-            </button>
+            </section>
           ))}
         </div>
       )}
