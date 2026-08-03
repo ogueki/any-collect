@@ -1,0 +1,65 @@
+import type { FairyExpression } from './CharacterRenderer'
+
+/**
+ * 失敗したときにコレットが言うこと（演出用・AI生成ではない）。
+ *
+ * ⚠️ 口調の基準は各キャラの `src/characters/<id>/persona.md`。
+ *   非コーダーでも編集しやすいよう素のテキストで置く（`waitLines.ts` と同じ流儀）。
+ *
+ * **なぜ必要か**＝生成AIや通信が失敗したとき、これまでは Gemini/Fish の生エラーや
+ * 「合成に失敗しました」のようなシステムの言葉がそのまま画面に出ていた。
+ * デモ中にそれが出るとコレットが一瞬で消える（安全性の問題というより、見せ物としての事故）。
+ *
+ * **書くときのルール**：
+ * - **失敗の原因をコレットに説明させない。** 通信/サーバ/AI拒否の区別は彼女に見えない世界の話。
+ *   技術的な情報が要るときは画面側の注記で出す（`CAMERA_HINT_TEXT` と同じ役割分担）。
+ * - **UI の操作を指示させない**（「ボタンを押して」＝"中の人"感が出る）。
+ *   「もう一回やってみよっか」のように、世界の中の行為として言う。
+ * - persona「話し方の制約」に従い、責めない・急かさない。
+ * - **読み上げない**（TTS は呼ばない）。通信が落ちている場面で音声だけ取りに行っても
+ *   二重に失敗するし、失敗のたびに課金するのも筋が悪い。
+ *
+ * カメラの判定失敗にはセリフを置かない（2026-08-04 ユーザー判断）＝写真はアルバムに残るので
+ * 図鑑に入らないだけなら失敗として扱わない。風景を撮ったときは普通に起きるため。
+ */
+
+export type FailureContext =
+  /** 会話の返事が返ってこなかった */
+  | 'chat'
+  /** 召喚（図鑑エントリ→透過アイテム）の生成が失敗した */
+  | 'summon'
+  /** 窯の合成が失敗した */
+  | 'synthesize'
+  /** 生成は成功したが、たからばこへの保存が失敗した（ローカル永続の失敗） */
+  | 'store'
+
+export interface FailureLine {
+  text: string
+  /** 立ち絵の表情。`fire()` が使える画面だけ反映する。 */
+  expression: FairyExpression
+}
+
+const LINES: Record<FailureContext, FailureLine> = {
+  chat: {
+    text: 'ごめん、いまの聞き取れなかったみたい。もう一回言ってくれる？',
+    expression: 'confused',
+  },
+  // まほうパワーは成功時にしか減らない＝「まだ残ってる」は実装どおりの事実。
+  summon: {
+    text: 'うぅ、まほうがうまくいかなかった…。でもまだ残ってるから、もう一回いけるよ！',
+    expression: 'sad',
+  },
+  synthesize: {
+    text: 'むむ、うまく混ざらなかったみたい。もう一回やってみよっか。',
+    expression: 'confused',
+  },
+  store: {
+    text: 'あれ、うまくしまえなかった…。もう一回やってみて？',
+    expression: 'confused',
+  },
+}
+
+/** その場面でコレットが言うことを返す。 */
+export function failureLine(context: FailureContext): FailureLine {
+  return LINES[context]
+}

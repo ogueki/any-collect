@@ -10,6 +10,7 @@ import { emotionForGenerated } from '../../lib/character/reaction'
 import { speak } from '../../lib/audio/useSpeak'
 import { COLLECTION_REVEAL_LINE, SUMMON_COACH_LINE, SUMMON_COACH_NOTE } from '../onboarding/script'
 import GeneratingOverlay from '../../components/GeneratingOverlay'
+import { failureLine } from '../../lib/character/failureLines'
 import { useShellFairy } from '../../components/shellFairy'
 import { SparkleIcon } from '../../components/icons'
 import { CATEGORY_EMOJI, CATEGORY_LABEL, CATEGORY_ORDER } from '../../lib/category'
@@ -206,8 +207,11 @@ export default function CollectionView() {
         setSummonResult(generated)
         setSummonPhase('result')
         fire(emotionForGenerated()) // 右下コレットが大喜び
-      } catch (err) {
-        setSummonError(err instanceof Error ? err.message : '召喚に失敗しました')
+      } catch {
+        // 失敗もコレットの言葉で受ける（生のエラー文を出さない＝キャラを崩さない）。
+        const line = failureLine('summon')
+        setSummonError(line.text)
+        fire(line.expression)
         setSummonPhase('idle')
       }
     },

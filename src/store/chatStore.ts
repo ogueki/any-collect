@@ -8,6 +8,7 @@ import { useMemoryStore } from './memoryStore'
 import { useCollectionStore } from './collectionStore'
 import { useAlbumStore } from './albumStore'
 import { buildGroundingNotes } from '../lib/grounding'
+import { failureLine } from '../lib/character/failureLines'
 
 export type ChatStatus = 'idle' | 'sending' | 'error'
 
@@ -267,12 +268,13 @@ export const useChatStore = create<ChatState>((set, get) => {
           void runConsolidate()
         }
         return true
-      } catch (err) {
-        const message = err instanceof Error ? err.message : '会話に失敗しました'
+      } catch {
+        // 失敗はコレットの言葉で受ける（システムのエラー文をそのまま出さない＝キャラを崩さない）。
+        // 原因の詳細はサーバのログにあり、ユーザーに見せる価値がない。
         // 返事が来なかった発話は履歴に残さない（残すとコレットが答えていない発話ごと
         // 毎回モデルに送られ、しかも永続してしまう）。入力は呼び出し側が復元する。
         persist(history, get().consolidatedCount)
-        set({ messages: history, status: 'error', error: message })
+        set({ messages: history, status: 'error', error: failureLine('chat').text })
         return false
       }
     },

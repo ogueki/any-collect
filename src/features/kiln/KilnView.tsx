@@ -7,6 +7,7 @@ import { emotionForConfirm, emotionForGenerated } from '../../lib/character/reac
 import { CATEGORY_LABEL, toCategory } from '../../lib/category'
 import GeneratingOverlay from '../../components/GeneratingOverlay'
 import { useShellFairy } from '../../components/shellFairy'
+import { failureLine } from '../../lib/character/failureLines'
 import { SparkleIcon } from '../../components/icons'
 import type { GeneratedItem } from '../../lib/ai/imageProvider'
 import type { Item } from '../../types'
@@ -81,9 +82,12 @@ export default function KilnView({ onGoTreasure }: KilnViewProps) {
         setResult(generated)
         setPhase('result')
         fire(emotionForGenerated())
-      } catch (err) {
-        setError(err instanceof Error ? err.message : '合成に失敗しました')
+      } catch {
+        // 失敗もコレットの言葉で受ける（生のエラー文を出さない＝キャラを崩さない）。
+        const line = failureLine('synthesize')
+        setError(line.text)
         setPhase(onFailPhase)
+        fire(line.expression)
       }
     },
     [selectedItems, characterId, fire],
@@ -110,8 +114,10 @@ export default function KilnView({ onGoTreasure }: KilnViewProps) {
       addAffinity(AFFINITY_PER_ITEM, 'item')
       setPhase('saved')
       fire(emotionForConfirm(isNew))
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'たからばこへの登録に失敗しました')
+    } catch {
+      const line = failureLine('store')
+      setError(line.text)
+      fire(line.expression)
     } finally {
       setSaving(false)
     }
