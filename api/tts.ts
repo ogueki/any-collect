@@ -1,5 +1,13 @@
-import type { IncomingMessage, ServerResponse } from 'node:http'
+import type { ServerResponse } from 'node:http'
 import { loadVoice, resolveVoice } from './_lib/voice.js'
+import {
+  fail,
+  PayloadTooLargeError,
+  readJsonBody,
+  sanitizePersonaId,
+  sendJson,
+  type NodeReq,
+} from './_lib/http.js'
 
 /**
  * 音声合成 API プロキシ（STEP3・Fish Audio）。
@@ -45,24 +53,14 @@ function sanitizeDirection(raw: unknown): string | undefined {
   return cleaned || undefined
 }
 
-type NodeReq = IncomingMessage & { body?: unknown }
-
-async function readJsonBody(req: NodeReq): Promise<TtsRequestBody> {
-  if (req.body && typeof req.body === 'object') {
-    return req.body as TtsRequestBody
-  }
-  const chunks: Buffer[] = []
-  for await (const chunk of req) {
-    chunks.push(chunk as Buffer)
-  }
-  const raw = Buffer.concat(chunks).toString('utf8')
-  return raw ? (JSON.parse(raw) as TtsRequestBody) : {}
-}
-
-function sendJson(res: ServerResponse, status: number, payload: unknown): void {
-  res.statusCode = status
-  res.setHeader('Content-Type', 'application/json; charset=utf-8')
-  res.end(JSON.stringify(payload))
+/**
+ * 読み上げ本文の正規化。**本文にも角括弧を残さない**＝ここに `[...]` が混ざると
+ * Fish が感情タグとして解釈してしまう（演出指示側は `sanitizeDirection` で潰しているのに
+ * 本文だけ素通しだと、AI の返事に括弧が出た瞬間に意図しないタグ注入になる）。
+ */
+function sanitizeSpokenText(raw: unknown): string {
+  if (typeof raw !== 'string') return ''
+  return raw.replace(/[[\]]/g, '').trim().slice(0, MAX_TEXT_LEN)
 }
 
 function audioContentType(format: string): string {
@@ -86,26 +84,30 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
 
   const apiKey = process.env.FISH_AUDIO_API_KEY
   if (!apiKey) {
-    sendJson(res, 500, { error: 'サーバに FISH_AUDIO_API_KEY が設定されていません' })
+    fail(res, 500, 'サーバの設定が不足しています', 'FISH_AUDIO_API_KEY が未設定')
     return
   }
 
   let body: TtsRequestBody
   try {
-    body = await readJsonBody(req)
-  } catch {
+    body = await readJsonBody<TtsRequestBody>(req)
+  } catch (err) {
+    if (err instanceof PayloadTooLargeError) {
+      sendJson(res, 413, { error: 'リクエストが大きすぎます' })
+      return
+    }
     sendJson(res, 400, { error: 'リクエストボディが不正です' })
     return
   }
 
-  const text = typeof body.text === 'string' ? body.text.trim().slice(0, MAX_TEXT_LEN) : ''
+  const text = sanitizeSpokenText(body.text)
   if (!text) {
     sendJson(res, 400, { error: 'text が空です' })
     return
   }
 
   try {
-    const voice = loadVoice(body.personaId)
+    const voice = loadVoice(sanitizePersonaId(body.personaId))
     // 立ち絵と同じ感情から「使う声」と「前置するタグ」を決める（対応表は voice.json）。
     const { referenceId, tag } = resolveVoice(
       voice,
@@ -138,10 +140,9 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
     })
 
     if (!fishRes.ok) {
+      // Fish の生レスポンスはアカウント・課金状態を含みうるのでサーバログにだけ出す。
       const detail = await fishRes.text().catch(() => '')
-      sendJson(res, 502, {
-        error: `音声合成に失敗しました (${fishRes.status})${detail ? `: ${detail.slice(0, 200)}` : ''}`,
-      })
+      fail(res, 502, '音声合成に失敗しました', `Fish ${fishRes.status}: ${detail.slice(0, 500)}`)
       return
     }
 
@@ -170,12 +171,7 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
       res.end()
     }
   } catch (err) {
-    // ヘッダ送信前の失敗のみ JSON エラーにできる（送信後は上の finally で終了済み）。
-    if (!res.headersSent) {
-      const message = err instanceof Error ? err.message : '音声合成に失敗しました'
-      sendJson(res, 502, { error: message })
-    } else {
-      res.end()
-    }
+    // ヘッダ送信前の失敗のみ JSON エラーにできる（送信後は fail() が res.end() だけする）。
+    fail(res, 502, '音声合成に失敗しました', err)
   }
 }

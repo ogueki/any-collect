@@ -1,6 +1,15 @@
-import type { IncomingMessage, ServerResponse } from 'node:http'
+import type { ServerResponse } from 'node:http'
 import { loadPersona, buildSystemPrompt } from './_lib/persona.js'
 import { generateChatReply, type ChatTurn } from './_lib/gemini.js'
+import {
+  fail,
+  PayloadTooLargeError,
+  readJsonBody,
+  sanitizePersonaId,
+  sanitizeText,
+  sendJson,
+  type NodeReq,
+} from './_lib/http.js'
 
 /**
  * 会話 API プロキシ。Gemini の API キーはサーバ側にのみ置く（claude.md 原則1）。
@@ -45,27 +54,6 @@ const MAX_TURN_CHARS = 1000
 const OPENING_USER_TURN =
   '（きみがアプリをひらいて、コレットのところに来たよ。「いまの場面」の指示どおり、コレットから最初のひとことを話しかけて）'
 
-type NodeReq = IncomingMessage & { body?: unknown }
-
-// Vercel は req.body を parse 済みのことがある。raw Node / Vite 経路では stream を読む。
-async function readJsonBody(req: NodeReq): Promise<ChatRequestBody> {
-  if (req.body && typeof req.body === 'object') {
-    return req.body as ChatRequestBody
-  }
-  const chunks: Buffer[] = []
-  for await (const chunk of req) {
-    chunks.push(chunk as Buffer)
-  }
-  const raw = Buffer.concat(chunks).toString('utf8')
-  return raw ? (JSON.parse(raw) as ChatRequestBody) : {}
-}
-
-function sendJson(res: ServerResponse, status: number, payload: unknown): void {
-  res.statusCode = status
-  res.setHeader('Content-Type', 'application/json; charset=utf-8')
-  res.end(JSON.stringify(payload))
-}
-
 export default async function handler(req: NodeReq, res: ServerResponse): Promise<void> {
   if (req.method !== 'POST') {
     sendJson(res, 405, { error: 'POST のみ対応しています' })
@@ -74,14 +62,18 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
 
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) {
-    sendJson(res, 500, { error: 'サーバに GEMINI_API_KEY が設定されていません' })
+    fail(res, 500, 'サーバの設定が不足しています', 'GEMINI_API_KEY が未設定')
     return
   }
 
   let body: ChatRequestBody
   try {
-    body = await readJsonBody(req)
-  } catch {
+    body = await readJsonBody<ChatRequestBody>(req)
+  } catch (err) {
+    if (err instanceof PayloadTooLargeError) {
+      sendJson(res, 413, { error: 'リクエストが大きすぎます' })
+      return
+    }
     sendJson(res, 400, { error: 'リクエストボディが不正です' })
     return
   }
@@ -106,17 +98,19 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
       typeof body.affinityLevel === 'number' && Number.isFinite(body.affinityLevel)
         ? body.affinityLevel
         : undefined
+    // 記憶ファクト・接地ノートはクライアント由来の自由文字列がそのまま system prompt に載る。
+    // 制御文字を潰して長さで切る（プロンプトの構造を壊させない）。
     const memoryFacts = Array.isArray(body.memoryFacts)
       ? body.memoryFacts
-          .filter((f) => f && typeof f.key === 'string' && typeof f.value === 'string')
-          .map((f) => ({ key: String(f.key), value: String(f.value) }))
           .slice(0, 12)
+          .map((f) => ({ key: sanitizeText(f?.key, 40), value: sanitizeText(f?.value, 200) }))
+          .filter((f): f is { key: string; value: string } => !!f.key && !!f.value)
       : undefined
     const groundingNotes = Array.isArray(body.groundingNotes)
       ? body.groundingNotes
-          .filter((n): n is string => typeof n === 'string' && n.trim().length > 0)
-          .map((n) => n.slice(0, 200))
           .slice(0, 3)
+          .map((n) => sanitizeText(n, 200))
+          .filter((n): n is string => !!n)
       : undefined
     const timeOfDay =
       typeof body.timeOfDay === 'string' &&
@@ -128,7 +122,7 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
       (REUNION_VALUES as readonly string[]).includes(body.reunion)
         ? (body.reunion as (typeof REUNION_VALUES)[number])
         : undefined
-    const systemPrompt = buildSystemPrompt(loadPersona(body.personaId), {
+    const systemPrompt = buildSystemPrompt(loadPersona(sanitizePersonaId(body.personaId)), {
       affinityLevel,
       memoryFacts,
       groundingNotes,
@@ -145,7 +139,6 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
     })
     sendJson(res, 200, { reply: text, emotion, voiceDirection })
   } catch (err) {
-    const message = err instanceof Error ? err.message : '会話の生成に失敗しました'
-    sendJson(res, 502, { error: message })
+    fail(res, 502, '会話の生成に失敗しました', err)
   }
 }

@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { sanitizePersonaId } from './http.js'
 
 /**
  * 選択中キャラの persona.md を読み込み、会話用の system prompt を組み立てるユーティリティ。
@@ -12,9 +13,13 @@ import { resolve } from 'node:path'
 const FALLBACK_PERSONA = `# 妖精ペルソナ
 - やわらかいフレンドリーなタメ口で短く話す、好奇心旺盛な手のひらサイズの妖精。`
 
-/** `src/characters/<id>/persona.md` を読む。無ければ default → フォールバックの順に降りる。 */
+/**
+ * `src/characters/<id>/persona.md` を読む。無ければ default → フォールバックの順に降りる。
+ * id は**必ずサニタイズしてから** `resolve()` に渡す（`'../../..'` 等でリポジトリ外の
+ * persona.md を読ませないため＝パストラバーサル対策。呼び出し側でも弾いているが二重に守る）。
+ */
 export function loadPersona(personaId?: string): string {
-  const id = personaId && personaId.trim() ? personaId.trim() : 'default'
+  const id = sanitizePersonaId(personaId) ?? 'default'
 
   const read = (charId: string): string | null => {
     try {

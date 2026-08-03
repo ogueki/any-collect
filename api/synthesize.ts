@@ -1,9 +1,28 @@
-import type { IncomingMessage, ServerResponse } from 'node:http'
+import type { ServerResponse } from 'node:http'
 import { loadPersona } from './_lib/persona.js'
 import { buildSynthesisImagePrompt, buildSynthesisMetaPrompt } from './_lib/item-prompt.js'
-import type { InlineImage } from './_lib/gemini-image.js'
 import { generateSynthesisImage } from './_lib/gemini-image.js'
 import { generateSynthesisMeta } from './_lib/gemini.js'
+import {
+  fail,
+  isImageWithinLimit,
+  parseImageDataUrl,
+  PayloadTooLargeError,
+  readJsonBody,
+  sanitizePersonaId,
+  sanitizeText,
+  sendJson,
+  timed,
+  type NodeReq,
+} from './_lib/http.js'
+
+/**
+ * 妖精の窯（合成）API プロキシ。アイテム 2 つを混ぜて新しい透過アイテムを作る。
+ *
+ * - **1 回あたり画像生成コストが発生する**（呼び出し回数の制限は未実装＝仕様待ち）。
+ * - 素材の名前・説明は**クライアント由来の自由文字列がそのままプロンプトに載る**ため、
+ *   制御文字を潰し長さで切ってから使う（プロンプトの構造を壊させない）。
+ */
 
 interface ItemInput {
   imageUrl?: string
@@ -17,40 +36,9 @@ interface SynthesizeRequestBody {
   personaId?: string
 }
 
-type NodeReq = IncomingMessage & { body?: unknown }
-
-async function readJsonBody(req: NodeReq): Promise<SynthesizeRequestBody> {
-  if (req.body && typeof req.body === 'object') {
-    return req.body as SynthesizeRequestBody
-  }
-  const chunks: Buffer[] = []
-  for await (const chunk of req) {
-    chunks.push(chunk as Buffer)
-  }
-  const raw = Buffer.concat(chunks).toString('utf8')
-  return raw ? (JSON.parse(raw) as SynthesizeRequestBody) : {}
-}
-
-function sendJson(res: ServerResponse, status: number, payload: unknown): void {
-  res.statusCode = status
-  res.setHeader('Content-Type', 'application/json; charset=utf-8')
-  res.end(JSON.stringify(payload))
-}
-
-function parseDataUrl(dataUrl: string): InlineImage | null {
-  const match = /^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/s.exec(dataUrl)
-  if (!match) return null
-  return { mimeType: match[1], data: match[2] }
-}
-
-async function timed<T>(label: string, fn: () => Promise<T>): Promise<T> {
-  const start = Date.now()
-  try {
-    return await fn()
-  } finally {
-    console.log(`[synthesize] ${label}: ${Date.now() - start}ms`)
-  }
-}
+/** 素材名・説明の上限（正常系＝AI が生成した短い名前/説明なので遠く及ばない）。 */
+const MAX_NAME_LEN = 60
+const MAX_DESCRIPTION_LEN = 400
 
 export default async function handler(req: NodeReq, res: ServerResponse): Promise<void> {
   if (req.method !== 'POST') {
@@ -60,46 +48,52 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
 
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) {
-    sendJson(res, 500, { error: 'サーバに GEMINI_API_KEY が設定されていません' })
+    fail(res, 500, 'サーバの設定が不足しています', 'GEMINI_API_KEY が未設定')
     return
   }
 
   let body: SynthesizeRequestBody
   try {
-    body = await readJsonBody(req)
-  } catch {
+    body = await readJsonBody<SynthesizeRequestBody>(req)
+  } catch (err) {
+    if (err instanceof PayloadTooLargeError) {
+      sendJson(res, 413, { error: 'リクエストが大きすぎます' })
+      return
+    }
     sendJson(res, 400, { error: 'リクエストボディが不正です' })
     return
   }
 
-  const rawA = body.itemA
-  const rawB = body.itemB
-  if (!rawA?.imageUrl || !rawA.name || !rawA.description) {
+  const nameA = sanitizeText(body.itemA?.name, MAX_NAME_LEN)
+  const descA = sanitizeText(body.itemA?.description, MAX_DESCRIPTION_LEN)
+  const nameB = sanitizeText(body.itemB?.name, MAX_NAME_LEN)
+  const descB = sanitizeText(body.itemB?.description, MAX_DESCRIPTION_LEN)
+
+  if (!body.itemA?.imageUrl || !nameA || !descA) {
     sendJson(res, 400, { error: '素材A（imageUrl, name, description）が不足しています' })
     return
   }
-  if (!rawB?.imageUrl || !rawB.name || !rawB.description) {
+  if (!body.itemB?.imageUrl || !nameB || !descB) {
     sendJson(res, 400, { error: '素材B（imageUrl, name, description）が不足しています' })
     return
   }
 
-  const nameA = rawA.name
-  const nameB = rawB.name
-  const descA = rawA.description
-  const descB = rawB.description
-
-  const imageA = parseDataUrl(rawA.imageUrl)
-  const imageB = parseDataUrl(rawB.imageUrl)
+  const imageA = parseImageDataUrl(body.itemA.imageUrl)
+  const imageB = parseImageDataUrl(body.itemB.imageUrl)
   if (!imageA || !imageB) {
     sendJson(res, 400, { error: 'アイテム画像（data URL）が不正です' })
     return
   }
+  if (!isImageWithinLimit(imageA.data) || !isImageWithinLimit(imageB.data)) {
+    sendJson(res, 413, { error: 'アイテム画像が大きすぎます' })
+    return
+  }
 
   try {
-    const persona = loadPersona(body.personaId)
+    const persona = loadPersona(sanitizePersonaId(body.personaId))
 
     const [imageUrl, meta] = await Promise.all([
-      timed('image', () =>
+      timed('synthesize image', () =>
         generateSynthesisImage({
           apiKey,
           prompt: buildSynthesisImagePrompt(nameA, nameB),
@@ -107,16 +101,14 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
           imageB,
         }),
       ),
-      timed('meta', () =>
+      timed('synthesize meta', () =>
         generateSynthesisMeta({
           apiKey,
-          systemPrompt: buildSynthesisMetaPrompt(persona, {
-            name: nameA,
-            description: descA,
-          }, {
-            name: nameB,
-            description: descB,
-          }),
+          systemPrompt: buildSynthesisMetaPrompt(
+            persona,
+            { name: nameA, description: descA },
+            { name: nameB, description: descB },
+          ),
         }),
       ),
     ])
@@ -128,7 +120,6 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
       category: meta.category,
     })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'アイテムの合成に失敗しました'
-    sendJson(res, 502, { error: message })
+    fail(res, 502, 'アイテムの合成に失敗しました', err)
   }
 }

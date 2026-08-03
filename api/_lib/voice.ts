@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { sanitizePersonaId } from './http.js'
 
 /**
  * 選択中キャラの voice.json を読み、TTS（Fish Audio）の声設定を返すユーティリティ。
@@ -59,9 +60,12 @@ export function resolveVoice(
   }
 }
 
-/** `src/characters/<id>/voice.json` を読む。無ければ default → フォールバックの順に降りる。 */
+/**
+ * `src/characters/<id>/voice.json` を読む。無ければ default → フォールバックの順に降りる。
+ * id は**必ずサニタイズしてから** `resolve()` に渡す（パストラバーサル対策・`loadPersona` と同流儀）。
+ */
 export function loadVoice(personaId?: string): VoiceConfig {
-  const id = personaId && personaId.trim() ? personaId.trim() : 'default'
+  const id = sanitizePersonaId(personaId) ?? 'default'
 
   const read = (charId: string): VoiceConfig | null => {
     try {
