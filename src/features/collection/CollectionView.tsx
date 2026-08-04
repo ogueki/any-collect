@@ -400,7 +400,11 @@ export default function CollectionView() {
   return (
     // 図鑑だけ「紙の台紙」にする＝色と書体で"別の場所"を出す（アルバムはカメラロール風のまま＝対比）。
     // 角丸を落として内側に影を入れる＝「浮いたカード」でなく「紙の面」に見せる。
-    <div className="zukan-paper flex w-full max-w-md flex-col rounded-sm px-3 py-4 font-zukan text-ink shadow-sheet">
+    // ⚠️ 明朝（font-zukan）を**ここに付けない**。この器の内側には詳細モーダル・召喚の待ち画面・
+    // 結果プレビュー・オンボのリビールが入っており、ルートに付けると**コレットのセリフまで明朝**に
+    // なる（GeneratingOverlay は窯と共用なので入口によって見た目が変わる）。
+    // 明朝は「図鑑の中身（章見出しと標本カード）」だけに opt-in する。
+    <div className="zukan-paper flex w-full max-w-md flex-col rounded-sm px-3 py-4 text-ink shadow-sheet">
       {/* 読み込み中 */}
       {status === 'loading' && entries.length === 0 && (
         <p className="mt-10 animate-pulse text-center text-sm text-ink/50">読み込み中…</p>
@@ -487,7 +491,8 @@ export default function CollectionView() {
       {/* 標本の台紙。章（カテゴリ）ごとに区切り、末尾に空きマスを見せる。
           まほうパワーが満タンのマスは召喚できるヒントとして縁を色付ける。 */}
       {entries.length > 0 && (
-        <div className="flex flex-col gap-4">
+        // 明朝はここから内側だけ＝章見出しと標本カード（＝紙に刷ってある部分）。
+        <div className="flex flex-col gap-4 font-zukan">
           {sections.map((section) => (
             <section key={section.key}>
               {section.category && (
