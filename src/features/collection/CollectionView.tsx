@@ -203,7 +203,10 @@ export default function CollectionView() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [filter, setFilter] = useState<ItemCategory | 'all'>('all')
-  const [sortMode, setSortMode] = useState<'category' | 'recent'>('category')
+  // 開いた直後は「新しい順」＝**さっき撮ったものがいちばん上**にある状態にする。
+  // カメラ→図鑑の導線で「いま撮ったやつ見たい」が最頻の動機なので、整理された章立て（カテゴリ順）より
+  // 直近の確認を優先する。章立て・空きマスはタブを切り替えたときに出会う。
+  const [sortMode, setSortMode] = useState<'category' | 'recent'>('recent')
 
   // 召喚の状態。
   const [summonPhase, setSummonPhase] = useState<SummonPhase>('idle')
