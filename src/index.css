@@ -70,3 +70,16 @@ body {
 .zukan-rule {
   border-bottom: 1px solid theme('colors.paperEdge');
 }
+
+/* 写真を紙に留めるマスキングテープ。画像アセットは使わない。
+   ・乳白色の半透明グラデ＝下の写真がうっすら透ける＝「貼ってある」感の正体。
+   ・clip-path で左右の端をギザギザに＝ちぎった断面。直線で切ると「シール」に見える。
+   ・寸法は rem（px 固定にしない）＝ルート font-size のズームに追従させる。
+   位置と角度は呼び出し側の Tailwind（-left-2 / -rotate-45 など）で与える。 */
+.zukan-tape {
+  width: 2.6rem;
+  height: 0.9rem;
+  background: linear-gradient(180deg, rgba(255, 252, 244, 0.82), rgba(238, 228, 204, 0.68));
+  box-shadow: 0 1px 1px rgba(74, 63, 50, 0.12);
+  clip-path: polygon(3% 0, 97% 0, 100% 22%, 98% 55%, 100% 100%, 2% 100%, 0 60%, 2% 25%);
+}

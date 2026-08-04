@@ -17,6 +17,22 @@ export const CATEGORY_LABEL: Record<ItemCategory, string> = {
   other: 'アザー',
 }
 
+/**
+ * 図鑑の標本番号（F-001 等）の接頭字。カテゴリごとに1文字で重複しないこと。
+ * 番号は「カタログ上の品番」ではなく「**その人の図鑑の何番目に見つけたか**」＝
+ * カテゴリ内の初発見の順に振る。固定の全種リストを持たなくても成立するのが利点
+ * （＝「いっぱいにする」の分母が未定でも矛盾しない）。
+ */
+export const CATEGORY_CODE: Record<ItemCategory, string> = {
+  food: 'F',
+  creature: 'C',
+  nature: 'N',
+  gear: 'G',
+  toy: 'T',
+  wear: 'W',
+  other: 'O',
+}
+
 /** チップやラベルに添える絵文字（cute UI 用）。 */
 export const CATEGORY_EMOJI: Record<ItemCategory, string> = {
   food: '🍙',

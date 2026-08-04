@@ -13,7 +13,7 @@ import GeneratingOverlay from '../../components/GeneratingOverlay'
 import { failureLine } from '../../lib/character/failureLines'
 import { useShellFairy } from '../../components/shellFairy'
 import { SparkleIcon } from '../../components/icons'
-import { CATEGORY_EMOJI, CATEGORY_LABEL, CATEGORY_ORDER } from '../../lib/category'
+import { CATEGORY_CODE, CATEGORY_EMOJI, CATEGORY_LABEL, CATEGORY_ORDER } from '../../lib/category'
 import type { GeneratedItem } from '../../lib/ai/imageProvider'
 import type { CollectionEntry, ItemCategory } from '../../types'
 
@@ -63,57 +63,92 @@ function tiltFor(id: string): number {
   return ((h % 5) - 2) * 0.4
 }
 
-/** 図鑑のマス＝紙に貼った標本写真（実写クロップ）。 */
+/** カテゴリの判子＝丸いインクの印。既存の絵文字にフィルタを掛ける方式は「灰色の塊」になるので使わない。 */
+function CategorySeal({ letter }: { letter: string }) {
+  return (
+    <span
+      aria-hidden
+      className="absolute bottom-2 right-2 flex h-7 w-7 -rotate-12 items-center justify-center rounded-full border border-ink/25 text-[11px] font-bold text-ink/25"
+    >
+      {letter}
+    </span>
+  )
+}
+
+/**
+ * 図鑑のマス＝**台紙の上に置いた1枚の標本カード**。
+ * 写真をページに直接置くと「アプリのサムネ」に見えるので、台紙よりわずかに明るい紙を1枚敷き、
+ * 白フチ（マット）に載せた写真をテープで留める＝「紙の上に貼ってある」を作る。
+ * カードごと 1 度未満だけ傾けて手で貼ったムラを出す（角度は id から決定的＝再レンダーで動かない）。
+ */
 function SpecimenCard({
   entry,
   url,
   glow,
+  code,
   onClick,
 }: {
   entry: CollectionEntry
   url?: string
   glow: boolean
+  code: string
   onClick: () => void
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex flex-col items-center transition active:scale-95"
+      style={{ transform: `rotate(${tiltFor(entry.id)}deg)` }}
+      className="relative flex flex-col rounded-[3px] border border-paperEdge/70 bg-paperCard p-2 text-left shadow-card transition active:scale-95"
     >
-      <div className="relative w-full" style={{ transform: `rotate(${tiltFor(entry.id)}deg)` }}>
-        {/* 画像は矩形の実写クロップ（透過ではない）＝**白フチ（マット）ごと少し傾けて貼る**ことで
-            「紙に貼った標本」にする。細い border だけでは"アプリのサムネ"のままで紙に載らない。
-            将来クロップを切り抜き（透過）にしたら、ここを薄い楕円の座布団に差し替える。 */}
+      <div className="relative">
+        {/* 実写クロップ（透過ではない）を白いマットに載せる。将来クロップを切り抜き（透過）にしたら
+            ここを薄い楕円の座布団に差し替える。 */}
         <div className={`bg-white p-1 shadow-specimen ${glow ? 'ring-1 ring-mint' : ''}`}>
           <img src={url} alt={entry.name} className="aspect-square w-full object-cover" />
         </div>
-        {entry.count > 1 && (
-          <span className="absolute -right-1 -top-1 -rotate-6 rounded-full border border-paperEdge bg-paper px-1.5 py-0.5 text-[10px] font-bold text-ink shadow-paper">
-            ×{entry.count}
-          </span>
-        )}
+        <span aria-hidden className="zukan-tape absolute -left-2 top-2 -rotate-45" />
+        <span aria-hidden className="zukan-tape absolute -right-2 bottom-2 -rotate-45" />
       </div>
-      <span className="mt-1 line-clamp-1 w-full text-center text-xs font-bold text-ink">
-        {entry.name}
-      </span>
+
+      {/* 標本ラベル。判子と重ならないよう右に逃がす。 */}
+      <div className="mt-2 pr-8">
+        <p className="font-sans text-[10px] tracking-widest text-ink/45">{code}</p>
+        <p className="line-clamp-1 text-sm font-bold leading-snug">{entry.name}</p>
+        <p className="mt-1 border-t border-paperEdge/70 pt-1 text-[10px] text-ink/60">
+          見つけた回数{'　'}
+          {entry.count}
+        </p>
+      </div>
+
+      <CategorySeal letter={code.charAt(0)} />
     </button>
   )
 }
 
 /**
- * 空きマス。「まだ見つけていない場所」を見せて、器が有限であるように感じさせる。
- * ⚠️ 紙とほぼ同じ色（旧 paperEdge の文字＝コントラスト比 1.14）だと**画面上で見えない**＝
- * 「集める先がある」が伝わらないので、地を少し沈めて文字にも濃さを持たせる。
+ * 空きマス＝「まだ見つけていない席」。
+ * ⚠️ `？` だけだと単なる余白に見える。**番号を振る**と「F-007 はまだ埋まっていない」という
+ * 具体的な欠けになり、集める先があることが伝わる（ChatGPT ラフからの採用）。
+ * 色は紙とほぼ同じにしない（旧実装はコントラスト比 1.14 で画面上に存在しなかった）。
  */
-function EmptySlot() {
+function EmptySlot({ code }: { code: string }) {
   return (
-    <div aria-hidden className="flex flex-col items-center">
-      <div className="flex aspect-square w-full items-center justify-center rounded-[2px] border border-dashed border-paperEdge bg-ink/[0.05] text-base font-bold text-ink/40">
+    <div
+      aria-hidden
+      className="flex flex-col rounded-[3px] border border-dashed border-paperEdge bg-ink/[0.04] p-2"
+    >
+      <div className="flex aspect-square w-full items-center justify-center text-2xl font-bold text-ink/25">
         ？
       </div>
-      {/* 埋まっているマスと高さを揃える（名前1行ぶん） */}
-      <span className="mt-1 text-xs">&nbsp;</span>
+      <div className="mt-2">
+        <p className="font-sans text-[10px] tracking-widest text-ink/35">{code}</p>
+        <p className="text-sm font-bold text-ink/35">未発見</p>
+        {/* 埋まっているカードと高さを揃える（回数の1行ぶん） */}
+        <p className="mt-1 border-t border-transparent pt-1 text-[10px] text-transparent">
+          {'　'}
+        </p>
+      </div>
     </div>
   )
 }
@@ -243,13 +278,44 @@ export default function CollectionView() {
   }, [entries, effectiveFilter, sortMode])
 
   /**
-   * 章立て（カテゴリ＝ページ）。見出しで区切ると、縦スクロールのままでも「めくっている」感じが出る
+   * 標本番号（F-001 等）。**カテゴリ内の初発見の順**に振るので、絞り込みや並び替えを変えても動かない。
+   * ＝「カタログの品番」ではなく「その人の図鑑の何番目か」なので、全種リスト（分母）が
+   * 未定のままでも矛盾しない。※エントリを削除すると以降が繰り上がる（割り切り）。
+   */
+  const codeOf = useMemo(() => {
+    const byCategory = new Map<ItemCategory, CollectionEntry[]>()
+    for (const entry of entries) {
+      const list = byCategory.get(entry.category)
+      if (list) list.push(entry)
+      else byCategory.set(entry.category, [entry])
+    }
+    const map = new Map<string, string>()
+    byCategory.forEach((list, category) => {
+      ;[...list]
+        .sort((a, b) => a.firstSeenAt.localeCompare(b.firstSeenAt))
+        .forEach((entry, i) => {
+          map.set(entry.id, `${CATEGORY_CODE[category]}-${String(i + 1).padStart(3, '0')}`)
+        })
+    })
+    return map
+  }, [entries])
+
+  /** カテゴリごとの総数（絞り込みに影響されない＝空きマスの採番と「◯種 発見」に使う）。 */
+  const totalByCategory = useMemo(() => {
+    const map = new Map<ItemCategory, number>()
+    for (const entry of entries) map.set(entry.category, (map.get(entry.category) ?? 0) + 1)
+    return map
+  }, [entries])
+
+  /**
+   * 章立て（カテゴリ＝章）。見出しで区切ると、縦スクロールのままでも「めくっている」感じが出る
    * ＝見開き/ページめくりを実装しない代わりの構造（実装コストが高く縦スクロールと喧嘩するため）。
    * 「新しい順」のときは時系列が主役なので章に割らず1枚の紙にする。
+   * 章番号は「1件以上あるカテゴリ」の CATEGORY_ORDER 順で振る＝絞り込んでも番号が動かない。
    */
   const sections = useMemo(() => {
     if (sortMode === 'recent') {
-      return [{ key: 'recent', label: null as string | null, items: visibleEntries }]
+      return [{ key: 'recent', category: null, chapter: 0, items: visibleEntries }]
     }
     const byCategory = new Map<ItemCategory, CollectionEntry[]>()
     for (const entry of visibleEntries) {
@@ -260,10 +326,11 @@ export default function CollectionView() {
     // visibleEntries は既にカテゴリ順→初発見順で並んでいるので、章の中の順序はそのままでよい。
     return CATEGORY_ORDER.filter((c) => byCategory.has(c)).map((c) => ({
       key: c as string,
-      label: `${CATEGORY_EMOJI[c]} ${CATEGORY_LABEL[c]}`,
+      category: c,
+      chapter: availableCategories.indexOf(c) + 1,
       items: byCategory.get(c) as CollectionEntry[],
     }))
-  }, [visibleEntries, sortMode])
+  }, [visibleEntries, sortMode, availableCategories])
 
   // Blob → object URL（エントリごと）。entries が変わるたび作り直し、前回分は cleanup で解放する。
   const urls = useMemo(() => {
@@ -418,24 +485,39 @@ export default function CollectionView() {
         <div className="flex flex-col gap-4">
           {sections.map((section) => (
             <section key={section.key}>
-              {section.label && (
-                <h2 className="zukan-rule mb-2 pb-1 text-xs font-bold tracking-wide text-ink/70">
-                  {section.label}
+              {section.category && (
+                <h2 className="zukan-rule mb-3 flex items-baseline pb-1">
+                  <span className="text-sm font-bold tracking-wide">
+                    第{section.chapter}章{'　'}
+                    {CATEGORY_EMOJI[section.category]} {CATEGORY_LABEL[section.category]}
+                  </span>
+                  <span className="ml-auto font-sans text-[10px] text-ink/50">
+                    {totalByCategory.get(section.category) ?? 0}種 発見
+                  </span>
                 </h2>
               )}
-              <div className="grid grid-cols-3 gap-x-2 gap-y-3">
+              <div className="grid grid-cols-2 items-start gap-x-3 gap-y-4">
                 {section.items.map((entry) => (
                   <SpecimenCard
                     key={entry.id}
                     entry={entry}
                     url={urls.get(entry.id)}
                     glow={gaugeFull}
+                    code={codeOf.get(entry.id) ?? ''}
                     onClick={() => setSelected(entry)}
                   />
                 ))}
-                {Array.from({ length: EMPTY_SLOT_LOOKAHEAD }, (_, i) => (
-                  <EmptySlot key={`empty-${section.key}-${i}`} />
-                ))}
+                {/* 空きマスは「章の末尾」に置くものなので、章に割らない「新しい順」では出さない。 */}
+                {section.category &&
+                  Array.from({ length: EMPTY_SLOT_LOOKAHEAD }, (_, i) => {
+                    const next = (totalByCategory.get(section.category) ?? 0) + i + 1
+                    return (
+                      <EmptySlot
+                        key={`empty-${section.key}-${i}`}
+                        code={`${CATEGORY_CODE[section.category]}-${String(next).padStart(3, '0')}`}
+                      />
+                    )
+                  })}
               </div>
             </section>
           ))}
