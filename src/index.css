@@ -51,13 +51,19 @@ body {
    （たからばこの背景と同じ方針＝アート依存を作らない）。
 
    ・繊維のノイズは feTurbulence をデータURIで敷く。**スクロールする器に一度だけ**当てる
-     （マスごとに敷くとモバイルで重い）。opacity は 0.03〜0.05 が上限＝それ以上は「汚れ」に見える。
-   ・罫線は px 固定にしない。このアプリは index.css の `html { font-size: clamp(...) }` で
-     画面高に応じて全体がズームするため、行の実高が端末ごとに変わる（px 固定だと罫線がズレる）。
-     行の区切りは各行の border で出す（下の .zukan-row）。 */
+     （マスごとに敷くとモバイルで重い）。
+   ・⚠️ **SVG に width/height を必ず持たせ、background-size でタイルする**。
+     指定が無いと SVG は固有サイズを持たないため、背景として**器の全面に引き伸ばされ**、
+     せっかくの細かい粒が潰れて見えなくなる（旧実装のバグ）。`stitchTiles='stitch'` は
+     タイルの継ぎ目を消すため。
+   ・⚠️ opacity は **0.15 前後**。0.03〜0.05 では画面上で事実上不可視で、紙に見えない
+     （「それ以上は汚れに見える」と書いていたが、実際に並べると 0.16 でようやく紙になる）。
+   ・罫線は px 固定にしない。このアプリは `html { font-size: clamp(...) }` で
+     画面高に応じて全体がズームするため、行の実高が端末ごとに変わる（px 固定だと罫線がズレる）。 */
 .zukan-paper {
   background-color: theme('colors.paper');
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.16'/%3E%3C/svg%3E");
+  background-size: 140px 140px;
 }
 
 /* 章（カテゴリ）の区切り線。rem 基準なのでルート font-size のズームに追従する。 */

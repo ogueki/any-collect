@@ -10,20 +10,29 @@ export default {
         lemon: '#FDE68A',
         // 図鑑（標本の台紙）だけで使う紙の色。ほかの画面は従来のパステル＋白のまま＝
         // 「図鑑は別の場所」を色で伝える（spec §10）。
-        paper: '#FBF6EC',
-        paperEdge: '#F0E7D8',
-        ink: '#5A5145',
+        // ⚠️ 紙は**周囲より濃く**する。body の背景グラデ（#fdf4ff〜#ecfdf5）はほぼ白なので、
+        // 白っぽい紙（旧 #FBF6EC）ではコントラスト比 1.00＝「紙が置かれている」ことすら見えない。
+        paper: '#F3E9D2',
+        paperEdge: '#D9C9A8',
+        ink: '#4A3F32',
       },
       fontFamily: {
         sans: ['"Zen Maru Gothic"', '"M PLUS Rounded 1c"', 'sans-serif'],
         display: ['Fredoka', '"Zen Maru Gothic"', 'sans-serif'],
-        // 図鑑だけ別の書体にして「場所が違う」ことを字でも出す（index.html で読み込み済み＝追加コストなし）。
-        zukan: ['"M PLUS Rounded 1c"', '"Zen Maru Gothic"', 'sans-serif'],
+        // 図鑑だけ別の書体にして「場所が違う」ことを字でも出す。
+        // ⚠️ **明朝でないと効かない**。既定の sans が丸ゴシック（Zen Maru Gothic）なので、
+        // 同じ丸ゴシック系（旧 M PLUS Rounded 1c）を当てても並べたとき差が出ない＝「別の場所」にならない。
+        zukan: ['"Shippori Mincho"', 'serif'],
       },
       boxShadow: {
         pop: '0 8px 24px -8px rgba(196, 181, 253, 0.6)',
         // 紙の「厚み」＝浮かせずに下だけへ1本。cozy の pop をそのまま使うとカードが浮いて紙に見えない。
-        paper: '0 1px 0 #E8DECD, 0 2px 3px rgba(90, 81, 69, 0.06)',
+        paper: '0 1px 0 #E3D3B4, 0 2px 3px rgba(74, 63, 50, 0.10)',
+        // 台紙そのもの＝縁の線＋内側に落とす影。inset で中央をわずかに明るく残すと「紙の面」に見える
+        // （外へ広げる影を足すと浮いた"カード"になってしまう）。
+        sheet: '0 0 0 1px #D9C9A8, inset 0 0 60px rgba(160, 135, 95, 0.18)',
+        // 紙に貼った標本＝白フチ（マット）の下に落ちる小さな影。
+        specimen: '0 1px 3px rgba(74, 63, 50, 0.30)',
       },
       // 妖精の生命感（実行時コストゼロのCSSアニメ）。
       // float = 常時のフワフワ浮遊 / それ以外 = リアクション時に1回だけ再生。

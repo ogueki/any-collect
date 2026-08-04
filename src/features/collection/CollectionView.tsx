@@ -53,6 +53,16 @@ type SummonPhase = 'idle' | 'generating' | 'result'
  */
 const EMPTY_SLOT_LOOKAHEAD = 3
 
+/**
+ * 標本を貼る角度（±0.8度）。手で貼ったムラを出すためのもので、**id から決定的に**出す
+ * （乱数だと再レンダーのたびに動いて安っぽくなる）。強くすると散らかって見えるので 1 度未満に抑える。
+ */
+function tiltFor(id: string): number {
+  let h = 0
+  for (let i = 0; i < id.length; i += 1) h = (h * 31 + id.charCodeAt(i)) >>> 0
+  return ((h % 5) - 2) * 0.4
+}
+
 /** 図鑑のマス＝紙に貼った標本写真（実写クロップ）。 */
 function SpecimenCard({
   entry,
@@ -71,16 +81,13 @@ function SpecimenCard({
       onClick={onClick}
       className="flex flex-col items-center transition active:scale-95"
     >
-      <div className="relative w-full">
-        {/* 画像は矩形の実写クロップ（透過ではない）＝「紙に写真を貼った」見立てで縁と厚みを付ける。
+      <div className="relative w-full" style={{ transform: `rotate(${tiltFor(entry.id)}deg)` }}>
+        {/* 画像は矩形の実写クロップ（透過ではない）＝**白フチ（マット）ごと少し傾けて貼る**ことで
+            「紙に貼った標本」にする。細い border だけでは"アプリのサムネ"のままで紙に載らない。
             将来クロップを切り抜き（透過）にしたら、ここを薄い楕円の座布団に差し替える。 */}
-        <img
-          src={url}
-          alt={entry.name}
-          className={`aspect-square w-full rounded-lg border object-cover shadow-paper ${
-            glow ? 'border-mint' : 'border-paperEdge'
-          }`}
-        />
+        <div className={`bg-white p-1 shadow-specimen ${glow ? 'ring-1 ring-mint' : ''}`}>
+          <img src={url} alt={entry.name} className="aspect-square w-full object-cover" />
+        </div>
         {entry.count > 1 && (
           <span className="absolute -right-1 -top-1 -rotate-6 rounded-full border border-paperEdge bg-paper px-1.5 py-0.5 text-[10px] font-bold text-ink shadow-paper">
             ×{entry.count}
@@ -94,11 +101,15 @@ function SpecimenCard({
   )
 }
 
-/** 空きマス。「まだ見つけていない場所」を見せて、器が有限であるように感じさせる。 */
+/**
+ * 空きマス。「まだ見つけていない場所」を見せて、器が有限であるように感じさせる。
+ * ⚠️ 紙とほぼ同じ色（旧 paperEdge の文字＝コントラスト比 1.14）だと**画面上で見えない**＝
+ * 「集める先がある」が伝わらないので、地を少し沈めて文字にも濃さを持たせる。
+ */
 function EmptySlot() {
   return (
     <div aria-hidden className="flex flex-col items-center">
-      <div className="flex aspect-square w-full items-center justify-center rounded-lg border border-dashed border-paperEdge text-base font-bold text-paperEdge">
+      <div className="flex aspect-square w-full items-center justify-center rounded-[2px] border border-dashed border-paperEdge bg-ink/[0.05] text-base font-bold text-ink/40">
         ？
       </div>
       {/* 埋まっているマスと高さを揃える（名前1行ぶん） */}
@@ -107,7 +118,11 @@ function EmptySlot() {
   )
 }
 
-/** 並び替え/絞り込みのチップ（横スクロールで縮まないよう shrink-0）。 */
+/**
+ * 並び替え/絞り込みのチップ（横スクロールで縮まないよう shrink-0）。
+ * ⚠️ 紙の上には**アプリのピル（丸い紫＋光る影）を置かない**。プラスチックのボタンが紙に載って
+ * 見えて台紙の見立てが壊れるため、インクで刷った矩形に寄せる。
+ */
 function FilterChip({
   active,
   onClick,
@@ -121,8 +136,8 @@ function FilterChip({
     <button
       type="button"
       onClick={onClick}
-      className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold transition active:scale-95 ${
-        active ? 'bg-violet-500 text-white shadow-pop' : 'bg-white text-slate-500'
+      className={`shrink-0 whitespace-nowrap rounded-[3px] px-3 py-1 text-xs font-bold transition active:scale-95 ${
+        active ? 'bg-ink text-paper' : 'border border-paperEdge text-ink/60'
       }`}
     >
       {label}
@@ -312,10 +327,11 @@ export default function CollectionView() {
 
   return (
     // 図鑑だけ「紙の台紙」にする＝色と書体で"別の場所"を出す（アルバムはカメラロール風のまま＝対比）。
-    <div className="zukan-paper flex w-full max-w-md flex-col rounded-2xl px-3 py-3 font-zukan text-ink shadow-paper">
+    // 角丸を落として内側に影を入れる＝「浮いたカード」でなく「紙の面」に見せる。
+    <div className="zukan-paper flex w-full max-w-md flex-col rounded-sm px-3 py-4 font-zukan text-ink shadow-sheet">
       {/* 読み込み中 */}
       {status === 'loading' && entries.length === 0 && (
-        <p className="mt-10 animate-pulse text-center text-sm text-slate-400">読み込み中…</p>
+        <p className="mt-10 animate-pulse text-center text-sm text-ink/50">読み込み中…</p>
       )}
 
       {/* エラー */}
@@ -324,8 +340,8 @@ export default function CollectionView() {
       {/* 空状態：誘導（コレットは右下の共通シェルにいる） */}
       {status !== 'loading' && status !== 'error' && entries.length === 0 && (
         <div className="mt-16 flex flex-col items-center gap-2 text-center">
-          <p className="text-sm font-bold text-slate-500">まだ図鑑がからっぽだよ。</p>
-          <p className="text-sm text-slate-400">カメラでいろんなものを見つけてこよう！</p>
+          <p className="text-sm font-bold text-ink/70">まだ図鑑がからっぽだよ。</p>
+          <p className="text-sm text-ink/50">カメラでいろんなものを見つけてこよう！</p>
         </div>
       )}
 
@@ -368,8 +384,8 @@ export default function CollectionView() {
                 key={mode}
                 type="button"
                 onClick={() => setSortMode(mode)}
-                className={`rounded-full px-3 py-1 text-xs font-bold transition active:scale-95 ${
-                  sortMode === mode ? 'bg-violet-500 text-white shadow-pop' : 'bg-white text-slate-500'
+                className={`rounded-[3px] px-3 py-1 text-xs font-bold transition active:scale-95 ${
+                  sortMode === mode ? 'bg-ink text-paper' : 'border border-paperEdge text-ink/60'
                 }`}
               >
                 {mode === 'category' ? 'カテゴリ順' : '新しい順'}
