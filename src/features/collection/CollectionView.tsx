@@ -107,8 +107,10 @@ function SpecimenCard({
         <div className={`bg-white p-1 shadow-specimen ${glow ? 'ring-1 ring-mint' : ''}`}>
           <img src={url} alt={entry.name} className="aspect-square w-full object-cover" />
         </div>
-        <span aria-hidden className="zukan-tape absolute -left-2 top-2 -rotate-45" />
-        <span aria-hidden className="zukan-tape absolute -right-2 bottom-2 -rotate-45" />
+        {/* テープは写真の角から**外へ**はみ出させる（紙に留めているので、写真の内側に
+            収まっていると「写真の上に描いた模様」に見える）。位置は -45°の対角方向へ。 */}
+        <span aria-hidden className="zukan-tape absolute -left-3 top-1 -rotate-45" />
+        <span aria-hidden className="zukan-tape absolute -right-3 bottom-1 -rotate-45" />
       </div>
 
       {/* 標本ラベル。判子と重ならないよう右に逃がす。 */}
