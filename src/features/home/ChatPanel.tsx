@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useChatStore } from '../../store/chatStore'
 import { useAppStore } from '../../store/appStore'
+import { useAlbumStore } from '../../store/albumStore'
 import { useMemoryStore } from '../../store/memoryStore'
 import { speak, primeAudio } from '../../lib/audio/useSpeak'
 import { SoundOnIcon, SendIcon } from '../../components/icons'
@@ -27,10 +28,27 @@ export default function ChatPanel() {
   const consolidating = useMemoryStore((s) => s.consolidating)
   const forget = useMemoryStore((s) => s.forget)
 
+  const photos = useAlbumStore((s) => s.photos)
+
   const [input, setInput] = useState('')
   const [showLog, setShowLog] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
   const sending = status === 'sending'
+
+  /**
+   * 「この写真の話をする」で振った発言に出すサムネイル。**ログに出ている写真のぶんだけ**
+   * object URL を作る（アルバム全件ぶん作らない）。写真を消していたら引けない＝出さない。
+   */
+  const thumbUrls = useMemo(() => {
+    const ids = new Set(messages.map((m) => m.photoId).filter((id): id is string => !!id))
+    const map = new Map<string, string>()
+    if (ids.size === 0) return map
+    photos.forEach((p) => {
+      if (ids.has(p.id)) map.set(p.id, URL.createObjectURL(p.blob))
+    })
+    return map
+  }, [messages, photos])
+  useEffect(() => () => thumbUrls.forEach((u) => URL.revokeObjectURL(u)), [thumbUrls])
 
   // ログを開いているときだけ最下部へスクロール。
   useEffect(() => {
@@ -145,6 +163,13 @@ export default function ChatPanel() {
                   : 'self-start bg-white text-slate-700 shadow-pop'
               }`}
             >
+              {m.photoId && thumbUrls.get(m.photoId) && (
+                <img
+                  src={thumbUrls.get(m.photoId)}
+                  alt=""
+                  className="mb-1.5 aspect-square w-24 rounded-xl object-cover"
+                />
+              )}
               {m.content}
               {m.role !== 'user' && (
                 <button

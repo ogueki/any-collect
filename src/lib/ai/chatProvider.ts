@@ -21,6 +21,11 @@ export interface ChatOpts {
   groundingNotes?: string[]
   /** いまの時間帯（朝/昼/夕方/夜/深夜）。クライアントの現地時刻から */
   timeOfDay?: string
+  /**
+   * **この1リクエストにだけ載る話題**（アルバム/図鑑から「これの話をしたい」と持ち出したもの）。
+   * 接地ノート（毎回載る）と違い次のターンには消える＝毎回蒸し返さない、が要点。
+   */
+  topicNote?: string
 }
 
 /**

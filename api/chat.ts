@@ -38,6 +38,11 @@ interface ChatRequestBody {
   gaugeFull?: unknown
   /** どんな再会か（first/back/days）。opening の温度感に使う。allowlist 検証する */
   reunion?: unknown
+  /**
+   * この1リクエストにだけ載る話題（アルバム/図鑑から「これの話をしたい」と持ち出したもの）。
+   * クライアント由来の自由文字列なので sanitizeText を通す。
+   */
+  topicNote?: unknown
 }
 
 /** timeOfDay として受け付ける値（自由文字列を system prompt に入れない） */
@@ -49,6 +54,9 @@ const REUNION_VALUES = ['first', 'back', 'days'] as const
 /** モデルに渡す履歴の上限（クライアントは窓で絞って送るが、サーバ側でも信用しない） */
 const MAX_HISTORY_TURNS = 20
 const MAX_TURN_CHARS = 1000
+
+/** 「これの話をしたい」で渡す話題ノートの上限（名前＋日付＋そのときのひとこと ぶん） */
+const MAX_TOPIC_NOTE_CHARS = 300
 
 /** opening のとき Gemini に渡す固定のユーザーターン（contents は空にできないため） */
 const OPENING_USER_TURN =
@@ -122,6 +130,8 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
       (REUNION_VALUES as readonly string[]).includes(body.reunion)
         ? (body.reunion as (typeof REUNION_VALUES)[number])
         : undefined
+    // 「これの話をしたい」の1件だけ。接地ノートと同じくクライアント由来の自由文字列。
+    const topicNote = sanitizeText(body.topicNote, MAX_TOPIC_NOTE_CHARS)
     const systemPrompt = buildSystemPrompt(loadPersona(sanitizePersonaId(body.personaId)), {
       affinityLevel,
       memoryFacts,
@@ -130,6 +140,7 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
       opening,
       gaugeFull: body.gaugeFull === true,
       reunion,
+      topicNote,
     })
     const { text, emotion, voiceDirection } = await generateChatReply({
       apiKey,

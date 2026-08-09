@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAlbumStore } from '../../store/albumStore'
+import { useAppStore } from '../../store/appStore'
+import { useChatStore } from '../../store/chatStore'
 import type { Photo } from '../../types'
 
 /**
@@ -22,6 +24,10 @@ export default function AlbumView() {
   const error = useAlbumStore((s) => s.error)
   const load = useAlbumStore((s) => s.load)
   const remove = useAlbumStore((s) => s.remove)
+
+  const go = useAppStore((s) => s.go)
+  const characterId = useAppStore((s) => s.characterId)
+  const talkAboutPhoto = useChatStore((s) => s.talkAboutPhoto)
 
   const [selected, setSelected] = useState<Photo | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -53,6 +59,16 @@ export default function AlbumView() {
   const closeDetail = () => {
     setSelected(null)
     setConfirmDelete(false)
+  }
+
+  /**
+   * この写真を話題にしてホームへ渡す。返事を待たずに遷移する＝待ち時間はホームの
+   * タイピング表示が受け持ち、アルバムで固まって見えないようにする（楽観的UI）。
+   */
+  const handleTalk = (photo: Photo) => {
+    closeDetail()
+    go('home')
+    void talkAboutPhoto(photo, characterId)
   }
 
   const handleDelete = async () => {
@@ -154,7 +170,17 @@ export default function AlbumView() {
               {formatDate(selected.createdAt)} に見せた
             </p>
 
-            <div className="mt-4 flex items-center justify-center gap-3">
+            {!confirmDelete && (
+              <button
+                type="button"
+                onClick={() => handleTalk(selected)}
+                className="mt-3 w-full rounded-full bg-lavender py-2.5 font-bold text-white shadow-pop transition active:scale-95"
+              >
+                この写真の話をする
+              </button>
+            )}
+
+            <div className="mt-3 flex items-center justify-center gap-3">
               {!confirmDelete ? (
                 <>
                   <button

@@ -53,6 +53,7 @@ export const httpChatProvider: ChatProvider = {
       memoryFacts: opts?.memoryFacts,
       groundingNotes: opts?.groundingNotes,
       timeOfDay: opts?.timeOfDay,
+      topicNote: opts?.topicNote,
     })
   },
 

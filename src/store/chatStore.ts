@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { ChatMessage, ReunionBucket } from '../types'
+import type { ChatMessage, Photo, ReunionBucket } from '../types'
 import { FAIRY_EXPRESSIONS, type FairyExpression } from '../lib/character/CharacterRenderer'
 import { chatProvider } from '../lib/ai/chat'
 import { useGaugeStore, GAUGE_PER_CHAT, GAUGE_MAX } from './gaugeStore'
@@ -103,7 +103,8 @@ function isChatMessage(v: unknown): v is ChatMessage {
     typeof r.createdAt === 'string' &&
     (r.emotion === undefined || isFairyExpression(r.emotion)) &&
     (r.voiceDirection === undefined || typeof r.voiceDirection === 'string') &&
-    (r.origin === undefined || r.origin === 'camera')
+    (r.origin === undefined || r.origin === 'camera') &&
+    (r.photoId === undefined || typeof r.photoId === 'string')
   )
 }
 
@@ -138,6 +139,36 @@ function persist(messages: ChatMessage[], consolidatedCount: number): void {
   } catch {
     // 保存に失敗しても会話自体は動く（永続だけ諦める）。
   }
+}
+
+/** 「この写真の話をする」でユーザー側に表示する文（モデルにもこの文が userInput として渡る）。 */
+export const TALK_ABOUT_PHOTO_LINE = 'この写真の話をしたいな'
+
+/** 撮影日から「どのくらい前か」をざっくり日本語に（コレットが時間の経過に触れられるように）。 */
+function elapsedLabel(iso: string, now: Date): string | null {
+  const then = new Date(iso)
+  if (Number.isNaN(then.getTime())) return null
+  const days = Math.floor((now.getTime() - then.getTime()) / 86_400_000)
+  if (days <= 0) return '今日'
+  if (days === 1) return '昨日'
+  if (days < 7) return `${days}日前`
+  if (days < 30) return `${Math.floor(days / 7)}週間くらい前`
+  if (days < 365) return `${Math.floor(days / 30)}ヶ月くらい前`
+  return `${Math.floor(days / 365)}年くらい前`
+}
+
+/**
+ * 写真1枚を「いまの話題」の短いノートにする。**この1リクエストにだけ載る**（topicNote）。
+ * 名前・いつ撮ったか・そのときコレットが言ったことだけ＝分かっていること以上を足させない。
+ */
+export function buildPhotoTopicNote(photo: Photo, now = new Date()): string {
+  const when = elapsedLabel(photo.createdAt, now)
+  const parts = [
+    `きみが、アルバムから${photo.subjectName ? `「${photo.subjectName}」の` : ''}写真を持ってきて、この話をしたいと言っている。`,
+  ]
+  if (when) parts.push(`${when}、一緒に見たもの。`)
+  if (photo.comment) parts.push(`そのときコレットは「${photo.comment}」と言った。`)
+  return parts.join('')
 }
 
 /** 会話に載せる接地文脈（好感度・記憶・図鑑/アルバム傾向・時間帯）を集める。send/opening 共用。 */
@@ -188,6 +219,12 @@ interface ChatState {
    * 記憶には要約されない（`ChatMessage.origin` を参照）。
    */
   appendCameraLine: (content: string, emotion?: FairyExpression) => void
+  /**
+   * アルバムの写真を話題として持ち出す（Ⅰ-4b）。**ユーザー起点**なので毎回は起きない＝
+   * 写真を接地ノート（毎回載る）に入れて機械的に蒸し返す設計を避けるための形。
+   * 写真の情報は `topicNote` として**この1リクエストにだけ**載せ、以降は返事が履歴に残って続く。
+   */
+  talkAboutPhoto: (photo: Photo, personaId: string) => Promise<boolean>
   /** 未反映の会話を今すぐ記憶に要約する（`?debug=1` の手動発火） */
   consolidateMemoryNow: () => Promise<void>
   /** エラー表示を消す（入力し直したとき） */
@@ -201,21 +238,20 @@ interface ChatState {
   reset: () => void
 }
 
+/** 付帯情報は増えるので位置引数でなくオブジェクトで受ける（呼び出し側の読みやすさ優先）。 */
+type MessageExtras = Pick<ChatMessage, 'emotion' | 'voiceDirection' | 'origin' | 'photoId'>
+
 function createMessage(
   role: ChatMessage['role'],
   content: string,
-  emotion?: ChatMessage['emotion'],
-  voiceDirection?: ChatMessage['voiceDirection'],
-  origin?: ChatMessage['origin'],
+  extras: Partial<MessageExtras> = {},
 ): ChatMessage {
   return {
     id: crypto.randomUUID(),
     role,
     content,
     createdAt: new Date().toISOString(),
-    emotion,
-    voiceDirection,
-    origin,
+    ...extras,
   }
 }
 
@@ -268,7 +304,7 @@ export const useChatStore = create<ChatState>((set, get) => {
           personaId,
           ...context,
         })
-        const next = [...get().messages, createMessage('fairy', reply.text, reply.emotion, reply.voiceDirection)]
+        const next = [...get().messages, createMessage('fairy', reply.text, { emotion: reply.emotion, voiceDirection: reply.voiceDirection })]
         const trimmed = trimMessages(next, get().consolidatedCount)
         persist(trimmed.messages, trimmed.consolidatedCount)
         set((s) => ({ ...trimmed, status: 'idle', replyNonce: s.replyNonce + 1 }))
@@ -293,10 +329,53 @@ export const useChatStore = create<ChatState>((set, get) => {
       }
     },
 
+    talkAboutPhoto: async (photo, personaId) => {
+      if (get().status === 'sending') return false
+      const history = get().messages
+      // 話題を振ったのはユーザーなので user の発言として積む（サムネイルは photoId から引く）。
+      set({
+        messages: [
+          ...history,
+          createMessage('user', TALK_ABOUT_PHOTO_LINE, { photoId: photo.id }),
+        ],
+        status: 'sending',
+        error: null,
+      })
+      try {
+        const context = await gatherChatContext()
+        const reply = await chatProvider.sendMessage(
+          history.slice(-HISTORY_WINDOW),
+          TALK_ABOUT_PHOTO_LINE,
+          { personaId, ...context, topicNote: buildPhotoTopicNote(photo) },
+        )
+        const next = [
+          ...get().messages,
+          createMessage('fairy', reply.text, {
+            emotion: reply.emotion,
+            voiceDirection: reply.voiceDirection,
+          }),
+        ]
+        const trimmed = trimMessages(next, get().consolidatedCount)
+        persist(trimmed.messages, trimmed.consolidatedCount)
+        set((s) => ({ ...trimmed, status: 'idle', replyNonce: s.replyNonce + 1 }))
+        useGaugeStore.getState().add(GAUGE_PER_CHAT)
+        useAffinityStore.getState().add(AFFINITY_PER_CHAT, 'chat')
+        if (get().messages.length - get().consolidatedCount >= CONSOLIDATE_EVERY) {
+          void runConsolidate()
+        }
+        return true
+      } catch {
+        // send と同じ扱い＝返事が来なかった発話は履歴に残さない。
+        persist(history, get().consolidatedCount)
+        set({ messages: history, status: 'error', error: failureLine('chat').text })
+        return false
+      }
+    },
+
     appendCameraLine: (content, emotion) => {
       const text = content.trim()
       if (!text) return
-      const next = [...get().messages, createMessage('fairy', text, emotion, undefined, 'camera')]
+      const next = [...get().messages, createMessage('fairy', text, { emotion, origin: 'camera' })]
       const trimmed = trimMessages(next, get().consolidatedCount)
       persist(trimmed.messages, trimmed.consolidatedCount)
       set(trimmed)
@@ -329,7 +408,7 @@ export const useChatStore = create<ChatState>((set, get) => {
 
         // 生成中にユーザーが先に話し始めていたら、第一声は捨てる（会話に割り込まない）。
         if (get().messages.length === started.length) {
-          const next = [...get().messages, createMessage('fairy', reply.text, reply.emotion, reply.voiceDirection)]
+          const next = [...get().messages, createMessage('fairy', reply.text, { emotion: reply.emotion, voiceDirection: reply.voiceDirection })]
           const trimmed = trimMessages(next, get().consolidatedCount)
           persist(trimmed.messages, trimmed.consolidatedCount)
           set((s) => ({ ...trimmed, replyNonce: s.replyNonce + 1 }))
