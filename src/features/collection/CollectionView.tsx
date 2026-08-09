@@ -11,6 +11,7 @@ import { emotionForGenerated } from '../../lib/character/reaction'
 import { speak } from '../../lib/audio/useSpeak'
 import { COLLECTION_REVEAL_LINE, SUMMON_COACH_LINE, SUMMON_COACH_NOTE } from '../onboarding/script'
 import GeneratingOverlay from '../../components/GeneratingOverlay'
+import SummonReveal from './SummonReveal'
 import { failureLine } from '../../lib/character/failureLines'
 import { useShellFairy } from '../../components/shellFairy'
 import { SparkleIcon } from '../../components/icons'
@@ -41,8 +42,12 @@ const PREVIEW_BG_STYLE: React.CSSProperties = {
   background: 'linear-gradient(to bottom, #dbeafe 0%, #ede9fe 45%, #d1fae5 100%)',
 }
 
-/** 召喚のフェーズ（idle＝閲覧中／生成中／結果プレビュー）。 */
-type SummonPhase = 'idle' | 'generating' | 'result'
+/**
+ * 召喚のフェーズ（idle＝閲覧中／生成中／**出現の演出**／結果プレビュー）。
+ * `revealing` を挟むのが Ⅰ-5＝生成完了と同時にカードを出すと、1日1個の行為が
+ * 「カードがポップインするだけ」になってしまう。
+ */
+type SummonPhase = 'idle' | 'generating' | 'revealing' | 'result'
 
 /**
  * 各章の末尾に見せる空きマスの数（**後退式**＝いま埋まっている数のうしろに、常にこの数だけ足す）。
@@ -390,7 +395,8 @@ export default function CollectionView() {
         // 召喚は特別な体験＝絆も大きめに増やす。
         addAffinity(AFFINITY_PER_ITEM, 'item')
         setSummonResult(generated)
-        setSummonPhase('result')
+        // 先に「出現の瞬間」を見せてから結果カードへ（SummonReveal → onDone で 'result'）。
+        setSummonPhase('revealing')
         fire(emotionForGenerated()) // 右下コレットが大喜び
       } catch {
         // 失敗もコレットの言葉で受ける（生のエラー文を出さない＝キャラを崩さない）。
@@ -656,6 +662,15 @@ export default function CollectionView() {
         <div className="fixed inset-0 z-20">
           <GeneratingOverlay characterId={characterId} context="summoning" />
         </div>
+      )}
+
+      {/* 召喚：出現の演出（Ⅰ-5）。タップでスキップでき、終わると結果カードへ。 */}
+      {summonPhase === 'revealing' && summonResult && (
+        <SummonReveal
+          imageUrl={summonResult.imageUrl}
+          name={summonResult.name}
+          onDone={() => setSummonPhase('result')}
+        />
       )}
 
       {/* 召喚：結果プレビュー（透過アイテム・パステル地で透過を確認） */}

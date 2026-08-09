@@ -83,6 +83,34 @@ export default {
           '0%, 100%': { opacity: '0.25' },
           '50%': { opacity: '0.9' },
         },
+        // ── 召喚の出現演出（Ⅰ-5）。1日1個の"儀式"を見せ場にするための一連。
+        // 方向は `--a`（各要素にインラインで渡す角度）、開始時刻は animationDelay で散らす。
+        // 画像アセットを使わない（たからばこの背景と同じ「アート依存を作らない」方針）。
+        summonGather: {
+          '0%': { opacity: '0', transform: 'rotate(var(--a)) translateX(120px) scale(0.6)' },
+          '20%': { opacity: '1' },
+          '100%': { opacity: '1', transform: 'rotate(var(--a)) translateX(0) scale(1)' },
+        },
+        summonFlash: {
+          '0%': { opacity: '0', transform: 'scale(0.15)' },
+          '30%': { opacity: '1', transform: 'scale(1)' },
+          '100%': { opacity: '0', transform: 'scale(1.7)' },
+        },
+        summonRing: {
+          '0%': { opacity: '0.95', transform: 'scale(0.2)' },
+          '100%': { opacity: '0', transform: 'scale(2.6)' },
+        },
+        summonEmerge: {
+          '0%': { opacity: '0', transform: 'scale(0.2) rotate(-14deg)' },
+          '45%': { opacity: '1' },
+          '70%': { transform: 'scale(1.08) rotate(3deg)' },
+          '100%': { opacity: '1', transform: 'scale(1) rotate(0deg)' },
+        },
+        summonSpark: {
+          '0%': { opacity: '0', transform: 'rotate(var(--a)) translateX(10px) scale(0.4)' },
+          '20%': { opacity: '1' },
+          '100%': { opacity: '0', transform: 'rotate(var(--a)) translateX(110px) scale(1)' },
+        },
         // 撮影で貯まった「＋まほうパワー / なつき」がふわっと上がって消える。
         rise: {
           '0%': { opacity: '0', transform: 'translateY(8px) scale(0.9)' },
@@ -97,6 +125,12 @@ export default {
         shake: 'shake 0.5s ease-in-out 1',
         droop: 'droop 0.5s ease-out 1 forwards',
         reveal: 'reveal 0.5s ease-out 1',
+        // 召喚の出現演出。開始時刻は呼び出し側が animationDelay で散らす。
+        'summon-gather': 'summonGather 0.45s cubic-bezier(0.5,0,0.9,0.5) 1 both',
+        'summon-flash': 'summonFlash 0.45s ease-out 1 both',
+        'summon-ring': 'summonRing 0.8s cubic-bezier(0.16,0.8,0.3,1) 1 both',
+        'summon-emerge': 'summonEmerge 0.75s cubic-bezier(0.2,1.3,0.4,1) 1 both',
+        'summon-spark': 'summonSpark 0.9s ease-out 1 both',
         rise: 'rise 1.4s ease-out 1 forwards',
         // 秒数はインライン style で上書きする前提のデフォルト。
         drift: 'drift 8s ease-in-out infinite',
