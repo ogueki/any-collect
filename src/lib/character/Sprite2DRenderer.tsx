@@ -114,6 +114,9 @@ const REACTION_ANIMATION: Partial<Record<FairyExpression, string>> = {
   angry: 'animate-shake',
   salute: 'animate-pop',
   searching: 'animate-wiggle',
+  proud: 'animate-pop',
+  worried: 'animate-wiggle',
+  sleepy: 'animate-droop',
 }
 
 export default function Sprite2DRenderer({

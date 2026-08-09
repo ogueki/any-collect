@@ -57,10 +57,22 @@ sprites/
 |---|---|---|
 | `neutral` | ふつう | 既定。最低これ1枚あればOK |
 | `happy` | うれしい | 生成成功・通常の収集 |
+| `excited` | 大興奮 | 高レア・新カテゴリ初取得 |
 | `surprised` | おどろき | レア発見など |
 | `thinking` | かんがえ中 | 鑑定中・ローディング |
-| `sad` | しょんぼり | 失敗・エラー時 |
-| `excited` | 大興奮 | 高レア・新カテゴリ初取得 |
+| `sad` | しょんぼり | 失敗・エラー時・自分が悲しいとき |
+| `confused` | こんがらがり | 困惑・意味が分からないとき |
+| `exasperated` | やれやれ | あきれる・軽くツッコむとき |
+| `angry` | むくれ | 軽く怒る・すねる |
+| `shy` | 照れ | 照れる・はにかむ |
+| `salute` | 敬礼 | 「任せて！」＝**これから引き受ける** |
+| `searching` | 探索 | カメラ鑑定中（会話では使わない） |
+| `proud` | 得意げ | 自分の手柄を自慢＝**もうやってのけた**（`salute` と対） |
+| `worried` | 心配 | **きみ**を案じる・気遣う（`sad` と対） |
+| `sleepy` | ねむい | 夜おそくの会話＋**会話が始まる前の常態**（時間帯で表示側が決める） |
+
+> **絵がまだ無い**＝`proud` / `worried` / `sleepy`（当面 `neutral` の絵で出ます）。
+> **1枚しか無い**＝`angry` / `excited` / `happy` / `neutral` / `searching` / `shy` / `exasperated`（毎回同じ絵になるので2枚目がほしい）。
 
 ## 感情を増やしたいとき
 1. `src/lib/character/CharacterRenderer.ts` の `FAIRY_EXPRESSIONS` に 1 語追加

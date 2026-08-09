@@ -18,6 +18,11 @@ export const FAIRY_EXPRESSIONS = [
   'angry',
   'salute',
   'searching',
+  'proud',
+  'worried',
+  // sleepy は2経路で出る＝①会話の返事として AI が選ぶ（時間帯を知っているので選べる）
+  // ②会話が始まる前の常態として表示側（HomeMode の baseExpression）が指定する。
+  'sleepy',
 ] as const
 
 /** 妖精の表情。差分イラストの切り替えに対応 */

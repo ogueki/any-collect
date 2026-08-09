@@ -20,6 +20,9 @@ export interface ChatTurn {
  * 会話の返事に添える妖精の感情。client の FAIRY_EXPRESSIONS のミラー
  * （api/client で二重定義する前例に倣う）。
  * `searching`（カメラ鑑定中専用）だけは会話では使わないので除く。
+ * `sleepy` は入れる＝時間帯（timeOfDayLabel）が会話プロンプトに載っているので、
+ * AI は「いま深夜だ」と知ったうえで選べる。会話が無いときの常態は別途
+ * 表示側（HomeMode の baseExpression）が指定する。
  */
 export const CHAT_EMOTIONS = [
   'neutral',
@@ -33,6 +36,9 @@ export const CHAT_EMOTIONS = [
   'angry',
   'salute',
   'thinking',
+  'proud',
+  'worried',
+  'sleepy',
 ] as const
 export type ChatEmotion = (typeof CHAT_EMOTIONS)[number]
 
