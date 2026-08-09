@@ -54,11 +54,13 @@ const HERO_TEXT_HALO = [
  * しまう＋続きがあることに気づけない**（実機FB 2026-08-09）ので、下 1.5rem だけ透明に落とす。
  * 落ちるのは文字だけで、後ろの雲は別レイヤー（`HERO_CLOUD`）なので滲みは保たれる。
  *
- * 下パディングを同じ 1.5rem 取ってあるのが対（`pb-6`）＝いちばん下までスクロールすると
- * 最終行がフェード帯の**上**に収まり、読み終わりが薄いままにならない。
+ * **下パディングとフェード幅は必ず同じ値にする**（いま 0.75rem＝`pb-3`）＝いちばん下まで
+ * スクロールしたとき最終行がフェード帯の**上**に収まり、読み終わりが薄いままにならない。
+ * ⚠️ この対のせいで「フェードを深くする＝短いセリフの下が広がる」というトレードオフになる。
+ * 立ち絵との間隔はほぼこの下パディングで決まる（スプライトの透明余白は上0〜2%＝実測ずみ）。
  * ※ iOS Safari 対策で `-webkit-` を併記。効かない環境でも「今までどおり直線で切れる」だけ。
  */
-const HERO_FADE = 'linear-gradient(to bottom, #000 calc(100% - 1.5rem), transparent 100%)'
+const HERO_FADE = 'linear-gradient(to bottom, #000 calc(100% - 0.75rem), transparent 100%)'
 
 const HERO_CLOUD = [
   'radial-gradient(ellipse 50% 50% at 50% 50%',
@@ -293,7 +295,7 @@ export default function HomeMode() {
               style={{ backgroundImage: HERO_CLOUD }}
             />
             <div
-              className="relative max-h-40 overflow-y-auto px-5 pt-4 pb-6"
+              className="relative max-h-40 overflow-y-auto px-5 pt-4 pb-3"
               style={{ WebkitMaskImage: HERO_FADE, maskImage: HERO_FADE }}
             >
               {/* 第一声の生成中は、前回のセリフが残っていてもドットに切り替える
