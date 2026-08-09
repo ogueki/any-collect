@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { ChatMessage, Photo, ReunionBucket } from '../types'
+import type { ChatMessage, CollectionEntry, Photo, ReunionBucket } from '../types'
 import { FAIRY_EXPRESSIONS, type FairyExpression } from '../lib/character/CharacterRenderer'
 import { chatProvider } from '../lib/ai/chat'
 import { useGaugeStore, GAUGE_PER_CHAT, GAUGE_MAX } from './gaugeStore'
@@ -90,6 +90,9 @@ interface PersistedChat {
   consolidatedCount: number
 }
 
+/** 永続から読み戻すときに受け付ける origin（ChatMessage.origin と対応）。 */
+const ORIGINS: readonly string[] = ['camera', 'album', 'zukan']
+
 function isFairyExpression(v: unknown): v is FairyExpression {
   return typeof v === 'string' && (FAIRY_EXPRESSIONS as readonly string[]).includes(v)
 }
@@ -104,8 +107,9 @@ function isChatMessage(v: unknown): v is ChatMessage {
     typeof r.createdAt === 'string' &&
     (r.emotion === undefined || isFairyExpression(r.emotion)) &&
     (r.voiceDirection === undefined || typeof r.voiceDirection === 'string') &&
-    (r.origin === undefined || r.origin === 'camera' || r.origin === 'album') &&
-    (r.photoId === undefined || typeof r.photoId === 'string')
+    (r.origin === undefined || ORIGINS.includes(r.origin as string)) &&
+    (r.photoId === undefined || typeof r.photoId === 'string') &&
+    (r.entryId === undefined || typeof r.entryId === 'string')
   )
 }
 
@@ -175,6 +179,22 @@ export function buildPhotoTopicNote(photo: Photo, now = new Date()): string {
   return parts.join('')
 }
 
+/** 「これの話をする」（図鑑）でユーザー側に表示する文。 */
+export const TALK_ABOUT_ENTRY_LINE = 'これの話をしたいな'
+
+/**
+ * 図鑑エントリ1件を「いまの話題」の短いノートにする。写真版との違いは
+ * **「見つけたもの」＝いつ初めて見つけたか・何回見つけたか**が手がかりになること。
+ */
+export function buildEntryTopicNote(entry: CollectionEntry, now = new Date()): string {
+  const when = elapsedLabel(entry.firstSeenAt, now)
+  const parts = [`きみが、ずかんから「${entry.name}」を持ってきて、この話をしたいと言っている。`]
+  if (when) parts.push(`${when}にはじめて見つけたもの。`)
+  if (entry.count > 1) parts.push(`これまで${entry.count}回見つけている。`)
+  if (entry.description) parts.push(`どんなものか：${entry.description}`)
+  return parts.join('')
+}
+
 /** 会話に載せる接地文脈（好感度・記憶・図鑑/アルバム傾向・時間帯）を集める。send/opening 共用。 */
 async function gatherChatContext() {
   // persona の「好感度別の口調」は3段しか無いので、無限に伸びるレベルでなく tier を渡す。
@@ -229,6 +249,8 @@ interface ChatState {
    * 写真の情報は `topicNote` として**この1リクエストにだけ**載せ、以降は返事が履歴に残って続く。
    */
   talkAboutPhoto: (photo: Photo, personaId: string) => Promise<boolean>
+  /** 図鑑エントリを話題として持ち出す（Ⅰ-4c）。`talkAboutPhoto` と同じ流儀。 */
+  talkAboutEntry: (entry: CollectionEntry, personaId: string) => Promise<boolean>
   /** 未反映の会話を今すぐ記憶に要約する（`?debug=1` の手動発火） */
   consolidateMemoryNow: () => Promise<void>
   /** エラー表示を消す（入力し直したとき） */
@@ -243,7 +265,7 @@ interface ChatState {
 }
 
 /** 付帯情報は増えるので位置引数でなくオブジェクトで受ける（呼び出し側の読みやすさ優先）。 */
-type MessageExtras = Pick<ChatMessage, 'emotion' | 'voiceDirection' | 'origin' | 'photoId'>
+type MessageExtras = Pick<ChatMessage, 'emotion' | 'voiceDirection' | 'origin' | 'photoId' | 'entryId'>
 
 function createMessage(
   role: ChatMessage['role'],
@@ -282,6 +304,83 @@ export const useChatStore = create<ChatState>((set, get) => {
     const trimmed = trimMessages(get().messages, idx + 1)
     persist(trimmed.messages, trimmed.consolidatedCount)
     set(trimmed)
+  }
+
+  /**
+   * アルバム/図鑑から「これの話をしたい」と振ったときの共通処理（Ⅰ-4b・Ⅰ-4c）。
+   * **ユーザー起点**なので毎回は起きない＝写真や図鑑を接地ノート（毎回載る）に入れて
+   * 機械的に蒸し返す設計を避けるための形。話題は topicNote としてこの1回だけ載せ、
+   * 以降はコレットの返事が履歴に残ることで文脈が続く。
+   */
+  const runTopicTalk = async (args: {
+    personaId: string
+    /** ログに出す一文（モデルにも userInput として渡る） */
+    line: string
+    /** この1リクエストにだけ載る話題ノート */
+    topicNote: string
+    /** 添える画像のもと（縮小して送る） */
+    blob: Blob
+    /** 画像を添えられなかったとき、テキストだけで話せる手がかりがあるか */
+    hasTextClue: boolean
+    /** ログの発言に付ける参照（サムネイル用）と出どころ */
+    extras: Partial<MessageExtras>
+  }): Promise<boolean> => {
+    if (get().status === 'sending') return false
+    const history = get().messages
+    // 話題を振ったのはユーザーなので user の発言として積む。
+    set({
+      messages: [...history, createMessage('user', args.line, args.extras)],
+      status: 'sending',
+      error: null,
+    })
+
+    /** 返事（または固定セリフ）を積んで永続する。 */
+    const settle = (message: ChatMessage) => {
+      const trimmed = trimMessages([...get().messages, message], get().consolidatedCount)
+      persist(trimmed.messages, trimmed.consolidatedCount)
+      set((s) => ({ ...trimmed, status: 'idle', replyNonce: s.replyNonce + 1 }))
+    }
+
+    try {
+      const context = await gatherChatContext()
+      // 画像そのものを添える＝テキストの手がかりだけでは材料ゼロになるものがあるため。
+      const image = await blobToDownscaledDataUrl(args.blob).catch(() => undefined)
+      // 画像も手がかりも無いなら**モデルを呼ばない**。材料ゼロで呼ぶと
+      // 「〜って言ってたよね」と実在しない思い出を作る（failureLines の photoNoClue 参照）。
+      if (!image && !args.hasTextClue) {
+        const line = failureLine('photoNoClue')
+        settle(
+          createMessage('fairy', line.text, {
+            emotion: line.expression,
+            origin: args.extras.origin,
+          }),
+        )
+        return true
+      }
+      const reply = await chatProvider.sendMessage(history.slice(-HISTORY_WINDOW), args.line, {
+        personaId: args.personaId,
+        ...context,
+        topicNote: args.topicNote,
+        image,
+      })
+      settle(
+        createMessage('fairy', reply.text, {
+          emotion: reply.emotion,
+          voiceDirection: reply.voiceDirection,
+        }),
+      )
+      useGaugeStore.getState().add(GAUGE_PER_CHAT)
+      useAffinityStore.getState().add(AFFINITY_PER_CHAT, 'chat')
+      if (get().messages.length - get().consolidatedCount >= CONSOLIDATE_EVERY) {
+        void runConsolidate()
+      }
+      return true
+    } catch {
+      // send と同じ扱い＝返事が来なかった発話は履歴に残さない。
+      persist(history, get().consolidatedCount)
+      set({ messages: history, status: 'error', error: failureLine('chat').text })
+      return false
+    }
   }
 
   return {
@@ -333,63 +432,26 @@ export const useChatStore = create<ChatState>((set, get) => {
       }
     },
 
-    talkAboutPhoto: async (photo, personaId) => {
-      if (get().status === 'sending') return false
-      const history = get().messages
-      // 話題を振ったのはユーザーなので user の発言として積む（サムネイルは photoId から引く）。
-      set({
-        messages: [
-          ...history,
-          createMessage('user', TALK_ABOUT_PHOTO_LINE, { photoId: photo.id, origin: 'album' }),
-        ],
-        status: 'sending',
-        error: null,
-      })
-      try {
-        const context = await gatherChatContext()
-        // 写真そのものを添える＝撮影時のテキストだけでは材料ゼロの写真があるため。
-        const image = await blobToDownscaledDataUrl(photo.blob).catch(() => undefined)
-        // 写真も添えられず手がかりも無いなら**モデルを呼ばない**。材料ゼロで呼ぶと
-        // 「〜って言ってたよね」と実在しない思い出を作る（failureLines の photoNoClue 参照）。
-        if (!image && !photo.subjectName && !photo.caption && !photo.comment) {
-          const line = failureLine('photoNoClue')
-          const next = [
-            ...get().messages,
-            createMessage('fairy', line.text, { emotion: line.expression, origin: 'album' }),
-          ]
-          const trimmed = trimMessages(next, get().consolidatedCount)
-          persist(trimmed.messages, trimmed.consolidatedCount)
-          set((s) => ({ ...trimmed, status: 'idle', replyNonce: s.replyNonce + 1 }))
-          return true
-        }
-        const reply = await chatProvider.sendMessage(
-          history.slice(-HISTORY_WINDOW),
-          TALK_ABOUT_PHOTO_LINE,
-          { personaId, ...context, topicNote: buildPhotoTopicNote(photo), image },
-        )
-        const next = [
-          ...get().messages,
-          createMessage('fairy', reply.text, {
-            emotion: reply.emotion,
-            voiceDirection: reply.voiceDirection,
-          }),
-        ]
-        const trimmed = trimMessages(next, get().consolidatedCount)
-        persist(trimmed.messages, trimmed.consolidatedCount)
-        set((s) => ({ ...trimmed, status: 'idle', replyNonce: s.replyNonce + 1 }))
-        useGaugeStore.getState().add(GAUGE_PER_CHAT)
-        useAffinityStore.getState().add(AFFINITY_PER_CHAT, 'chat')
-        if (get().messages.length - get().consolidatedCount >= CONSOLIDATE_EVERY) {
-          void runConsolidate()
-        }
-        return true
-      } catch {
-        // send と同じ扱い＝返事が来なかった発話は履歴に残さない。
-        persist(history, get().consolidatedCount)
-        set({ messages: history, status: 'error', error: failureLine('chat').text })
-        return false
-      }
-    },
+    talkAboutPhoto: async (photo, personaId) =>
+      runTopicTalk({
+        personaId,
+        line: TALK_ABOUT_PHOTO_LINE,
+        topicNote: buildPhotoTopicNote(photo),
+        blob: photo.blob,
+        hasTextClue: !!(photo.subjectName || photo.caption || photo.comment),
+        extras: { photoId: photo.id, origin: 'album' },
+      }),
+
+    talkAboutEntry: async (entry, personaId) =>
+      runTopicTalk({
+        personaId,
+        line: TALK_ABOUT_ENTRY_LINE,
+        topicNote: buildEntryTopicNote(entry),
+        blob: entry.blob,
+        // 図鑑エントリは名前が必須なので、手がかりが完全にゼロになることは無い。
+        hasTextClue: true,
+        extras: { entryId: entry.id, origin: 'zukan' },
+      }),
 
     appendCameraLine: (content, emotion) => {
       const text = content.trim()

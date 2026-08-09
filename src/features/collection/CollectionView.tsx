@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAppStore } from '../../store/appStore'
 import { useCollectionStore } from '../../store/collectionStore'
+import { useChatStore } from '../../store/chatStore'
 import { useCodexStore } from '../../store/codexStore'
 import { useGaugeStore, GAUGE_MAX } from '../../store/gaugeStore'
 import { useAffinityStore, AFFINITY_PER_ITEM } from '../../store/affinityStore'
@@ -353,6 +354,16 @@ export default function CollectionView() {
     setConfirmDelete(false)
   }
 
+  /**
+   * このエントリを話題にしてホームへ渡す（アルバムの「この写真の話をする」と同じ流儀）。
+   * 返事を待たずに遷移する＝待ち時間はホームのタイピング表示が受け持つ（楽観的UI）。
+   */
+  const handleTalk = (entry: CollectionEntry) => {
+    closeDetail()
+    go('home')
+    void useChatStore.getState().talkAboutEntry(entry, characterId)
+  }
+
   const handleDelete = async () => {
     if (!selectedLive || deleting) return
     setDeleting(true)
@@ -584,6 +595,19 @@ export default function CollectionView() {
                   まほうパワーがたまると、召喚できるよ
                 </p>
               ))}
+
+            {/* これの話をする（Ⅰ-4c）。**常に枠線＝控えめ**にする＝召喚は1日1回の希少な行為なので、
+                満タンのときに同じ強さのボタンが2つ並んで主役を食い合わないようにする。
+                見た目を状態で変えないので「さっきと違うボタン」に見えることもない。 */}
+            {!confirmDelete && (
+              <button
+                type="button"
+                onClick={() => handleTalk(selectedLive)}
+                className="mt-2 w-full rounded-full border border-lavender py-2.5 font-bold text-lavender transition active:scale-95"
+              >
+                これの話をする
+              </button>
+            )}
 
             <div className="mt-4 flex items-center justify-center gap-3">
               {!confirmDelete ? (

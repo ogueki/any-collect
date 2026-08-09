@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useChatStore } from '../../store/chatStore'
 import { useAppStore } from '../../store/appStore'
 import { useAlbumStore } from '../../store/albumStore'
+import { useCollectionStore } from '../../store/collectionStore'
 import { useMemoryStore } from '../../store/memoryStore'
 import { speak, primeAudio } from '../../lib/audio/useSpeak'
 import { SoundOnIcon, SendIcon } from '../../components/icons'
@@ -29,6 +30,7 @@ export default function ChatPanel() {
   const forget = useMemoryStore((s) => s.forget)
 
   const photos = useAlbumStore((s) => s.photos)
+  const entries = useCollectionStore((s) => s.entries)
 
   const [input, setInput] = useState('')
   const [showLog, setShowLog] = useState(false)
@@ -36,18 +38,26 @@ export default function ChatPanel() {
   const sending = status === 'sending'
 
   /**
-   * 「この写真の話をする」で振った発言に出すサムネイル。**ログに出ている写真のぶんだけ**
-   * object URL を作る（アルバム全件ぶん作らない）。写真を消していたら引けない＝出さない。
+   * 「この写真の話をする」「これの話をする」で振った発言に出すサムネイル。
+   * **ログに出ているぶんだけ** object URL を作る（アルバム/図鑑の全件は作らない）。
+   * もとを消していたら引けない＝黙って出さない。
    */
   const thumbUrls = useMemo(() => {
-    const ids = new Set(messages.map((m) => m.photoId).filter((id): id is string => !!id))
     const map = new Map<string, string>()
-    if (ids.size === 0) return map
-    photos.forEach((p) => {
-      if (ids.has(p.id)) map.set(p.id, URL.createObjectURL(p.blob))
-    })
+    const photoIds = new Set(messages.map((m) => m.photoId).filter((id): id is string => !!id))
+    const entryIds = new Set(messages.map((m) => m.entryId).filter((id): id is string => !!id))
+    if (photoIds.size > 0) {
+      photos.forEach((p) => {
+        if (photoIds.has(p.id)) map.set(p.id, URL.createObjectURL(p.blob))
+      })
+    }
+    if (entryIds.size > 0) {
+      entries.forEach((e) => {
+        if (entryIds.has(e.id)) map.set(e.id, URL.createObjectURL(e.blob))
+      })
+    }
     return map
-  }, [messages, photos])
+  }, [messages, photos, entries])
   useEffect(() => () => thumbUrls.forEach((u) => URL.revokeObjectURL(u)), [thumbUrls])
 
   // ログを開いているときだけ最下部へスクロール。
@@ -163,9 +173,9 @@ export default function ChatPanel() {
                   : 'self-start bg-white text-slate-700 shadow-pop'
               }`}
             >
-              {m.photoId && thumbUrls.get(m.photoId) && (
+              {(m.photoId ?? m.entryId) && thumbUrls.get((m.photoId ?? m.entryId) as string) && (
                 <img
-                  src={thumbUrls.get(m.photoId)}
+                  src={thumbUrls.get((m.photoId ?? m.entryId) as string)}
                   alt=""
                   className="mb-1.5 aspect-square w-24 rounded-xl object-cover"
                 />
