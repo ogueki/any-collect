@@ -9,7 +9,7 @@ import { useEffect } from 'react'
  *
  * ・**画像アセットを使わない**（CSS のみ）＝たからばこの背景と同じ「アート依存を作らない」方針。
  * ・**タップでスキップできる**（`TreasureOpening` と同じ流儀。毎回きっちり待たされない）。
- * ・`prefers-reduced-motion` なら演出そのものを飛ばす。
+ * ・`prefers-reduced-motion` なら**短く静かな版**にする（消さない＝下のコメント参照）。
  * ・アニメの定義は `tailwind.config.js`（`summon-*`）。方向は `--a`、開始時刻は
  *   `animationDelay` で散らす＝**等間隔に整列すると機械的に見える**ため粒ごとにずらす。
  */
@@ -21,6 +21,13 @@ const SPARKS = 10
 
 /** 演出の合計。1日1個なので 1.5 秒は許容範囲だが、これ以上伸ばすと"待ち"になる。 */
 const REVEAL_MS = 1500
+/** 動きを減らす設定のときの長さ（出たことは分かるが、待たせない）。 */
+const REDUCED_MS = 700
+
+/** 演出の地（たからばこと同じ世界観の紫）。通常版と reduced 版で共有する。 */
+const STAGE_BG =
+  'radial-gradient(90% 60% at 50% 45%, rgba(76,29,149,0.65) 0%, rgba(30,27,75,0.98) 70%),' +
+  'linear-gradient(160deg, #1e1b4b 0%, #312e81 45%, #4c1d95 100%)'
 
 /** 各パートの開始（秒）。モックで詰めた値。 */
 const T = {
@@ -45,31 +52,38 @@ export default function SummonReveal({
   name: string
   onDone: () => void
 }) {
-  // 動きを減らす設定の人には演出を出さない（酔い・前庭障害への配慮）。
+  /**
+   * 動きを減らす設定（iOS「視差効果を減らす」等）のときは、**演出を消すのではなく短く静かにする**。
+   * ⚠️ 以前はここで `null` を返して即スキップしていたが、それだと**設定を入れている人には
+   * 何も起きていないように見える**（実際、実機で「何も変わらない」という報告が出た）。
+   * 動きを減らしたい人に必要なのは「無」ではなく「派手に動かないこと」。
+   */
   const reduced =
     typeof window !== 'undefined' &&
     window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
 
   useEffect(() => {
-    if (reduced) {
-      onDone()
-      return
-    }
-    const done = setTimeout(onDone, REVEAL_MS)
+    const done = setTimeout(onDone, reduced ? REDUCED_MS : REVEAL_MS)
     return () => clearTimeout(done)
   }, [reduced, onDone])
 
-  if (reduced) return null
+  if (reduced) {
+    return (
+      <div
+        onPointerDown={onDone}
+        className="fixed inset-0 z-30 flex items-center justify-center"
+        style={{ background: STAGE_BG }}
+      >
+        <img src={imageUrl} alt={name} draggable={false} className="w-40 animate-reveal select-none" />
+      </div>
+    )
+  }
 
   return (
     <div
       onPointerDown={onDone} // タップでスキップ
       className="fixed inset-0 z-30 flex items-center justify-center overflow-hidden"
-      style={{
-        background:
-          'radial-gradient(90% 60% at 50% 45%, rgba(76,29,149,0.65) 0%, rgba(30,27,75,0.98) 70%),' +
-          'linear-gradient(160deg, #1e1b4b 0%, #312e81 45%, #4c1d95 100%)',
-      }}
+      style={{ background: STAGE_BG }}
     >
       {/* ① 外から中心へ集まる光の粒 */}
       {Array.from({ length: MOTES }, (_, i) => (

@@ -16,6 +16,7 @@ import { failureLine } from '../../lib/character/failureLines'
 import { useShellFairy } from '../../components/shellFairy'
 import { SparkleIcon } from '../../components/icons'
 import { CATEGORY_CODE, CATEGORY_EMOJI, CATEGORY_LABEL, CATEGORY_ORDER } from '../../lib/category'
+import { debugTools } from '../../lib/debug'
 import type { GeneratedItem } from '../../lib/ai/imageProvider'
 import type { CollectionEntry, ItemCategory } from '../../types'
 
@@ -218,6 +219,12 @@ export default function CollectionView() {
 
   // 召喚の状態。
   const [summonPhase, setSummonPhase] = useState<SummonPhase>('idle')
+  /**
+   * 検証用：召喚の演出だけを再生する（`?debug=1`）。
+   * ⚠️ これが無いと**演出を1回見るのに ¥7 と まほうパワー1回ぶん**かかり、
+   * 長さや派手さのチューニングが現実的にできない。図鑑のクロップ画像を仮のアイテムに使う。
+   */
+  const [debugRevealUrl, setDebugRevealUrl] = useState<string | null>(null)
   const [summonResult, setSummonResult] = useState<GeneratedItem | null>(null)
   const [summonError, setSummonError] = useState<string | null>(null)
 
@@ -605,6 +612,20 @@ export default function CollectionView() {
             {/* これの話をする（Ⅰ-4c）。**常に枠線＝控えめ**にする＝召喚は1日1回の希少な行為なので、
                 満タンのときに同じ強さのボタンが2つ並んで主役を食い合わないようにする。
                 見た目を状態で変えないので「さっきと違うボタン」に見えることもない。 */}
+            {!confirmDelete && debugTools() && (
+              <button
+                type="button"
+                onClick={() => {
+                  const url = urls.get(selectedLive.id)
+                  closeDetail()
+                  if (url) setDebugRevealUrl(url)
+                }}
+                className="mt-2 w-full rounded-full border border-dashed border-slate-300 py-2 text-xs font-bold text-slate-400 transition active:scale-95"
+              >
+                演出を見る（検証用）
+              </button>
+            )}
+
             {!confirmDelete && (
               <button
                 type="button"
@@ -662,6 +683,15 @@ export default function CollectionView() {
         <div className="fixed inset-0 z-20">
           <GeneratingOverlay characterId={characterId} context="summoning" />
         </div>
+      )}
+
+      {/* 検証用：演出だけを再生（`?debug=1`・API を叩かない） */}
+      {debugRevealUrl && (
+        <SummonReveal
+          imageUrl={debugRevealUrl}
+          name="演出プレビュー"
+          onDone={() => setDebugRevealUrl(null)}
+        />
       )}
 
       {/* 召喚：出現の演出（Ⅰ-5）。タップでスキップでき、終わると結果カードへ。 */}
