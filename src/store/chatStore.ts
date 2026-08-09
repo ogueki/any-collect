@@ -102,7 +102,8 @@ function isChatMessage(v: unknown): v is ChatMessage {
     typeof r.content === 'string' &&
     typeof r.createdAt === 'string' &&
     (r.emotion === undefined || isFairyExpression(r.emotion)) &&
-    (r.voiceDirection === undefined || typeof r.voiceDirection === 'string')
+    (r.voiceDirection === undefined || typeof r.voiceDirection === 'string') &&
+    (r.origin === undefined || r.origin === 'camera')
   )
 }
 
@@ -181,6 +182,12 @@ interface ChatState {
   send: (userInput: string, personaId: string) => Promise<boolean>
   /** 間が空いていれば、コレットから第一声を話しかける（セッション1回・失敗は握りつぶし） */
   openConversation: (personaId: string) => Promise<void>
+  /**
+   * カメラでのコレットの発言を会話履歴に積む（Ⅰ-2）。API は叩かない＝もう喋ったものを残すだけ。
+   * これで家に帰ったコレットが「さっき見せてくれた〜」と言える（カメラと家で別人にならない）。
+   * 記憶には要約されない（`ChatMessage.origin` を参照）。
+   */
+  appendCameraLine: (content: string, emotion?: FairyExpression) => void
   /** 未反映の会話を今すぐ記憶に要約する（`?debug=1` の手動発火） */
   consolidateMemoryNow: () => Promise<void>
   /** エラー表示を消す（入力し直したとき） */
@@ -199,6 +206,7 @@ function createMessage(
   content: string,
   emotion?: ChatMessage['emotion'],
   voiceDirection?: ChatMessage['voiceDirection'],
+  origin?: ChatMessage['origin'],
 ): ChatMessage {
   return {
     id: crypto.randomUUID(),
@@ -207,6 +215,7 @@ function createMessage(
     createdAt: new Date().toISOString(),
     emotion,
     voiceDirection,
+    origin,
   }
 }
 
@@ -221,8 +230,13 @@ export const useChatStore = create<ChatState>((set, get) => {
     const tail = msgs.slice(get().consolidatedCount)
     if (tail.length === 0) return
     const lastId = tail[tail.length - 1].id
-    const ok = await useMemoryStore.getState().consolidate(tail)
-    if (!ok) return
+    // カメラでの発言は記憶に要約しない（origin の定義を参照）。ただし「要約済み」としては
+    // 前に進める＝進めないと切り詰められず、撮るたびに履歴が伸びたままになる。
+    const summarizable = tail.filter((m) => m.origin !== 'camera')
+    if (summarizable.length > 0) {
+      const ok = await useMemoryStore.getState().consolidate(summarizable)
+      if (!ok) return
+    }
     const idx = get().messages.findIndex((m) => m.id === lastId)
     if (idx < 0) return
     const trimmed = trimMessages(get().messages, idx + 1)
@@ -276,6 +290,20 @@ export const useChatStore = create<ChatState>((set, get) => {
         persist(history, get().consolidatedCount)
         set({ messages: history, status: 'error', error: failureLine('chat').text })
         return false
+      }
+    },
+
+    appendCameraLine: (content, emotion) => {
+      const text = content.trim()
+      if (!text) return
+      const next = [...get().messages, createMessage('fairy', text, emotion, undefined, 'camera')]
+      const trimmed = trimMessages(next, get().consolidatedCount)
+      persist(trimmed.messages, trimmed.consolidatedCount)
+      set(trimmed)
+      // 会話と同じ基準で要約を回す（カメラぶんは要約対象から外れるが、
+      // 溜まった未要約の会話をここで流しておかないと切り詰めが進まない）。
+      if (get().messages.length - get().consolidatedCount >= CONSOLIDATE_EVERY) {
+        void runConsolidate()
       }
     },
 

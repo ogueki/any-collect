@@ -11,6 +11,7 @@ import { useGaugeStore, GAUGE_PER_CAPTURE, GAUGE_MAX } from '../../store/gaugeSt
 import { useAffinityStore, AFFINITY_PER_CAPTURE, toneTierForLevel, levelForScore } from '../../store/affinityStore'
 import { speak, primeAudio } from '../../lib/audio/useSpeak'
 import { useOnboardingStore } from '../../store/onboardingStore'
+import { useChatStore } from '../../store/chatStore'
 import { CAMERA_HINT_TEXT, FIRST_SCAN_LINE } from '../onboarding/script'
 import { SoundOnIcon, SoundOffIcon, SparkleIcon } from '../../components/icons'
 
@@ -171,6 +172,9 @@ export default function CameraMode() {
           // 反応を動的TTSで読み上げ（voiceEnabled は speak 内でゲート）。
           // 立ち絵と同じ感情を渡す＝表情と声の温度を揃える。
           void speak(result.comment, { expression: result.emotion })
+          // 会話履歴にも残す＝家に帰ったコレットが「さっき見せてくれた〜」と言える（Ⅰ-2）。
+          // オンボの一枚目は固定セリフが主役なので積まない（チュートリアルの発話は会話ではない）。
+          useChatStore.getState().appendCameraLine(result.comment, result.emotion)
         }
 
         // 主役が採れたら bbox でクロップして図鑑に収集（無料・無制限）。
