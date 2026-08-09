@@ -103,7 +103,7 @@ function isChatMessage(v: unknown): v is ChatMessage {
     typeof r.createdAt === 'string' &&
     (r.emotion === undefined || isFairyExpression(r.emotion)) &&
     (r.voiceDirection === undefined || typeof r.voiceDirection === 'string') &&
-    (r.origin === undefined || r.origin === 'camera') &&
+    (r.origin === undefined || r.origin === 'camera' || r.origin === 'album') &&
     (r.photoId === undefined || typeof r.photoId === 'string')
   )
 }
@@ -167,6 +167,9 @@ export function buildPhotoTopicNote(photo: Photo, now = new Date()): string {
     `きみが、アルバムから${photo.subjectName ? `「${photo.subjectName}」の` : ''}写真を持ってきて、この話をしたいと言っている。`,
   ]
   if (when) parts.push(`${when}、一緒に見たもの。`)
+  // caption（客観的な説明）はアルバムの表示からは外したが、**モデルへの手がかりとしては渡す**。
+  // これが無いと、名前だけの写真で話す材料が足りず「嬉しいよ」しか言えなくなる。
+  if (photo.caption) parts.push(`どんなものか：${photo.caption}`)
   if (photo.comment) parts.push(`そのときコレットは「${photo.comment}」と言った。`)
   return parts.join('')
 }
@@ -266,9 +269,9 @@ export const useChatStore = create<ChatState>((set, get) => {
     const tail = msgs.slice(get().consolidatedCount)
     if (tail.length === 0) return
     const lastId = tail[tail.length - 1].id
-    // カメラでの発言は記憶に要約しない（origin の定義を参照）。ただし「要約済み」としては
-    // 前に進める＝進めないと切り詰められず、撮るたびに履歴が伸びたままになる。
-    const summarizable = tail.filter((m) => m.origin !== 'camera')
+    // アプリ由来の発言（origin 付き）は記憶に要約しない（origin の定義を参照）。ただし
+    // 「要約済み」としては前に進める＝進めないと切り詰められず、履歴が伸びたままになる。
+    const summarizable = tail.filter((m) => m.origin === undefined)
     if (summarizable.length > 0) {
       const ok = await useMemoryStore.getState().consolidate(summarizable)
       if (!ok) return
@@ -336,7 +339,7 @@ export const useChatStore = create<ChatState>((set, get) => {
       set({
         messages: [
           ...history,
-          createMessage('user', TALK_ABOUT_PHOTO_LINE, { photoId: photo.id }),
+          createMessage('user', TALK_ABOUT_PHOTO_LINE, { photoId: photo.id, origin: 'album' }),
         ],
         status: 'sending',
         error: null,
