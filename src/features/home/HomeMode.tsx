@@ -49,6 +49,17 @@ const HERO_TEXT_HALO = [
  * 楕円なので四隅までは届かないが、そこは文字側のハロー（`HERO_TEXT_HALO`）が受け持つ。
  * マスクではなく背景グラデーションで描く＝iOS Safari の mask 互換問題も踏まない。
  */
+/**
+ * 大セリフが `max-h-40` を超えたときの下端。**直線でスパッと切ると、雲を四角く切り落として
+ * しまう＋続きがあることに気づけない**（実機FB 2026-08-09）ので、下 1.5rem だけ透明に落とす。
+ * 落ちるのは文字だけで、後ろの雲は別レイヤー（`HERO_CLOUD`）なので滲みは保たれる。
+ *
+ * 下パディングを同じ 1.5rem 取ってあるのが対（`pb-6`）＝いちばん下までスクロールすると
+ * 最終行がフェード帯の**上**に収まり、読み終わりが薄いままにならない。
+ * ※ iOS Safari 対策で `-webkit-` を併記。効かない環境でも「今までどおり直線で切れる」だけ。
+ */
+const HERO_FADE = 'linear-gradient(to bottom, #000 calc(100% - 1.5rem), transparent 100%)'
+
 const HERO_CLOUD = [
   'radial-gradient(ellipse 50% 50% at 50% 50%',
   'rgba(255,255,255,0.72) 0%',
@@ -281,7 +292,10 @@ export default function HomeMode() {
               className="pointer-events-none absolute inset-x-0 -inset-y-8"
               style={{ backgroundImage: HERO_CLOUD }}
             />
-            <div className="relative max-h-40 overflow-y-auto px-5 py-4">
+            <div
+              className="relative max-h-40 overflow-y-auto px-5 pt-4 pb-6"
+              style={{ WebkitMaskImage: HERO_FADE, maskImage: HERO_FADE }}
+            >
               {/* 第一声の生成中は、前回のセリフが残っていてもドットに切り替える
                   ＝会話を永続するようになったので、無言のまま突然セリフが差し替わるのを防ぐ。 */}
               {sending || opening ? (
