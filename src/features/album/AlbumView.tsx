@@ -5,6 +5,8 @@ import type { Photo } from '../../types'
 /**
  * アルバム（旧・図鑑を置換／v2）。カメラで保存した写真を一覧・詳細で見返す。
  * 写真＝思い出資産であり、コレットの会話接地（写真言及）の燃料源（§4.2）。
+ * **役割＝思い出**（図鑑＝標本・客観的な説明）。詳細に出すのは被写体名と
+ * 「撮ったときコレットが言ったひとこと」で、客観的な説明は図鑑に任せる。
  * 永続層は albumStore 越し。画像は Blob なので object URL を作って表示・解放する。
  */
 
@@ -135,14 +137,17 @@ export default function AlbumView() {
               alt=""
               className="mx-auto w-full rounded-2xl object-contain"
             />
-            {(selected.subjectName || selected.caption) && (
+            {(selected.subjectName || selected.comment) && (
               <div className="mt-3 rounded-2xl bg-mint/10 px-3 py-2 text-left text-sm text-slate-600">
                 {selected.subjectName && (
                   <p className="font-display text-base font-bold text-slate-700">
                     {selected.subjectName}
                   </p>
                 )}
-                {selected.caption && <p className="mt-0.5">{selected.caption}</p>}
+                {/* 客観的な説明（caption）は図鑑の仕事なので出さない。同じ文を両方に出すと
+                    「余白・縁・名前・並び」で作った差別化が中身で崩れる。
+                    アルバムには「撮ったときコレットが言ったこと」を残す＝思い出の側に寄せる。 */}
+                {selected.comment && <p className="mt-1 text-slate-500">「{selected.comment}」</p>}
               </div>
             )}
             <p className="mt-2 text-center text-xs text-slate-400">
