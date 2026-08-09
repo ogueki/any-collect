@@ -3,6 +3,8 @@ import { loadPersona, buildSystemPrompt } from './_lib/persona.js'
 import { generateChatReply, type ChatTurn } from './_lib/gemini.js'
 import {
   fail,
+  isImageWithinLimit,
+  parseImageDataUrl,
   PayloadTooLargeError,
   readJsonBody,
   sanitizePersonaId,
@@ -43,6 +45,8 @@ interface ChatRequestBody {
    * クライアント由来の自由文字列なので sanitizeText を通す。
    */
   topicNote?: unknown
+  /** 「この写真の話をする」で添える写真（data URL）。無ければテキストだけで会話する。 */
+  image?: unknown
 }
 
 /** timeOfDay として受け付ける値（自由文字列を system prompt に入れない） */
@@ -132,6 +136,9 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
         : undefined
     // 「これの話をしたい」の1件だけ。接地ノートと同じくクライアント由来の自由文字列。
     const topicNote = sanitizeText(body.topicNote, MAX_TOPIC_NOTE_CHARS)
+    // 写真は任意。不正・大きすぎなら**添えないだけ**で会話は続ける（テキストの手がかりで話す）。
+    const parsedImage = parseImageDataUrl(body.image)
+    const image = parsedImage && isImageWithinLimit(parsedImage.data) ? parsedImage : undefined
     const systemPrompt = buildSystemPrompt(loadPersona(sanitizePersonaId(body.personaId)), {
       affinityLevel,
       memoryFacts,
@@ -141,12 +148,14 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
       gaugeFull: body.gaugeFull === true,
       reunion,
       topicNote,
+      hasImage: !!image,
     })
     const { text, emotion, voiceDirection } = await generateChatReply({
       apiKey,
       systemPrompt,
       history,
       userInput: opening ? OPENING_USER_TURN : userInput,
+      image,
     })
     sendJson(res, 200, { reply: text, emotion, voiceDirection })
   } catch (err) {

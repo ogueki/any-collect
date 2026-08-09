@@ -32,6 +32,12 @@ export type FailureContext =
   | 'synthesize'
   /** 生成は成功したが、たからばこへの保存が失敗した（ローカル永続の失敗） */
   | 'store'
+  /**
+   * 写真の話をしたいのに、渡せる手がかりが何もない（写真を添えられず、名前も説明も
+   * そのときのひとことも無い）。**ここでモデルを呼ばない**のが要点＝材料ゼロで呼ぶと
+   * 「〜って言ってたよね」と実在しない思い出を作る（実 Gemini で再現・プロンプトでは止まらなかった）。
+   */
+  | 'photoNoClue'
 
 export interface FailureLine {
   text: string
@@ -55,6 +61,11 @@ const LINES: Record<FailureContext, FailureLine> = {
   },
   store: {
     text: 'あれ、うまくしまえなかった…。もう一回やってみて？',
+    expression: 'confused',
+  },
+  // 知らないものを知っているふりで語らせない＝覚えているふりが、いちばんの嘘になる。
+  photoNoClue: {
+    text: 'あれ…この写真、なんだったっけ。よかったら、きみの言葉で教えて？',
     expression: 'confused',
   },
 }

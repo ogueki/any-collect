@@ -58,11 +58,19 @@ interface GenerateArgs {
   systemPrompt: string
   history: ChatTurn[]
   userInput: string
+  /**
+   * この発話に添える写真（「この写真の話をする」）。**添えたときだけ**コレットは実際に見て話せる。
+   * 無いときは従来どおりテキストだけ（撮影時に作った名前・説明・ひとことが手がかり）。
+   */
+  image?: InlineImage
 }
+
+/** Gemini の parts は文字と画像が混在する（画像は「この発話」にだけ付く）。 */
+type GeminiPart = { text: string } | { inlineData: InlineImage }
 
 interface GeminiContent {
   role: 'user' | 'model'
-  parts: { text: string }[]
+  parts: GeminiPart[]
 }
 
 interface GeminiResponse {
@@ -85,16 +93,22 @@ export async function generateChatReply({
   systemPrompt,
   history,
   userInput,
+  image,
 }: GenerateArgs): Promise<ChatReply> {
   const model = process.env.GEMINI_TEXT_MODEL || DEFAULT_MODEL
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
+
+  // 写真は「いま話題にしている発話」にだけ添える（履歴には残さない＝毎ターン送らない）。
+  const lastParts: GeminiPart[] = image
+    ? [{ text: userInput }, { inlineData: image }]
+    : [{ text: userInput }]
 
   const contents: GeminiContent[] = [
     ...history.map((m) => ({
       role: m.role === 'fairy' ? ('model' as const) : ('user' as const),
       parts: [{ text: m.content }],
     })),
-    { role: 'user', parts: [{ text: userInput }] },
+    { role: 'user', parts: lastParts },
   ]
 
   const res = await fetch(url, {

@@ -8,6 +8,7 @@ import { useMemoryStore } from './memoryStore'
 import { useCollectionStore } from './collectionStore'
 import { useAlbumStore } from './albumStore'
 import { buildGroundingNotes } from '../lib/grounding'
+import { blobToDownscaledDataUrl } from '../lib/image/downscale'
 import { failureLine } from '../lib/character/failureLines'
 
 export type ChatStatus = 'idle' | 'sending' | 'error'
@@ -346,10 +347,25 @@ export const useChatStore = create<ChatState>((set, get) => {
       })
       try {
         const context = await gatherChatContext()
+        // 写真そのものを添える＝撮影時のテキストだけでは材料ゼロの写真があるため。
+        const image = await blobToDownscaledDataUrl(photo.blob).catch(() => undefined)
+        // 写真も添えられず手がかりも無いなら**モデルを呼ばない**。材料ゼロで呼ぶと
+        // 「〜って言ってたよね」と実在しない思い出を作る（failureLines の photoNoClue 参照）。
+        if (!image && !photo.subjectName && !photo.caption && !photo.comment) {
+          const line = failureLine('photoNoClue')
+          const next = [
+            ...get().messages,
+            createMessage('fairy', line.text, { emotion: line.expression, origin: 'album' }),
+          ]
+          const trimmed = trimMessages(next, get().consolidatedCount)
+          persist(trimmed.messages, trimmed.consolidatedCount)
+          set((s) => ({ ...trimmed, status: 'idle', replyNonce: s.replyNonce + 1 }))
+          return true
+        }
         const reply = await chatProvider.sendMessage(
           history.slice(-HISTORY_WINDOW),
           TALK_ABOUT_PHOTO_LINE,
-          { personaId, ...context, topicNote: buildPhotoTopicNote(photo) },
+          { personaId, ...context, topicNote: buildPhotoTopicNote(photo), image },
         )
         const next = [
           ...get().messages,

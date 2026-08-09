@@ -54,6 +54,7 @@ export const httpChatProvider: ChatProvider = {
       groundingNotes: opts?.groundingNotes,
       timeOfDay: opts?.timeOfDay,
       topicNote: opts?.topicNote,
+      image: opts?.image,
     })
   },
 
