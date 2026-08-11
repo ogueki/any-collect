@@ -111,6 +111,17 @@ export default {
           '20%': { opacity: '1' },
           '100%': { opacity: '0', transform: 'rotate(var(--a)) translateX(110px) scale(1)' },
         },
+        // 生成中（召喚・合成）の"溜め"。光が外から中心へ**流れ続ける**（gather の無限版）。
+        summonPull: {
+          '0%': { opacity: '0', transform: 'rotate(var(--a)) translateX(150px) scale(0.4)' },
+          '25%': { opacity: '1' },
+          '100%': { opacity: '0', transform: 'rotate(var(--a)) translateX(0) scale(1)' },
+        },
+        // 魔法陣の回転（2枚を逆回しで重ねると"陣"に見える）。
+        spinSlow: {
+          '0%': { transform: 'rotate(0deg)' },
+          '100%': { transform: 'rotate(360deg)' },
+        },
         // 撮影で貯まった「＋まほうパワー / なつき」がふわっと上がって消える。
         rise: {
           '0%': { opacity: '0', transform: 'translateY(8px) scale(0.9)' },
@@ -131,6 +142,10 @@ export default {
         'summon-ring': 'summonRing 0.8s cubic-bezier(0.16,0.8,0.3,1) 1 both',
         'summon-emerge': 'summonEmerge 0.75s cubic-bezier(0.2,1.3,0.4,1) 1 both',
         'summon-spark': 'summonSpark 0.9s ease-out 1 both',
+        // 生成中の溜め（秒数は呼び出し側でインライン上書きする前提）。
+        'summon-pull': 'summonPull 1.8s ease-in infinite',
+        'spin-slow': 'spinSlow 14s linear infinite',
+        'spin-slow-rev': 'spinSlow 20s linear infinite reverse',
         rise: 'rise 1.4s ease-out 1 forwards',
         // 秒数はインライン style で上書きする前提のデフォルト。
         drift: 'drift 8s ease-in-out infinite',

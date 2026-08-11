@@ -3,12 +3,21 @@ import Sprite2DRenderer from '../lib/character/Sprite2DRenderer'
 import { getStatusStages, getTips, type WaitContext } from '../lib/character/waitLines'
 
 /**
- * 生成待ちの全画面オーバーレイ（召喚中／合成中）。妖精＋状況ステータス＋進捗バー＋豆知識で
- * 待ち時間の体感を改善する。召喚（図鑑）と窯（合成）で使い回す共有UI。
+ * 生成待ちの全画面オーバーレイ（召喚中／合成中）。召喚（図鑑）と窯（合成）で使い回す共有UI。
+ *
+ * **ここが"儀式"の本体**（実機FB 2026-08-10）。完成後に 1.5 秒の花火を足すより、
+ * **待たされている ~7 秒**を魔法にする方が効く。前は「妖精＋進捗バー＋豆知識」で、
+ * *ソフトウェアの待ち画面の語彙*だった。
+ *
+ * ・**進捗バーを捨てずに「魔法陣の光の輪」へ置き換える**＝情報（あとどれくらい）は残し、
+ *   表現だけ魔法にする。所要時間のブレ（~2〜13s）に追従する必要があるので進捗自体は要る。
+ * ・**光が外から中心へ流れ続ける**＝"溜め"が見える。進捗が進むほど密度と明るさが上がる。
+ * ・完成の瞬間は `SummonReveal` が受ける＝あれは単体の花火ではなく**この溜めの payoff**。
+ * ・画像アセットは使わない（CSS のみ＝たからばこの背景と同じ方針）。
  *
  * 進捗は実シグナルが無い（Gemini/fal は途中経過を返さない）ため、経過時間の漸近カーブ
  * （1 − e^(−t/τ)）で MAX_PROGRESS まで“それっぽく”伸ばす。完了前に満タンにせず・常に動くので
- * 「90%で固まる／一瞬で100%」のような嘘っぽさを避けつつ、所要時間のブレ（~2〜13s）にも追従する。
+ * 「90%で固まる／一瞬で100%」のような嘘っぽさを避けつつ、所要時間のブレにも追従する。
  */
 
 interface GeneratingOverlayProps {
@@ -20,6 +29,16 @@ interface GeneratingOverlayProps {
 const TAU_MS = 4000
 const MAX_PROGRESS = 0.95
 const TIP_INTERVAL_MS = 2600
+
+/** 集まり続ける光の粒。多いと重いので、進捗で"見える数"を増やす。 */
+const PULL_MOTES = 14
+/** 進捗リングの半径（px・SVG 内部座標）。 */
+const RING_R = 54
+
+/** 演出の地。SummonReveal と同じ紫＝完成の瞬間へ地続きに見せる。 */
+const STAGE_BG =
+  'radial-gradient(90% 60% at 50% 45%, rgba(76,29,149,0.72) 0%, rgba(30,27,75,0.97) 70%),' +
+  'linear-gradient(160deg, #1e1b4b 0%, #312e81 45%, #4c1d95 100%)'
 
 export default function GeneratingOverlay({
   characterId,
@@ -54,34 +73,85 @@ export default function GeneratingOverlay({
   // 進捗に応じた状況ステータス（前半→中盤→終盤）。
   const stage = stages[Math.min(stages.length - 1, Math.floor(progress * stages.length))]
 
+  // 進捗リング（円周の充填）。バーの代わりに"陣が満ちていく"で見せる。
+  const circumference = 2 * Math.PI * RING_R
+  // 終盤ほど密度・速さ・明るさが上がる＝「溜まってきた」が伝わる。
+  const intensity = Math.min(1, progress / MAX_PROGRESS)
+  const visibleMotes = Math.max(4, Math.round(PULL_MOTES * (0.35 + 0.65 * intensity)))
+  const pullDuration = 1.9 - 0.8 * intensity
+
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-slate-900/70 px-6 backdrop-blur-sm">
+    <div
+      className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6"
+      style={{ background: STAGE_BG }}
+    >
       <div className="relative flex items-center justify-center">
-        {/* 鑑定の魔法グロー（じんわり明滅） */}
+        {/* 外から中心へ流れ続ける光＝"溜め"。進捗で数と速さが上がる。 */}
+        {Array.from({ length: visibleMotes }, (_, i) => (
+          <span
+            key={`pull-${i}`}
+            aria-hidden
+            className="absolute h-[6px] w-[6px] animate-summon-pull rounded-full bg-white"
+            style={{
+              ['--a' as string]: `${(360 / visibleMotes) * i}deg`,
+              animationDuration: `${pullDuration}s`,
+              animationDelay: `${-(i * pullDuration) / visibleMotes}s`,
+              boxShadow: `0 0 ${6 + 6 * intensity}px ${2 + 2 * intensity}px rgba(196,181,253,0.9)`,
+            }}
+          />
+        ))}
+
+        {/* 魔法陣＝逆回しの二重円。破線と点線で"刻まれた文様"に見せる（画像なし）。 */}
         <span
-          className="absolute h-36 w-36 rounded-full bg-mint/30 blur-2xl animate-pulse"
           aria-hidden
+          className="absolute h-64 w-64 animate-spin-slow rounded-full border border-dashed border-violet-200/35"
         />
+        <span
+          aria-hidden
+          className="absolute h-52 w-52 animate-spin-slow-rev rounded-full border border-dotted border-emerald-200/30"
+        />
+
+        {/* 中心のグロー。進捗で強くなる＝完成が近いことが色で分かる。 */}
+        <span
+          aria-hidden
+          className="absolute rounded-full blur-2xl"
+          style={{
+            height: `${9 + 3 * intensity}rem`,
+            width: `${9 + 3 * intensity}rem`,
+            background: `rgba(${167 + 60 * intensity}, ${243 - 30 * intensity}, ${208 + 40 * intensity}, ${0.25 + 0.25 * intensity})`,
+          }}
+        />
+
+        {/* 進捗＝陣が満ちる光の輪（旧・進捗バーの置き換え。情報は捨てない）。 */}
+        <svg
+          className="absolute h-40 w-40 -rotate-90"
+          viewBox="0 0 120 120"
+          role="progressbar"
+          aria-valuenow={Math.round(progress * 100)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="生成の進捗"
+        >
+          <circle cx="60" cy="60" r={RING_R} fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="2" />
+          <circle
+            cx="60"
+            cy="60"
+            r={RING_R}
+            fill="none"
+            stroke="rgba(196,181,253,0.95)"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={circumference * (1 - progress)}
+            style={{ transition: 'stroke-dashoffset 120ms linear' }}
+          />
+        </svg>
+
         <Sprite2DRenderer characterId={characterId} expression="searching" size="lg" />
       </div>
 
       {/* 状況ステータス */}
-      <p className="font-display text-sm tracking-[0.3em] text-mint">{stage}</p>
-
-      {/* 進捗バー（経過時間ベースの推定・完了前は満タンにしない） */}
-      <div
-        className="h-2 w-56 max-w-[70vw] overflow-hidden rounded-full bg-white/20"
-        role="progressbar"
-        aria-valuenow={Math.round(progress * 100)}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-label="生成の進捗"
-      >
-        <div
-          className="h-full rounded-full bg-mint transition-[width] duration-100 ease-out"
-          style={{ width: `${Math.round(progress * 100)}%` }}
-        />
-      </div>
+      <p className="font-display text-sm tracking-[0.3em] text-violet-200">{stage}</p>
 
       {/* コレットの豆知識（数秒ごとに切替・key で入場アニメを再生） */}
       <p
