@@ -60,6 +60,13 @@ export function deleteDb(): Promise<void> {
   })
 }
 
+/**
+ * ⚠️ **読み出したレコードを書き戻すときは Blob を `./blob.ts` の `rematerializeBlob` に通すこと。**
+ * WebKit では取り出した Blob がファイル参照のままで、そのまま put すると
+ * `UnknownError: Error preparing Blob/File data to be stored in object store` で落ちる。
+ * IndexedDB には部分更新が無く、スカラー1つの更新でもレコード全体＝Blob ごと書き直す。
+ */
+
 /** IDBRequest を Promise 化する小ヘルパ。 */
 export function requestToPromise<T>(req: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {

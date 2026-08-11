@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { CollectionEntry } from '../types'
 import type { IdentifiedSubject } from '../lib/ai/identifyProvider'
 import { collectionRepository } from '../lib/storage/repository'
+import { rematerializeBlob } from '../lib/storage/blob'
 import { CATEGORY_ORDER } from '../lib/category'
 
 /**
@@ -74,7 +75,19 @@ export const useCollectionStore = create<CollectionState>((set, get) => ({
 
     if (existing) {
       // 同種の再発見：回数と最終発見だけ更新（初回のクロップ画像・解説は保つ）。
-      const updated: CollectionEntry = { ...existing, count: existing.count + 1, lastSeenAt: now }
+      //
+      // ⚠️ **ここで Blob を作り直すのが必須**。IndexedDB には部分更新が無いので count を1つ
+      // 増やすだけでもレコード全体＝Blob ごと書き直しになり、**読み出したままの Blob は
+      // iPhone Safari で書き戻せない**（理由は `lib/storage/blob.ts` の注記）。
+      // 作り直しに失敗した＝元の写真がもう読めないときは、記録ごと失うより
+      // **いま撮ったクロップで埋める**方がまし（壊れたエントリはこれで自己修復する）。
+      const kept = await rematerializeBlob(existing.blob)
+      const updated: CollectionEntry = {
+        ...existing,
+        blob: kept ?? blob,
+        count: existing.count + 1,
+        lastSeenAt: now,
+      }
       await collectionRepository.put(updated)
       set({ entries: sortEntries(base.map((e) => (e.id === updated.id ? updated : e))) })
       return { entry: updated, isNew: false }
