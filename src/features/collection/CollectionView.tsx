@@ -11,13 +11,11 @@ import { emotionForGenerated } from '../../lib/character/reaction'
 import { speak } from '../../lib/audio/useSpeak'
 import { COLLECTION_REVEAL_LINE, SUMMON_COACH_LINE, SUMMON_COACH_NOTE } from '../onboarding/script'
 import GeneratingOverlay from '../../components/GeneratingOverlay'
-import SummonReveal from './SummonReveal'
 import { failureLine } from '../../lib/character/failureLines'
 import { summonLine } from '../../lib/character/summonLines'
 import { useShellFairy } from '../../components/shellFairy'
 import { SparkleIcon } from '../../components/icons'
 import { CATEGORY_CODE, CATEGORY_EMOJI, CATEGORY_LABEL, CATEGORY_ORDER } from '../../lib/category'
-import { debugTools } from '../../lib/debug'
 import type { GeneratedItem } from '../../lib/ai/imageProvider'
 import type { CollectionEntry, ItemCategory } from '../../types'
 
@@ -45,11 +43,14 @@ const PREVIEW_BG_STYLE: React.CSSProperties = {
 }
 
 /**
- * 召喚のフェーズ（idle＝閲覧中／生成中／**出現の演出**／結果プレビュー）。
- * `revealing` を挟むのが Ⅰ-5＝生成完了と同時にカードを出すと、1日1個の行為が
- * 「カードがポップインするだけ」になってしまう。
+ * 召喚のフェーズ（idle＝閲覧中／生成中／結果プレビュー）。
+ *
+ * ⚠️ かつて生成完了と結果カードの間に「出現の演出」（`SummonReveal`・光が集まって弾ける
+ * 1.5秒）を挟んでいたが**不採用にした**＝待ち画面（`GeneratingOverlay`）が魔法陣＋"溜め"に
+ * 作り替わった結果、**同じ「光が集まって弾ける」を2回やる**形になり、後ろの花火が payoff では
+ * なく重複になったため（理由＝DECISIONS 2026-08-12）。
  */
-type SummonPhase = 'idle' | 'generating' | 'revealing' | 'result'
+type SummonPhase = 'idle' | 'generating' | 'result'
 
 /**
  * 各章の末尾に見せる空きマスの数（**後退式**＝いま埋まっている数のうしろに、常にこの数だけ足す）。
@@ -221,14 +222,6 @@ export default function CollectionView() {
 
   // 召喚の状態。
   const [summonPhase, setSummonPhase] = useState<SummonPhase>('idle')
-  /**
-   * 検証用：召喚の演出だけを再生する（`?debug=1`）。
-   * ⚠️ これが無いと**演出を1回見るのに ¥7 と まほうパワー1回ぶん**かかり、
-   * 長さや派手さのチューニングが現実的にできない。図鑑のクロップ画像を仮のアイテムに使う。
-   */
-  const [debugRevealUrl, setDebugRevealUrl] = useState<string | null>(null)
-  /** 検証用：生成中の演出だけを再生する（`?debug=1`）。実所要（~7s）に近い長さで見る。 */
-  const [debugGenerating, setDebugGenerating] = useState(false)
   const [summonResult, setSummonResult] = useState<GeneratedItem | null>(null)
   /** 保存後のアイテム id。ホームで「立ち絵の横に出すのはどれか」を指すのに使う。 */
   const [summonItemId, setSummonItemId] = useState<string | null>(null)
@@ -411,8 +404,8 @@ export default function CollectionView() {
         // 保存された id を握っておく＝カードを閉じたあと、ホームでコレットが喋るときに
         // このアイテムを立ち絵の横に出すため（`ChatMessage.itemId`）。
         setSummonItemId(saved.id)
-        // 先に「出現の瞬間」を見せてから結果カードへ（SummonReveal → onDone で 'result'）。
-        setSummonPhase('revealing')
+        // 待ち画面（魔法陣＋"溜め"）からそのまま結果カードへ。
+        setSummonPhase('result')
         fire(emotionForGenerated()) // 右下コレットが大喜び
       } catch {
         // 失敗もコレットの言葉で受ける（生のエラー文を出さない＝キャラを崩さない）。
@@ -632,33 +625,6 @@ export default function CollectionView() {
             {/* これの話をする（Ⅰ-4c）。**常に枠線＝控えめ**にする＝召喚は1日1回の希少な行為なので、
                 満タンのときに同じ強さのボタンが2つ並んで主役を食い合わないようにする。
                 見た目を状態で変えないので「さっきと違うボタン」に見えることもない。 */}
-            {!confirmDelete && debugTools() && (
-              <button
-                type="button"
-                onClick={() => {
-                  const url = urls.get(selectedLive.id)
-                  closeDetail()
-                  if (url) setDebugRevealUrl(url)
-                }}
-                className="mt-2 w-full rounded-full border border-dashed border-slate-300 py-2 text-xs font-bold text-slate-400 transition active:scale-95"
-              >
-                出現の演出を見る（検証用）
-              </button>
-            )}
-
-            {!confirmDelete && debugTools() && (
-              <button
-                type="button"
-                onClick={() => {
-                  closeDetail()
-                  setDebugGenerating(true)
-                }}
-                className="mt-2 w-full rounded-full border border-dashed border-slate-300 py-2 text-xs font-bold text-slate-400 transition active:scale-95"
-              >
-                生成中の演出を見る（検証用）
-              </button>
-            )}
-
             {!confirmDelete && (
               <button
                 type="button"
@@ -716,31 +682,6 @@ export default function CollectionView() {
         <div className="fixed inset-0 z-20">
           <GeneratingOverlay characterId={characterId} context="summoning" />
         </div>
-      )}
-
-      {/* 検証用：生成中だけを再生（`?debug=1`・API を叩かない。タップで抜ける） */}
-      {debugGenerating && (
-        <div className="fixed inset-0 z-20" onPointerDown={() => setDebugGenerating(false)}>
-          <GeneratingOverlay characterId={characterId} context="summoning" />
-        </div>
-      )}
-
-      {/* 検証用：演出だけを再生（`?debug=1`・API を叩かない） */}
-      {debugRevealUrl && (
-        <SummonReveal
-          imageUrl={debugRevealUrl}
-          name="演出プレビュー"
-          onDone={() => setDebugRevealUrl(null)}
-        />
-      )}
-
-      {/* 召喚：出現の演出（Ⅰ-5）。タップでスキップでき、終わると結果カードへ。 */}
-      {summonPhase === 'revealing' && summonResult && (
-        <SummonReveal
-          imageUrl={summonResult.imageUrl}
-          name={summonResult.name}
-          onDone={() => setSummonPhase('result')}
-        />
       )}
 
       {/* 召喚：結果プレビュー（透過アイテム・パステル地で透過を確認） */}
