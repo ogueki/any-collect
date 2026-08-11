@@ -91,7 +91,7 @@ interface PersistedChat {
 }
 
 /** 永続から読み戻すときに受け付ける origin（ChatMessage.origin と対応）。 */
-const ORIGINS: readonly string[] = ['camera', 'album', 'zukan']
+const ORIGINS: readonly string[] = ['camera', 'album', 'zukan', 'summon']
 
 function isFairyExpression(v: unknown): v is FairyExpression {
   return typeof v === 'string' && (FAIRY_EXPRESSIONS as readonly string[]).includes(v)
@@ -109,7 +109,8 @@ function isChatMessage(v: unknown): v is ChatMessage {
     (r.voiceDirection === undefined || typeof r.voiceDirection === 'string') &&
     (r.origin === undefined || ORIGINS.includes(r.origin as string)) &&
     (r.photoId === undefined || typeof r.photoId === 'string') &&
-    (r.entryId === undefined || typeof r.entryId === 'string')
+    (r.entryId === undefined || typeof r.entryId === 'string') &&
+    (r.itemId === undefined || typeof r.itemId === 'string')
   )
 }
 
@@ -244,6 +245,13 @@ interface ChatState {
    */
   appendCameraLine: (content: string, emotion?: FairyExpression) => void
   /**
+   * 召喚したアイテムへのコレットのひとことを履歴に積む（Ⅰ-5b）。`appendCameraLine` と同じ流儀＝
+   * **API は叩かない**（セリフは `/api/generate-item` が名前・説明と一緒に返している）。
+   * `itemId` を添えるので、ホームではこのセリフが出ている間だけ立ち絵の横にアイテムが浮かぶ。
+   * 記憶には要約されない（`ChatMessage.origin` を参照）。
+   */
+  appendSummonLine: (content: string, itemId: string, emotion?: FairyExpression) => void
+  /**
    * アルバムの写真を話題として持ち出す（Ⅰ-4b）。**ユーザー起点**なので毎回は起きない＝
    * 写真を接地ノート（毎回載る）に入れて機械的に蒸し返す設計を避けるための形。
    * 写真の情報は `topicNote` として**この1リクエストにだけ**載せ、以降は返事が履歴に残って続く。
@@ -265,7 +273,10 @@ interface ChatState {
 }
 
 /** 付帯情報は増えるので位置引数でなくオブジェクトで受ける（呼び出し側の読みやすさ優先）。 */
-type MessageExtras = Pick<ChatMessage, 'emotion' | 'voiceDirection' | 'origin' | 'photoId' | 'entryId'>
+type MessageExtras = Pick<
+  ChatMessage,
+  'emotion' | 'voiceDirection' | 'origin' | 'photoId' | 'entryId' | 'itemId'
+>
 
 function createMessage(
   role: ChatMessage['role'],
@@ -367,6 +378,10 @@ export const useChatStore = create<ChatState>((set, get) => {
         createMessage('fairy', reply.text, {
           emotion: reply.emotion,
           voiceDirection: reply.voiceDirection,
+          // 返事にも同じ origin を継がせる＝これが無いと、きっかけのユーザー発言だけが
+          // 記憶の filter（runConsolidate）で外れ、**コレットの返事だけが記憶に流れる**。
+          // 写真を見た返事は推測を含みうるので、それだけを記憶に残すと事実でない思い出になる。
+          origin: args.extras.origin,
         }),
       )
       useGaugeStore.getState().add(GAUGE_PER_CHAT)
@@ -465,6 +480,26 @@ export const useChatStore = create<ChatState>((set, get) => {
       if (get().messages.length - get().consolidatedCount >= CONSOLIDATE_EVERY) {
         void runConsolidate()
       }
+    },
+
+    appendSummonLine: (content, itemId, emotion) => {
+      const text = content.trim()
+      if (!text) return
+      const next = [
+        ...get().messages,
+        createMessage('fairy', text, { emotion, origin: 'summon', itemId }),
+      ]
+      const trimmed = trimMessages(next, get().consolidatedCount)
+      persist(trimmed.messages, trimmed.consolidatedCount)
+      set(trimmed)
+      // `appendCameraLine` と同じ理由＝要約対象からは外れるが、溜まった未要約分は流しておく。
+      if (get().messages.length - get().consolidatedCount >= CONSOLIDATE_EVERY) {
+        void runConsolidate()
+      }
+      // 返事と同じ扱いで nonce を進める＝これが立ち絵のリアクション（`HomeMode` の `fire`）の
+      // トリガー。召喚は図鑑から来るので通常はホームの再マウントでも発火するが、
+      // 「もうホームに居る」経路でも反応が出るように `send` と揃えておく。
+      set((s) => ({ replyNonce: s.replyNonce + 1 }))
     },
 
     openConversation: async (personaId) => {

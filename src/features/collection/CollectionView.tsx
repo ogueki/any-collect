@@ -13,6 +13,7 @@ import { COLLECTION_REVEAL_LINE, SUMMON_COACH_LINE, SUMMON_COACH_NOTE } from '..
 import GeneratingOverlay from '../../components/GeneratingOverlay'
 import SummonReveal from './SummonReveal'
 import { failureLine } from '../../lib/character/failureLines'
+import { summonLine } from '../../lib/character/summonLines'
 import { useShellFairy } from '../../components/shellFairy'
 import { SparkleIcon } from '../../components/icons'
 import { CATEGORY_CODE, CATEGORY_EMOJI, CATEGORY_LABEL, CATEGORY_ORDER } from '../../lib/category'
@@ -203,6 +204,7 @@ export default function CollectionView() {
   const gaugeValue = useGaugeStore((s) => s.value)
   const spendGauge = useGaugeStore((s) => s.spend)
   const addAffinity = useAffinityStore((s) => s.add)
+  const appendSummonLine = useChatStore((s) => s.appendSummonLine)
   const { fire } = useShellFairy() // 召喚成功→右下コレットが反応
 
   // オンボ：図鑑を初めて開いたときのヒーローリビール（phase='reveal' かつ 1件以上）。
@@ -225,7 +227,11 @@ export default function CollectionView() {
    * 長さや派手さのチューニングが現実的にできない。図鑑のクロップ画像を仮のアイテムに使う。
    */
   const [debugRevealUrl, setDebugRevealUrl] = useState<string | null>(null)
+  /** 検証用：生成中の演出だけを再生する（`?debug=1`）。実所要（~7s）に近い長さで見る。 */
+  const [debugGenerating, setDebugGenerating] = useState(false)
   const [summonResult, setSummonResult] = useState<GeneratedItem | null>(null)
+  /** 保存後のアイテム id。ホームで「立ち絵の横に出すのはどれか」を指すのに使う。 */
+  const [summonItemId, setSummonItemId] = useState<string | null>(null)
   const [summonError, setSummonError] = useState<string | null>(null)
 
   const gaugeFull = gaugeValue >= GAUGE_MAX
@@ -398,10 +404,13 @@ export default function CollectionView() {
       try {
         const generated = await imageGenProvider.generateItem(entry.blob, { personaId: characterId })
         spendGauge()
-        await addFromGenerated(generated, entry.id)
+        const saved = await addFromGenerated(generated, entry.id)
         // 召喚は特別な体験＝絆も大きめに増やす。
         addAffinity(AFFINITY_PER_ITEM, 'item')
         setSummonResult(generated)
+        // 保存された id を握っておく＝カードを閉じたあと、ホームでコレットが喋るときに
+        // このアイテムを立ち絵の横に出すため（`ChatMessage.itemId`）。
+        setSummonItemId(saved.id)
         // 先に「出現の瞬間」を見せてから結果カードへ（SummonReveal → onDone で 'result'）。
         setSummonPhase('revealing')
         fire(emotionForGenerated()) // 右下コレットが大喜び
@@ -416,9 +425,20 @@ export default function CollectionView() {
     [summonPhase, gaugeFull, characterId, spendGauge, addFromGenerated, addAffinity, fire],
   )
 
+  /**
+   * カードを閉じる＝**ホームへ渡す**（Ⅰ-5b）。コレットのひとことを会話履歴に積んでから
+   * ホームへ飛ばすと、大セリフ・表情・立ち絵の反応がそのまま乗る（`appendSummonLine`）。
+   * セリフは生成時に一緒に返ってきているので **API は叩かない**。取れていなければ固定セリフ。
+   */
   const closeSummonResult = () => {
+    if (summonResult && summonItemId) {
+      const line = summonResult.comment?.trim() || summonLine(summonResult.name)
+      appendSummonLine(line, summonItemId, emotionForGenerated())
+    }
     setSummonResult(null)
+    setSummonItemId(null)
     setSummonPhase('idle')
+    go('home')
   }
 
   return (
@@ -622,7 +642,20 @@ export default function CollectionView() {
                 }}
                 className="mt-2 w-full rounded-full border border-dashed border-slate-300 py-2 text-xs font-bold text-slate-400 transition active:scale-95"
               >
-                演出を見る（検証用）
+                出現の演出を見る（検証用）
+              </button>
+            )}
+
+            {!confirmDelete && debugTools() && (
+              <button
+                type="button"
+                onClick={() => {
+                  closeDetail()
+                  setDebugGenerating(true)
+                }}
+                className="mt-2 w-full rounded-full border border-dashed border-slate-300 py-2 text-xs font-bold text-slate-400 transition active:scale-95"
+              >
+                生成中の演出を見る（検証用）
               </button>
             )}
 
@@ -685,6 +718,13 @@ export default function CollectionView() {
         </div>
       )}
 
+      {/* 検証用：生成中だけを再生（`?debug=1`・API を叩かない。タップで抜ける） */}
+      {debugGenerating && (
+        <div className="fixed inset-0 z-20" onPointerDown={() => setDebugGenerating(false)}>
+          <GeneratingOverlay characterId={characterId} context="summoning" />
+        </div>
+      )}
+
       {/* 検証用：演出だけを再生（`?debug=1`・API を叩かない） */}
       {debugRevealUrl && (
         <SummonReveal
@@ -733,23 +773,15 @@ export default function CollectionView() {
               たからばこに増えたよ
             </p>
 
-            <div className="mt-4 flex items-center justify-center gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  closeSummonResult()
-                  go('treasure')
-                }}
-                className="rounded-full bg-mint px-6 py-2.5 font-bold text-slate-900 shadow-pop transition active:scale-95"
-              >
-                たからばこで見る
-              </button>
+            {/* ボタンは1つ（Ⅰ-5b）。押すと**ホームへ戻ってコレットがこれにひとこと言う**ので、
+                ここで分岐を作らない。たからばこへはホームのドックから行ける。 */}
+            <div className="mt-4 flex items-center justify-center">
               <button
                 type="button"
                 onClick={closeSummonResult}
-                className="rounded-full border border-slate-300 px-5 py-2 text-sm font-bold text-slate-500 transition active:scale-95"
+                className="rounded-full bg-mint px-10 py-2.5 font-bold text-slate-900 shadow-pop transition active:scale-95"
               >
-                とじる
+                OK
               </button>
             </div>
           </div>

@@ -18,7 +18,7 @@ import {
 
 /**
  * 召喚 API プロキシ（図鑑エントリのクロップ → 透過アイテム）。
- * 受け取った画像から「統一絵柄のアイコン＋名前＋説明＋カテゴリ」を生成して返す。
+ * 受け取った画像から「統一絵柄のアイコン＋名前＋説明＋カテゴリ＋コレットのひとこと」を生成して返す。
  *
  * - 絵柄統一・命名は _lib/item-prompt.ts の共通プロンプトを唯一の基準にする。
  * - Gemini の API キーはサーバ側のみ（claude.md 原則1）。
@@ -103,6 +103,8 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
       name: meta.name,
       description: meta.description,
       category: meta.category,
+      // 召喚直後にホームでコレットが言うひとこと。メタ生成に相乗りしているので追加コストは無い。
+      comment: meta.comment,
     })
   } catch (err) {
     fail(res, 502, 'アイテムの生成に失敗しました', err)

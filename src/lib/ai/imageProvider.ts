@@ -11,8 +11,15 @@ export interface GeneratedItem {
   /** 生成アイコン画像（data URL もしくはリモート URL） */
   imageUrl: string
   name: string
+  /** アイテムの説明文（コミカル寄り・**コレットの口調ではない**）。たからばこの詳細に出る。 */
   description: string
   category?: ItemCategory
+  /**
+   * 生まれたアイテムを見たコレットのひとこと（召喚後にホームで喋る分）。
+   * **無いことがある**＝合成（窯）は生成せず、召喚でもモデルが落としうる。
+   * 表示側は必ず固定セリフのフォールバックを持つこと。
+   */
+  comment?: string
 }
 
 export interface ItemRef {

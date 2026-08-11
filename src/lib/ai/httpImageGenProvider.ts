@@ -13,6 +13,8 @@ interface GenerateItemApiResponse {
   name?: string
   description?: string
   category?: string
+  /** 召喚のみ。合成（/api/synthesize）は返さない。 */
+  comment?: string
   error?: string
 }
 
@@ -55,6 +57,8 @@ export const httpImageGenProvider: ImageGenProvider = {
       description: data.description,
       // wire 越しは生 string なので既知キーに正規化（旧/想定外の値は other に倒す）。
       category: toCategory(data.category),
+      // コレットのひとこと。空文字は undefined に倒す＝表示側が固定セリフへフォールバックできる形にする。
+      comment: typeof data.comment === 'string' && data.comment.trim() ? data.comment.trim() : undefined,
     }
   },
 

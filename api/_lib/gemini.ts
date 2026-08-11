@@ -313,6 +313,11 @@ export interface ItemMeta {
   description: string
   /** 安定キー。enum を強制＋未知は other にフォールバックするので常に有効値が入る。 */
   category: ItemCategoryKey
+  /**
+   * 召喚直後にホームでコレットが言うひとこと。**空になりうる**＝合成（窯）は生成しないし、
+   * 召喚でもモデルが落とすことがある。呼び出し側は無いときの受けを持つこと。
+   */
+  comment?: string
 }
 
 interface GenerateMetaArgs {
@@ -355,8 +360,12 @@ export async function generateItemMeta({
             name: { type: 'STRING' },
             description: { type: 'STRING' },
             category: { type: 'STRING', enum: [...CATEGORY_VALUES] },
+            comment: {
+              type: 'STRING',
+              description: 'それが目の前に現れたときの妖精のひとこと（ペルソナの口調・1〜2文）',
+            },
           },
-          required: ['name', 'description', 'category'],
+          required: ['name', 'description', 'category', 'comment'],
         },
       },
     }),
@@ -399,7 +408,11 @@ export async function generateItemMeta({
       ? (parsed.category as ItemCategoryKey)
       : 'other'
 
-  return { name, description, category }
+  // コレットのひとことは**欠けても生成を失敗させない**（名前と絵は取れているのに召喚ごと
+  // 失敗させる方が損）。無いときの受けはクライアント側の固定セリフに任せる。
+  const comment = typeof parsed.comment === 'string' ? parsed.comment.trim() : ''
+
+  return { name, description, category, comment: comment || undefined }
 }
 
 interface GenerateSynthesisMetaArgs {

@@ -1,10 +1,11 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useAppStore } from '../../store/appStore'
 import { useOnboardingStore } from '../../store/onboardingStore'
 import { useChatStore } from '../../store/chatStore'
 import { useGaugeStore, GAUGE_MAX } from '../../store/gaugeStore'
 import { useAffinityStore, levelForScore, levelProgress } from '../../store/affinityStore'
 import { useMemoryStore } from '../../store/memoryStore'
+import { useCodexStore } from '../../store/codexStore'
 import Sprite2DRenderer from '../../lib/character/Sprite2DRenderer'
 import type { FairyExpression } from '../../lib/character/CharacterRenderer'
 import { useFairyReaction } from '../../lib/character/useFairyReaction'
@@ -61,6 +62,14 @@ const HERO_TEXT_HALO = [
  * ※ iOS Safari 対策で `-webkit-` を併記。効かない環境でも「今までどおり直線で切れる」だけ。
  */
 const HERO_FADE = 'linear-gradient(to bottom, #000 calc(100% - 0.75rem), transparent 100%)'
+
+/**
+ * 召喚直後に立ち絵の横へ浮かぶアイテムの後光（Ⅰ-5b）。
+ * `filter: drop-shadow` を使わないのは、常時アニメで合成レイヤーに載ると iOS Safari が
+ * 影をアルファ形状でなく**要素の矩形**に描くため（`Sprite2DRenderer` に同じ注記）。
+ */
+const HERO_ITEM_GLOW =
+  'radial-gradient(ellipse 55% 50% at 50% 50%, rgba(253,230,138,0.45) 0%, rgba(253,230,138,0.12) 55%, rgba(253,230,138,0) 78%)'
 
 const HERO_CLOUD = [
   'radial-gradient(ellipse 50% 50% at 50% 50%',
@@ -128,6 +137,8 @@ export default function HomeMode() {
   const bumpAffinity = useAffinityStore((s) => s.bumpLevel)
   const resetAffinity = useAffinityStore((s) => s.reset)
   const facts = useMemoryStore((s) => s.facts)
+  const items = useCodexStore((s) => s.items)
+  const loadItems = useCodexStore((s) => s.load)
   const onboardingPhase = useOnboardingStore((s) => s.phase)
   const { expression: reactionExpression, animateKey, fire } = useFairyReaction()
 
@@ -145,6 +156,23 @@ export default function HomeMode() {
   })()
   const heroFairy = lastFairyIdx >= 0 ? messages[lastFairyIdx] : null
   const lastFairyEmotion = heroFairy?.emotion
+
+  /**
+   * 召喚したものへのひとことが大セリフのときだけ、そのアイテムを立ち絵の横に浮かべる（Ⅰ-5b）。
+   * **セリフに紐づくので、次の発言に変わった時点で自然に消える**＝消すための状態を持たない。
+   */
+  const heroItemId = heroFairy?.itemId
+  const heroItem = heroItemId ? items.find((i) => i.id === heroItemId) : undefined
+  // 召喚直後は `addFromGenerated` が store に積んでいるので普通は見つかる。見つからないのは
+  // 「召喚したあとリロードしてホームに来た」経路だけ＝そのときだけ永続層から読み直す。
+  // ⚠️ 再試行は**マウントにつき1回だけ**（ref ガード）。アイテムが削除されていると
+  // 読み直しても見つからないので、条件だけで弾くと status が idle に戻るたびに再発火して回り続ける。
+  const codexReloaded = useRef(false)
+  useEffect(() => {
+    if (!heroItemId || heroItem || codexReloaded.current) return
+    codexReloaded.current = true
+    void loadItems()
+  }, [heroItemId, heroItem, loadItems])
   const prevUser = (() => {
     const upto = sending ? messages.length : lastFairyIdx >= 0 ? lastFairyIdx : messages.length
     for (let i = upto - 1; i >= 0; i--) if (messages[i].role === 'user') return messages[i]
@@ -337,13 +365,41 @@ export default function HomeMode() {
             </div>
           </div>
 
-          <Sprite2DRenderer
-            characterId={characterId}
-            expression={expression}
-            size="lg"
-            animateKey={animateKey}
-            level={affinityLevel}
-          />
+          {/* 立ち絵＋（召喚直後だけ）横に浮かぶアイテム。アイテムが無いときは
+              `justify-center` でこれまでどおり中央に立つ。 */}
+          <div className="flex items-center justify-center gap-1">
+            <Sprite2DRenderer
+              characterId={characterId}
+              expression={expression}
+              size="lg"
+              animateKey={animateKey}
+              level={affinityLevel}
+            />
+
+            {heroItem && (
+              /* ⚠️ 浮きの `-translate-y-*` と漂いの `animate-drift` は**別の要素に分ける**。
+                 同じ要素に載せると drift のキーフレームが transform を丸ごと置き換えて浮きが消える。
+                 後光に `filter: drop-shadow` を使わないのは、合成レイヤー上で影が矩形化するため
+                 （`Sprite2DRenderer`・`TreasureOpening` と同じ理由）。 */
+              <div className="-translate-y-6">
+                <div className="animate-reveal">
+                  <div className="animate-drift relative">
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-0"
+                      style={{ background: HERO_ITEM_GLOW }}
+                    />
+                    <img
+                      src={heroItem.iconUrl}
+                      alt={heroItem.name}
+                      draggable={false}
+                      className="relative h-20 w-20 select-none object-contain"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* 入口：図鑑・たからばこ・メニュー（カメラは上の切替に昇格） */}
