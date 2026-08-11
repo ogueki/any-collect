@@ -31,13 +31,6 @@ interface CollectionState {
   updatePhoto: (id: string, blob: Blob) => Promise<void>
   /** 図鑑エントリを削除する */
   remove: (id: string) => Promise<void>
-  /**
-   * 検証用：書き込み直後に永続層から**読み戻して**中身を確かめる（`?debug=1` からのみ）。
-   * 狙い＝「再発見のとき、IndexedDB から読んだ Blob を書き戻すと壊れるのでは」という仮説の判定。
-   * 例外が出なくても Blob が 0 バイトになっていれば、書けたつもりで壊れていると分かる。
-   * 実機（iPhone Safari）では console が見られないので、文字列にして画面へ返す。
-   */
-  debugReadBack: (id: string) => Promise<string>
 }
 
 /** 図鑑の並び：カテゴリ順 → 初発見が古い順（タイルが動かない安定順）。 */
@@ -121,24 +114,5 @@ export const useCollectionStore = create<CollectionState>((set, get) => ({
   remove: async (id) => {
     await collectionRepository.remove(id)
     set((s) => ({ entries: s.entries.filter((e) => e.id !== id) }))
-  },
-
-  debugReadBack: async (id) => {
-    try {
-      const back = await collectionRepository.get(id)
-      if (!back) return 'レコードが無い'
-      const size = back.blob?.size ?? -1
-      // 実際に読めるかまで見る（size が非0でも参照が切れていればここで落ちる）。
-      let readable = '?'
-      try {
-        readable = String((await back.blob.arrayBuffer()).byteLength)
-      } catch (e) {
-        readable = 'READ FAIL ' + String((e as { name?: string })?.name ?? e)
-      }
-      return `count=${back.count} blob=${size}B 実読=${readable}`
-    } catch (e) {
-      const err = e as { name?: string; message?: string }
-      return `読み戻し失敗 ${err?.name ?? ''} ${err?.message ?? String(e)}`
-    }
   },
 }))

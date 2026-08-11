@@ -13,7 +13,6 @@ import { speak, primeAudio } from '../../lib/audio/useSpeak'
 import { useOnboardingStore } from '../../store/onboardingStore'
 import { useChatStore } from '../../store/chatStore'
 import { CAMERA_HINT_TEXT, FIRST_SCAN_LINE } from '../onboarding/script'
-import { debugTools } from '../../lib/debug'
 import { SoundOnIcon, SoundOffIcon, SparkleIcon } from '../../components/icons'
 
 /**
@@ -68,7 +67,6 @@ export default function CameraMode() {
   const addPhoto = useAlbumStore((s) => s.add)
   const collect = useCollectionStore((s) => s.collect)
   const updatePhoto = useCollectionStore((s) => s.updatePhoto)
-  const debugReadBack = useCollectionStore((s) => s.debugReadBack)
   const addGauge = useGaugeStore((s) => s.add)
   const addAffinity = useAffinityStore((s) => s.add)
   // 立ち絵の tier 絵は3段までなので、無限に伸びるレベルでなく tier を渡す。
@@ -98,13 +96,6 @@ export default function CameraMode() {
   >(null)
   // 軽い通知トースト（「写真を更新したよ」等）。
   const [foundToast, setFoundToast] = useState<string | null>(null)
-  /**
-   * 検証用：図鑑への収集が失敗したときの例外（`?debug=1` のときだけ画面に出す）。
-   * ⚠️ これが無かったせいで「エラーも出ず図鑑に登録もされない」の原因が追えなかった
-   * （再発見の `put` が落ちているのか、クロップが落ちているのかが外から区別できない）。
-   * ユーザーに見せる文言ではないので debug 限定＝失敗はコレットの言葉で受ける原則は崩さない。
-   */
-  const [collectError, setCollectError] = useState<string | null>(null)
   // 撮影で貯まった「＋まほうパワー / なつき」のふわっとポップアップ（nonce で毎回リスタート）。
   const [gainKey, setGainKey] = useState(0)
   const [showGain, setShowGain] = useState(false)
@@ -156,7 +147,6 @@ export default function CameraMode() {
     setComment(null)
     setFoundToast(null)
     setPendingUpdate(null) // 前回の「更新する？」は次の撮影で閉じる
-    setCollectError(null) // 検証用の表示も撮り直しで消す
     fireReaction('thinking') // 「見てるね…」の即時フィードバック
     primeAudio() // 撮影タップ（ユーザー操作）内で iOS 自動再生をアンロック
     // オンボの最初の一枚か？ ここでは finish せず、成功後に「図鑑へ橋渡し」（beginReveal）へ移す。
@@ -195,11 +185,6 @@ export default function CameraMode() {
             const crop = await cropToBlob(photo, result.subject.bbox)
             const { entry, isNew } = await collect(result.subject, crop)
             collected = true // 図鑑に入った＝オンボは reveal へ進んでよい
-            // 検証用：例外が出なくても「書けたつもりで壊れている」ことがあるので読み戻す。
-            if (debugTools()) {
-              const back = await debugReadBack(entry.id)
-              setCollectError(`${isNew ? '新種' : '再発見'} / ${back}`)
-            }
             if (isOnboardingShoot) {
               // オンボ初回は「何を撮ったか」を手渡しカードで見せる（コレットの「書いておくね」の対象）。
               setFirstScan({ name: entry.name, url: URL.createObjectURL(crop) })
@@ -218,12 +203,11 @@ export default function CameraMode() {
             }
           } catch (err) {
             // クロップ/収集の失敗は演出だけ諦める（アルバム保存は続ける）。
-            // ただし**握りつぶさない**＝ここが黙って落ちると「エラーも出ず図鑑に入らない」に
-            // なり、外から原因が分からない（実際にそれで1件バグを見失った）。
-            // 例外の name（DataCloneError 等）が効くので必ず残す。
+            // ⚠️ ただし**例外は握りつぶさない**。ここが黙って落ちると「エラーも出ず図鑑にも
+            // 入らない」になり、外から原因が分からない（実際にそれで1件見失った＝DECISIONS
+            // 2026-08-12「読んだ Blob は書き戻せない」）。画面には出さない（失敗はコレットの
+            // 言葉で受ける原則）が、例外の name は必ずログに残す。
             console.error('[collection] 収集に失敗:', err)
-            const e = err as { name?: string; message?: string }
-            setCollectError(`${e?.name ?? 'Error'}: ${e?.message ?? String(err)}`)
           }
         }
       } catch {
@@ -262,7 +246,7 @@ export default function CameraMode() {
     } finally {
       setBusy(false)
     }
-  }, [busy, characterId, fireReaction, addPhoto, collect, addGauge, addAffinity, debugReadBack])
+  }, [busy, characterId, fireReaction, addPhoto, collect, addGauge, addAffinity])
 
   // 再発見時の「写真を更新する？」への応答。
   const confirmUpdate = useCallback(async () => {
@@ -527,13 +511,6 @@ export default function CameraMode() {
           )}
           {error && (
             <p className="rounded-full bg-slate-900/80 px-3 py-1 text-xs text-peach">{error}</p>
-          )}
-          {/* 検証用（`?debug=1`）：図鑑への収集が実際どうなったか。実機では console が
-              見られないので画面に出す。ユーザー向けの文言ではないので debug 限定。 */}
-          {collectError && debugTools() && (
-            <p className="max-w-[20rem] break-all rounded-xl bg-slate-900/85 px-3 py-1.5 text-center text-[10px] leading-relaxed text-lemon">
-              {collectError}
-            </p>
           )}
           <div className="relative">
             {/* ガイド中はシャッターの周りを光らせて視線を誘導する。 */}
