@@ -149,7 +149,9 @@ export default function GeneratingOverlay({
           />
         </svg>
 
-        <Sprite2DRenderer characterId={characterId} expression="searching" size="lg" />
+        {/* 魔法をかけている姿。召喚も合成（窯）も「魔法をかけている」ので同じポーズを使う
+            （分けたくなったら context で出し分ける）。絵が未配置なら neutral に落ちる。 */}
+        <Sprite2DRenderer characterId={characterId} expression="casting" size="lg" />
       </div>
 
       {/* 状況ステータス */}

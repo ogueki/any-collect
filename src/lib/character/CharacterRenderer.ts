@@ -18,6 +18,10 @@ export const FAIRY_EXPRESSIONS = [
   'angry',
   'salute',
   'searching',
+  // casting＝魔法をかけている姿（生成待ち）。**表示専用のポーズ**で、`salute`（オンボの敬礼）と
+  // 同じ扱い＝AI が選ぶ感情リスト（api/_lib/gemini.ts の CHAT_EMOTIONS）には入れない。
+  // 会話の返事としてこの表情が出ることはなく、`GeneratingOverlay` が明示的に指定する。
+  'casting',
   'proud',
   'worried',
   // sleepy は2経路で出る＝①会話の返事として AI が選ぶ（時間帯を知っているので選べる）
