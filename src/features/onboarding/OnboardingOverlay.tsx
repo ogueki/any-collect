@@ -3,8 +3,9 @@ import { useAppStore } from '../../store/appStore'
 import { useOnboardingStore } from '../../store/onboardingStore'
 import Sprite2DRenderer from '../../lib/character/Sprite2DRenderer'
 import { homeBackgroundUrl } from '../../lib/character/homeBackground'
-import { speak, primeAudio, stopSpeaking } from '../../lib/audio/useSpeak'
-import { ONBOARDING_STEPS } from './script'
+import { speakLine, primeAudio, stopSpeaking } from '../../lib/audio/useSpeak'
+import { preloadPartVoice } from '../../lib/audio/partVoice'
+import { ONBOARDING_STEPS, SPOKEN_FIXED_LINES } from './script'
 
 /**
  * 初回オンボーディング（STEP4）＝**コレット主導の「最初の一回」**。
@@ -36,18 +37,23 @@ export default function OnboardingOverlay() {
   const isLast = step >= total - 1
   const backgroundUrl = homeBackgroundUrl(characterId, new Date().getHours())
 
-  // 開始後、ステップが変わるたびに現在のセリフを動的TTSで読む（演技指示つき）。
+  // 開始後、ステップが変わるたびに現在のセリフを読む（事前収録があれば即座に鳴る＝STEP3b）。
   // 1枚目は「はい／いいえ」を押した直後＝`primeAudio()` の直後なので自動再生は通る。
   useEffect(() => {
     if (!started) return
-    void speak(current.text, { expression: current.expression, direction: current.direction })
+    void speakLine(current)
   }, [started, step, current])
 
   // 最初に音声の ON/OFF をやさしく選んでもらう。「はい」のタップの中で自動再生をアンロックする
   // （音を鳴らせない場所で開く人が、コレットが喋り出す前に静かに始められるように）。
   const begin = (withVoice: boolean) => {
     setVoice(withVoice) // 選択を永続（あとで 🔊 トグルで変更できる）
-    if (withVoice) primeAudio() // ユーザー操作の中で永続 <audio> をアンロック
+    if (withVoice) {
+      primeAudio() // ユーザー操作の中で永続 <audio> をアンロック
+      // オンボ中に喋る固定セリフの音声をここで一括で温めておく（数十KB×7）。
+      // 初対面から「つぎへ」を連打しても、どの1枚も待たずに声が出る状態にする。
+      preloadPartVoice(characterId, SPOKEN_FIXED_LINES)
+    }
     setPhase('steps') // 前置きなしでコレットの「はじめまして！」へ
   }
   const handleNext = () => {

@@ -3,7 +3,7 @@ import { useCodexStore } from '../../store/codexStore'
 import { useAppStore } from '../../store/appStore'
 import { useOnboardingStore } from '../../store/onboardingStore'
 import { useShellFairy } from '../../components/shellFairy'
-import { speak } from '../../lib/audio/useSpeak'
+import { speakLine } from '../../lib/audio/useSpeak'
 import { TREASURE_REVEAL_LINE } from '../onboarding/script'
 import type { Item } from '../../types'
 import TreasureOpening from './TreasureOpening'
@@ -132,10 +132,7 @@ export default function TreasureBoxView() {
     if (!showTreasureIntro || treasureSpoke.current) return
     treasureSpoke.current = true
     fire(TREASURE_REVEAL_LINE.expression)
-    void speak(TREASURE_REVEAL_LINE.text, {
-      expression: TREASURE_REVEAL_LINE.expression,
-      direction: TREASURE_REVEAL_LINE.direction,
-    })
+    void speakLine(TREASURE_REVEAL_LINE)
   }, [showTreasureIntro, fire])
 
   // 未配置アイテムを自動配置（＝コレットがしまう）。配置すると items が変わり再実行するが、

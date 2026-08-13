@@ -1,0 +1,44 @@
+{
+  "collection-reveal": {
+    "text": "この図鑑をきみの世界の物でいっぱいにするのが、わたしの夢なんだ！協力してくれる？",
+    "expression": "happy",
+    "direction": "夢を語るようにきらきらと、最後は少し甘えて誘うように",
+    "recordedAt": "2026-08-13T17:05:23.488Z"
+  },
+  "first-scan": {
+    "text": "わぁ、すごいすごい！ いまのアイテム、図鑑に書いておくね！",
+    "expression": "excited",
+    "direction": "はしゃいで、うれしそうに書き留めるように",
+    "recordedAt": "2026-08-13T17:05:21.184Z"
+  },
+  "intro-1": {
+    "text": "はじめまして！わたしはコレット。会えてうれしい〜！",
+    "expression": "excited",
+    "direction": "はしゃいで手を振りながら、元気いっぱいに",
+    "recordedAt": "2026-08-13T17:05:16.565Z"
+  },
+  "intro-2": {
+    "text": "わたしね、きみの世界に、とっても興味があるんだ！",
+    "expression": "happy",
+    "direction": "わくわくを抑えきれない様子で、明るく。語尾は上げて弾ませる",
+    "recordedAt": "2026-08-13T17:39:00.000Z"
+  },
+  "intro-3": {
+    "text": "その「スマートフォン」で、きみが見ているものをわたしにも見せてほしいの！",
+    "expression": "excited",
+    "direction": "好奇心いっぱいに、身を乗り出すように",
+    "recordedAt": "2026-08-13T17:05:19.460Z"
+  },
+  "summon-coach": {
+    "text": "まほうパワーが満タンだよ！ ずかんの中のものをこっちの世界に呼び出せるかも！やってみていい？",
+    "expression": "excited",
+    "direction": "とっておきの魔法を披露するように、わくわくと。最後はうかがうように",
+    "recordedAt": "2026-08-13T17:05:26.101Z"
+  },
+  "treasure-reveal": {
+    "text": "ここはわたしのたからばこ！ きみと召喚した宝物が、ぷかぷか漂ってるでしょ〜？",
+    "expression": "excited",
+    "direction": "宝物を自慢するように、うれしそうにはずんで",
+    "recordedAt": "2026-08-13T17:05:28.049Z"
+  }
+}

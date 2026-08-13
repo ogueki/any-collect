@@ -1,12 +1,14 @@
 import { ttsProvider } from '../ai/tts'
 import type { TtsSpeechOptions } from '../ai/ttsProvider'
 import { useAppStore } from '../../store/appStore'
+import { findPartVoice, type SpokenLine } from './partVoice'
 
 /**
  * 妖精の声を鳴らす共有ユーティリティ（STEP3・動的TTS）。
  * ttsProvider（/api/tts→Fish）で音声を得て、ひとつの永続 <audio> で再生する。
  * ON/OFF は `appStore.voiceEnabled` でゲート。カメラ反応の自動読み上げと
  * 会話の 🔊 タップ再生で共用する（各画面は `speak(text)` を呼ぶだけ）。
+ * **固定セリフ（台本）は `speakLine(line)`** ＝事前収録があればそれを鳴らす（STEP3b／partVoice.ts）。
  *
  * 設計の要点：
  * - **単一の永続 Audio 要素を使い回す**。`primeAudio()` がユーザー操作の中でこの要素を一度
@@ -199,6 +201,33 @@ export async function speak(text: string, opts?: TtsSpeechOptions): Promise<void
   } catch {
     if (myReq === requestSeq) revokeUrl()
   }
+}
+
+/**
+ * **固定セリフを鳴らす（パートボイス優先・STEP3b）。**
+ * 事前収録（`src/characters/<id>/voice/`）があればそれを即座に鳴らし、無ければ動的TTS に落ちる。
+ * 台本を編集して録り直していない場合も自動でフォールバックする（判定＝`findPartVoice`）。
+ *
+ * 呼び出し側は「このセリフを喋らせる」とだけ書けばよく、収録済みかどうかを知らなくてよい。
+ */
+export async function speakLine(line: SpokenLine): Promise<void> {
+  if (!useAppStore.getState().voiceEnabled) return
+
+  const url = findPartVoice(useAppStore.getState().characterId, line)
+  if (!url) {
+    // 未収録／台本とズレている＝その場で生成する（声は遅れるが必ず今の文面を喋る）。
+    await speak(line.text, { expression: line.expression, direction: line.direction })
+    return
+  }
+
+  // 生成中の動的TTS が後から割り込んで上書きしないよう、世代を進めてから差し替える。
+  requestSeq += 1
+  stopSpeaking()
+  const p = getPlayer()
+  p.muted = false
+  // 静的アセットの URL＝object URL ではないので revoke 対象にしない（currentObjectUrl は null のまま）。
+  p.src = url
+  await p.play().catch(() => {})
 }
 
 /**

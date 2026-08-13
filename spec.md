@@ -107,8 +107,16 @@
 
 ### 4.5 声（TTS）
 - **声はキャラの根幹。無料ユーザーが声ゼロは絶対NG＝全員に声を届ける。**
-- **カメラモード（外・冒険）＝常時 動的TTS**（都度生成・低頻度＝限定コスト）／**ホームモード（家・じっくり）＝テキスト＋事前収録パートボイス**（固定セリフを事前生成→静的キャッシュ＝実行時ゼロ円。**未実装＝STEP3b**）。→ `persona.md` を**決め台詞・口癖多め**に書いて声化率を上げる。
+- **AI が書いた文＝動的TTS（都度生成）／台本の固定セリフ＝パートボイス（事前収録・実行時ゼロ円）**。→ `persona.md` を**決め台詞・口癖多め**に書いて声化率を上げる。
 - **経路**：`api/tts.ts`（Fish `POST /v1/tts` プロキシ・鍵はサーバのみ）／`api/_lib/voice.ts` `loadVoice`（**声の差し替えは `src/characters/<id>/voice.json` 1つ**）／`TtsProvider` 実装 `httpTtsProvider`／`src/lib/audio/useSpeak.ts`（`speak(text,{expression,direction})`・`appStore.voiceEnabled` でゲート・直前再生を停止）。
+
+#### パートボイス（固定セリフの事前収録）
+- **対象＝`script.ts` の `SPOKEN_FIXED_LINES`**（読み上げる固定セリフ7本＝イントロ3・初スキャン・図鑑リビール・召喚コーチ・たからばこ）。読み上げない画面案内（`CHAT_COACH_LINE`／`SUMMON_COACH_NOTE`／`CAMERA_HINT_TEXT`）は対象外。
+- **収録＝`npm run voice:record`**（`scripts/record-voice.mjs`）。台本の TS を esbuild で評価して名簿を取り、Fish で合成して **`src/characters/<id>/voice/<lineId>.mp3` ＋ `manifest.json`** を書く（どちらもコミットする）。**キャラ差し替え単位**＝新キャラは自分の `voice/` を持てばそのまま鳴る。
+- **読み方は実行時と同一ルール**（演技指示を角括弧で前置／無ければ `expressionTag`）。ただし収録は `latency:'low'` を付けない＝品質優先。
+- **再生＝`speakLine(line)`**。収録があれば静的アセットを即再生、無ければ `speak()`（動的TTS）へフォールバック。
+- **肝＝manifest に収録時の文面・感情・演技指示を控え、再生前に今の台本と突き合わせる。** 一致しなければ動的TTS に落ちる＝**台本を直して録り直し忘れても、画面の文字と違うことを喋る事故が起きない**（非コーダーが台本を直接編集する前提）。同じ判定を収録スクリプト側でも使うので、変更が無い回は Fish を叩かない（冪等）。
+- 音声はオンボの「はい」（＝`primeAudio()` と同じ操作）で7本まとめて `fetch` して温める。
 - **再生の作り**＝**使い回す単一の永続 `<audio>`** をユーザー操作で一度アンロック（`primeAudio()`）→以後 `src` 差し替えで再生（毎回 `new Audio` だと操作から時間が経った再生が iOS/Chrome にブロックされる）。**ストリーミング**＝`api/tts.ts` は chunked passthrough＋Fish body に `latency:'low'`、クライアントは MediaSource／ManagedMediaSource へ逐次流し込み**最初のチャンクで再生開始**（非対応環境は Blob 全バッファへ自動フォールバック）。
 - **感情表現**：返事ごとの `emotion` を `/api/tts` へ流し、`voice.json` の `expressionTag` で **Fish の感情タグを本文の先頭に前置**（タグはトークン非計上・レイテンシ増なし）。**タグは TTS 経路でのみ付与**＝会話ログ・大セリフの表示には混ぜない。感情名は小文字英字のみの allowlist で検証し、未知・`neutral` は**タグなし＝素の声**。
   - **返事ごとの演技指示**＝`api/chat.ts` の `responseSchema` の **`voiceDirection`**（日本語の自由文・任意）を `ChatMessage` 経由で `/api/tts` に渡す（**API呼び出しは増えない**）。書き方の指針は `persona.md`「声の演技指示」節＝**キャラごとに演技も差し替わる**。
@@ -143,8 +151,8 @@
 - 経済数値・カタログ演出・登場タイミングは §16。
 
 ### 4.9 オンボーディング（初回体験）
-- **コレット主導の初回オーバーレイ**＝`features/onboarding/`（`OnboardingOverlay`＋台本 `script.ts`＋`onboardingStore`）。声は動的TTS、立ち絵/背景は既存流用＝**新規アートなし**。第一声（§4.2）は完了までゲート。`?debug=1` のメニューに「オンボもう一度」。
-- **台本は全て `features/onboarding/script.ts`**（`ONBOARDING_STEPS`／`CAMERA_HINT_TEXT`／`FIRST_SCAN_LINE`／`COLLECTION_REVEAL_LINE`／`SUMMON_COACH_LINE`＋`SUMMON_COACH_NOTE`／`TREASURE_REVEAL_LINE`／`CHAT_COACH_LINE`。`OnboardingStep` 型で声・表情が自動）。音声選択画面のあいさつのみ `OnboardingOverlay.tsx` 直書き。
+- **コレット主導の初回オーバーレイ**＝`features/onboarding/`（`OnboardingOverlay`＋台本 `script.ts`＋`onboardingStore`）。声は事前収録のパートボイス（§4.5）、立ち絵/背景は既存流用＝**新規アートなし**。第一声（§4.2）は完了までゲート。`?debug=1` のメニューに「オンボもう一度」。
+- **台本は全て `features/onboarding/script.ts`**（`ONBOARDING_STEPS`／`CAMERA_HINT_TEXT`／`FIRST_SCAN_LINE`／`COLLECTION_REVEAL_LINE`／`SUMMON_COACH_LINE`＋`SUMMON_COACH_NOTE`／`TREASURE_REVEAL_LINE`／`CHAT_COACH_LINE`。`OnboardingStep` 型で声・表情が自動。読み上げる分の名簿＝`SPOKEN_FIXED_LINES`）。音声選択画面のあいさつのみ `OnboardingOverlay.tsx` 直書き。
 - **ルールの説明はコレットにさせない**＝仕組みの説明は `SUMMON_COACH_NOTE` のような画面側の注記に分離する（`CAMERA_HINT_TEXT` と同じ役割分担）。"召喚"のような世界内の概念は彼女が言う。
 - **流れ**：
   1. **音声の選択**＝「音声を再生しますか？（あとで変更できます）」→はい/いいえ。**この画面には世界観のナレーションを置かず、立ち絵も出さない**（時間帯背景＋質問だけ）。**「はい」のタップの中で `primeAudio()`** ＝選択がそのままアンロックの user gesture を兼ねる。選択は `appStore.setVoice`→localStorage `anycollect.voice.v1` に永続（`toggleVoice` も永続＝各画面の 🔊 が「あとで変更」を担う）。
@@ -158,14 +166,15 @@
   - **表示は store の seen からレンダー時に導出する**（effect 内で local setState しない＝`react-hooks/set-state-in-effect` を踏まない）。閉じるときに `mark…Seen()` で永続。
   - **まほうパワーはシードで配らない**＝撮影+34/会話+20 で自然に貯める。**"空で放り出さない"は図鑑に既に1件あることで達成**。
   - アイテムを指す**「子」呼びは使わない**（非人称化）。
-- 二次機能（アルバム/窯/ゲーム）はオンボに載せず、後日「機能アイテム解禁（§4.8）」とセットで文脈導入する。**固定台詞の事前収録は STEP3b**。
+- 二次機能（アルバム/窯/ゲーム）はオンボに載せず、後日「機能アイテム解禁（§4.8）」とセットで文脈導入する。
+- **台本は `features/onboarding/script.ts` に集約**（非コーダーが直接編集できる素のテキスト）。**文面・演技指示を直したら `npm run voice:record`**（＝パートボイス／§4.5。回し忘れても動的TTSに落ちるだけで壊れない）。
 
 ## 5. AI構成
 | 用途 | サービス | 備考 |
 |---|---|---|
 | 召喚・合成（図鑑エントリのクロップ／アイテム2つ→透過アイコン） | Gemini 2.5 Flash Image | 約 $0.04/枚＝¥7/回。**まほうパワー配給（実質1日1個）**で制御。`ART_STYLE_BLOCK` 共有 |
 | 反応・会話・名前/説明・記憶要約 | **Gemini（初期）→ Claude（将来切替可）** | `ChatProvider`/`SceneProvider`/`IdentifyProvider`/`MemoryProvider` 抽象。口調は persona.md で統一 |
-| 音声合成 | **Fish Audio** | $15/100万UTF-8バイト＝日本語 ¥0.007/字。カメラ＝動的／ホーム＝事前収録キャッシュ（3b） |
+| 音声合成 | **Fish Audio** | $15/100万UTF-8バイト＝日本語 ¥0.007/字。AI が書いた文＝動的／台本の固定セリフ＝事前収録（§4.5 パートボイス） |
 
 **コスト最適化（必須）**：①プロンプトキャッシュ ②履歴の要約＋窓（**送信窓＝直近12件は実装済**）③接地は top-k のみ ④画像ダウンスケール ⑤TTS 規律 ⑥レート制限/日次上限（**現状は未実装＝§12**）⑦プロバイダ抽象で安いモデルに差替可。
 - 実額（$1≈¥150）：会話1ターン≈¥0.15〜0.25／カメラ反応≈¥0.4〜0.5／アイテム化¥7。最適化後の月コスト＝ヘビー≈¥210・ライト¥30〜60 → サブスクで黒字（§15）。※価格は変動、実装時に最新確認。
@@ -217,7 +226,8 @@ any-collect/
     features/{camera,home,collection,album,kiln,treasure,game,onboarding}/
     lib/
       ai/{imageProvider,chatProvider,sceneProvider,identifyProvider,ttsProvider,memoryProvider}.ts
-      audio/useSpeak.ts # TTS 再生（永続 audio・MediaSource ストリーミング）
+      audio/useSpeak.ts # TTS 再生（永続 audio・MediaSource ストリーミング）＋`speakLine`
+      audio/partVoice.ts # 事前収録の索引＋台本との突き合わせ（§4.5 パートボイス）
       character/{CharacterRenderer.ts,Sprite2DRenderer.tsx,waitLines.ts,failureLines.ts,summonLines.ts}
       image/{crop,chromaKey,alphaShape}.ts  # クロップ（図鑑）／透過化（召喚・合成）／凸包（ゲーム）
       grounding.ts      # 図鑑・アルバム傾向→会話の接地ノート

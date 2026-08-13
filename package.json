@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "sprites:optimize": "node scripts/optimize-sprites.mjs"
+    "sprites:optimize": "node scripts/optimize-sprites.mjs",
+    "voice:record": "node scripts/record-voice.mjs"
   },
   "dependencies": {
     "@types/matter-js": "^0.20.2",

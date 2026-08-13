@@ -16,6 +16,7 @@ Claude Code がプロジェクト作業時に参照する**開発規約**。こ�
 - `npm run build` … 型チェック＋本番ビルド
 - `npm run lint` … ESLint（**0 problems が基準**。警告を「既知」として残さない）
 - `npm run sprites:optimize` … 画像素材の WebP 化（下記の画像ルール）
+- `npm run voice:record` … 固定セリフの事前収録（下記のパートボイスのルール）
 - `?debug=1` … 検証用ツールの有効化（`src/lib/debug.ts`・localStorage に永続・`?debug=0` で解除）。実機＝本番 Vercel で使うため URL クエリ方式。
 
 ## アーキテクチャ原則（重要）
@@ -34,6 +35,7 @@ Claude Code がプロジェクト作業時に参照する**開発規約**。こ�
 - `src/store/` … Zustand ストア。`src/components/` … モード横断の共有UI。`src/types/` … 共有型。
 - `src/characters/<id>/` … キャラ定義一式（`persona.md` ＋ `sprites/<感情>/`＝感情フォルダ式・好感度 level-aware ＋ `backgrounds/<背景ID>/`＝時間帯4枚を `src/lib/character/homeBackground.ts` が切替 ＋ `transitions/`＝場面転換の一枚絵・透過前提 ＋ `voice.json`）。
   - **画像素材のルール**：本番素材は **WebP**（スプライト最大1024px／背景最大1536px）。png/jpg を追加したら **`npm run sprites:optimize` を実行してから commit**（1枚~1MB→~120KB、冪等）。**大きい元 png をそのままコミットしない。**
+  - **パートボイスのルール**：`voice/`＝固定セリフの事前収録（`<lineId>.mp3`＋`manifest.json`）。**台本（`src/features/onboarding/script.ts`）の文面・演技指示を直したら `npm run voice:record` を実行してから commit**（冪等・変更が無い回は Fish を叩かない）。回し忘れても動的TTSに落ちるだけで壊れない（判定＝`src/lib/audio/partVoice.ts`）。**`--force` は使わない**＝いま入っている mp3 は聴き比べて選んだテイクで、生成し直すと別の読みになる（DECISIONS 2026-08-14）。`manifest.json` は生成物＝手で書き換えない。
 
 ## プライバシー / セキュリティ（遵守）
 - **匿名認証**。引き継ぎは **opt-in メール/パスキー**（全員から強制的に PII を集めない）。

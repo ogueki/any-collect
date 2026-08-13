@@ -9,7 +9,7 @@ import { useAlbumStore } from '../../store/albumStore'
 import { useCollectionStore } from '../../store/collectionStore'
 import { useGaugeStore, GAUGE_PER_CAPTURE, GAUGE_MAX } from '../../store/gaugeStore'
 import { useAffinityStore, AFFINITY_PER_CAPTURE, toneTierForLevel, levelForScore } from '../../store/affinityStore'
-import { speak, primeAudio } from '../../lib/audio/useSpeak'
+import { speak, speakLine, primeAudio } from '../../lib/audio/useSpeak'
 import { useOnboardingStore } from '../../store/onboardingStore'
 import { useChatStore } from '../../store/chatStore'
 import { CAMERA_HINT_TEXT, FIRST_SCAN_LINE } from '../onboarding/script'
@@ -228,10 +228,7 @@ export default function CameraMode() {
         // ※判定/収集に失敗した回は collected=false → phase は 'shoot' のまま＝撮り直せる
         //   （空の図鑑を指す行き止まりを防ぐ）。
         fireReaction(FIRST_SCAN_LINE.expression)
-        void speak(FIRST_SCAN_LINE.text, {
-          expression: FIRST_SCAN_LINE.expression,
-          direction: FIRST_SCAN_LINE.direction,
-        })
+        void speakLine(FIRST_SCAN_LINE)
         useOnboardingStore.getState().beginReveal()
       } else if (!isOnboardingShoot) {
         setGainKey((k) => k + 1)

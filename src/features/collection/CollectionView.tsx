@@ -8,7 +8,7 @@ import { useAffinityStore, AFFINITY_PER_ITEM } from '../../store/affinityStore'
 import { useOnboardingStore } from '../../store/onboardingStore'
 import { imageGenProvider } from '../../lib/ai/imageGen'
 import { emotionForGenerated } from '../../lib/character/reaction'
-import { speak } from '../../lib/audio/useSpeak'
+import { speakLine } from '../../lib/audio/useSpeak'
 import { COLLECTION_REVEAL_LINE, SUMMON_COACH_LINE, SUMMON_COACH_NOTE } from '../onboarding/script'
 import GeneratingOverlay from '../../components/GeneratingOverlay'
 import { failureLine } from '../../lib/character/failureLines'
@@ -243,10 +243,7 @@ export default function CollectionView() {
     if (!showReveal || revealSpoke.current) return
     revealSpoke.current = true
     fire(COLLECTION_REVEAL_LINE.expression)
-    void speak(COLLECTION_REVEAL_LINE.text, {
-      expression: COLLECTION_REVEAL_LINE.expression,
-      direction: COLLECTION_REVEAL_LINE.direction,
-    })
+    void speakLine(COLLECTION_REVEAL_LINE)
   }, [showReveal, fire])
 
   // リビールを閉じる＝オンボ完了。まほうパワーは撮影/会話で自然に貯める（シードで満タンにはしない）。
@@ -265,10 +262,7 @@ export default function CollectionView() {
     if (!showSummonCoach || summonSpoke.current) return
     summonSpoke.current = true
     fire(SUMMON_COACH_LINE.expression)
-    void speak(SUMMON_COACH_LINE.text, {
-      expression: SUMMON_COACH_LINE.expression,
-      direction: SUMMON_COACH_LINE.direction,
-    })
+    void speakLine(SUMMON_COACH_LINE)
   }, [showSummonCoach, fire])
 
   // チップに出すのは「実際に1件以上あるカテゴリ」だけ（CATEGORY_ORDER 順）。

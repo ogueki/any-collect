@@ -1,26 +1,29 @@
 import type { FairyExpression } from '../../lib/character/CharacterRenderer'
+import type { SpokenLine } from '../../lib/audio/partVoice'
 
 /**
  * 初回オンボーディングでコレットが話す台本（STEP4）。
  *
- * ここが「新規で作る唯一の素材」＝**テキスト台本**。絵は既存の立ち絵/背景を流用し、
- * 声は動的TTS（`speak`）が読み上げる（固定音声＝パートボイスは後続 STEP3b）。
+ * ここが「新規で作る唯一の素材」＝**テキスト台本**。絵は既存の立ち絵/背景を流用する。
+ * 声は**事前収録のパートボイス**（3b）＝`npm run voice:record` でここのセリフを一括生成し
+ * `src/characters/<id>/voice/` に置く。録音が無い／台本を編集して録り直していない場合は
+ * 動的TTS（`speak`）へ自動で落ちる（詳細＝`src/lib/audio/partVoice.ts`）。
  *
+ * - `id`         … 収録ファイル名になる**安定ID**。変えると別ファイル扱い＝録り直しになる。
  * - `expression` … 立ち絵の表情（`FairyExpression` の 12 種）。
  * - `direction`  … 読み方の演技指示（日本語の自由文）。感情タグと同経路で `/api/tts` に渡る。
  *   ※実証済みの肝：英語コアタグより「声優への日本語の演出メモ」が効く（`voiceDirection`）。
  *
  * チュートリアルの案内は AI に即興させず、この固定台本で決め打ちにする（進行が崩れないように）。
- * 文面はいつでもここだけで調整できる（コード無改修）。
+ * **文面はいつでもここだけで調整できる（コード無改修）。直したら `npm run voice:record` を回す。**
  */
-export interface OnboardingStep {
-  text: string
+export interface OnboardingStep extends SpokenLine {
   expression: FairyExpression
-  direction: string
 }
 
 export const ONBOARDING_STEPS: OnboardingStep[] = [
   {
+    id: 'intro-1',
     // 1言目＝**音声の選択の直後**。前置き（ナレーション・気配の演出）を挟まず、ここで初めて
     // 立ち姿と声が現れる＝出会いはコレット本人の「はじめまして！」から始まる（2026-07-30 決定）。
     text: 'はじめまして！わたしはコレット。会えてうれしい〜！',
@@ -28,11 +31,16 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     direction: 'はしゃいで手を振りながら、元気いっぱいに',
   },
   {
-    text: 'わたしね、きみの世界にとっても興味があるんだ！',
+    id: 'intro-2',
+    // 読点は消さないこと。「世界にとっても」と続けると TTS が「〜にとって＋も」の助詞句として
+    // 読んでしまう（日本語として実際に両方あり得る並び）。読点で切ると「とっても＝very」に分かれる。
+    text: 'わたしね、きみの世界に、とっても興味があるんだ！',
     expression: 'happy',
-    direction: 'わくわくを抑えきれない様子で、明るくやわらかく',
+    // 「あるんだ」を下げずに上げて終える＝言い切りでなく、わくわくのまま差し出す感じ。
+    direction: 'わくわくを抑えきれない様子で、明るく。語尾は上げて弾ませる',
   },
   {
+    id: 'intro-3',
     text: 'その「スマートフォン」で、きみが見ているものをわたしにも見せてほしいの！',
     expression: 'excited',
     direction: '好奇心いっぱいに、身を乗り出すように',
@@ -55,6 +63,7 @@ export const CAMERA_HINT_TEXT = '下の丸いボタンで、身の回りの物�
  * イントロと同じ `OnboardingStep`（text/expression/direction）なので声・表情が自動で乗る。
  */
 export const FIRST_SCAN_LINE: OnboardingStep = {
+  id: 'first-scan',
   text: 'わぁ、すごいすごい！ いまのアイテム、図鑑に書いておくね！',
   expression: 'excited',
   direction: 'はしゃいで、うれしそうに書き留めるように',
@@ -65,6 +74,7 @@ export const FIRST_SCAN_LINE: OnboardingStep = {
  * ここが「メインコンテンツ＝図鑑をつくる」を体で分からせるリビール。
  */
 export const COLLECTION_REVEAL_LINE: OnboardingStep = {
+  id: 'collection-reveal',
   text: 'この図鑑をきみの世界の物でいっぱいにするのが、わたしの夢なんだ！協力してくれる？',
   expression: 'happy',
   direction: '夢を語るようにきらきらと、最後は少し甘えて誘うように',
@@ -75,6 +85,7 @@ export const COLLECTION_REVEAL_LINE: OnboardingStep = {
  * "召喚"はコレットの魔法（世界内の行い）なので彼女が言ってよい。「どのボタン」は既存のバナー/ボタンが担う。
  */
 export const SUMMON_COACH_LINE: OnboardingStep = {
+  id: 'summon-coach',
   text: 'まほうパワーが満タンだよ！ ずかんの中のものをこっちの世界に呼び出せるかも！やってみていい？',
   expression: 'excited',
   direction: 'とっておきの魔法を披露するように、わくわくと。最後はうかがうように',
@@ -94,6 +105,7 @@ export const SUMMON_COACH_NOTE =
  * 「きみ**と**召喚した」＝図鑑と同じく、ここもふたりで増やしていく場所だと言外に伝える。
  */
 export const TREASURE_REVEAL_LINE: OnboardingStep = {
+  id: 'treasure-reveal',
   text: 'ここはわたしのたからばこ！ きみと召喚した宝物が、ぷかぷか漂ってるでしょ〜？',
   expression: 'excited',
   direction: '宝物を自慢するように、うれしそうにはずんで',
@@ -104,7 +116,26 @@ export const TREASURE_REVEAL_LINE: OnboardingStep = {
  * 「下から話しかけて」の"どこ"は画面が示し、コレットは"話そう"という気持ちを言う。
  */
 export const CHAT_COACH_LINE: OnboardingStep = {
+  id: 'chat-coach',
   text: 'おうちにいるときは、いつでもわたしとお話しできるよ。なんでも話してね！',
   expression: 'happy',
   direction: 'くつろいだ様子で、やさしく誘うように',
 }
+
+/**
+ * **事前収録（パートボイス／3b）の対象＝実際に読み上げる固定セリフの全部。**
+ * `npm run voice:record`（`scripts/record-voice.mjs`）とクライアントが共有する唯一の名簿で、
+ * ここに載せた分だけが `src/characters/<id>/voice/<id>.mp3` に収録される。
+ *
+ * 意図的に載せていないもの：
+ * - `CHAT_COACH_LINE` … 第一声（`openConversation`）と被るので**読み上げない**画面案内。
+ * - `SUMMON_COACH_NOTE` / `CAMERA_HINT_TEXT` … コレットではなく画面（システム）の声。
+ * どれも読み上げないので、収録しても再生される場所が無い。
+ */
+export const SPOKEN_FIXED_LINES: OnboardingStep[] = [
+  ...ONBOARDING_STEPS,
+  FIRST_SCAN_LINE,
+  COLLECTION_REVEAL_LINE,
+  SUMMON_COACH_LINE,
+  TREASURE_REVEAL_LINE,
+]
