@@ -67,6 +67,15 @@ let player: HTMLAudioElement | null = null
 let currentUrl: string | null = null
 let fadeTimer: number | null = null
 let ducked = false
+/**
+ * **「いま鳴っているべきか」の唯一の真実。**
+ *
+ * `play()` は非同期で、再生の準備中に `pause()` を呼んでも**後から解決した `play()` が勝って
+ * 鳴り続けることがある**（BGM が鳴り始めた直後にカメラへ移ると止まらない＝タイミング勝負なので
+ * 再現条件が掴めない形で出る）。要素の `paused` を見るだけでは足りないので、こちらで意図を持ち、
+ * `play()` が解決した後に**もう一度突き合わせて**意図と違えば止める。
+ */
+let shouldPlay = false
 
 function getPlayer(): HTMLAudioElement {
   if (!player) {
@@ -78,6 +87,26 @@ function getPlayer(): HTMLAudioElement {
     player = a
   }
   return player
+}
+
+/** 意図（`shouldPlay`）どおりの状態にする。`play()` の解決後に必ず再確認するのが肝。 */
+function applyPlayState(): void {
+  const p = getPlayer()
+  if (!shouldPlay) {
+    p.pause()
+    return
+  }
+  if (!p.paused) return
+  void p
+    .play()
+    .then(() => {
+      // 待っているあいだに「止めるべき」に変わっていたら、ここで止める。
+      // これが無いと、鳴り始めた直後の画面遷移で止め損ねる。
+      if (!shouldPlay) p.pause()
+    })
+    .catch(() => {
+      // 自動再生がまだ許可されていない＝次のユーザー操作で鳴り出す。
+    })
 }
 
 /** 目標音量までなめらかに動かす。 */
@@ -110,7 +139,8 @@ export function syncBgm(
   const p = getPlayer()
 
   if (!useAppStore.getState().voiceEnabled) {
-    p.pause()
+    shouldPlay = false
+    applyPlayState()
     return
   }
 
@@ -118,8 +148,9 @@ export function syncBgm(
   const url = key ? resolveUrl(characterId, key) : null
 
   if (!url) {
-    p.pause()
+    shouldPlay = false
     currentUrl = null
+    applyPlayState()
     return
   }
 
@@ -128,8 +159,8 @@ export function syncBgm(
     p.src = url
     p.volume = ducked ? DUCKED_VOLUME : BASE_VOLUME
   }
-  // 自動再生がまだ許可されていない環境では黙って失敗する＝次の操作で鳴り出す。
-  if (p.paused) void p.play().catch(() => {})
+  shouldPlay = true
+  applyPlayState()
 }
 
 /** 声が鳴り始めたら床を下げる。 */
@@ -151,12 +182,12 @@ export function unduckBgm(): void {
  * BGM は声とは別の `<audio>` なので、別々にアンロックが要る。
  */
 export function primeBgm(): void {
-  const p = getPlayer()
-  if (!p.src) return
-  void p.play().catch(() => {})
+  if (!getPlayer().src) return
+  applyPlayState()
 }
 
 /** タブが隠れているあいだは止める（電池と行儀）。復帰時は `syncBgm` が鳴らし直す。 */
 export function pauseBgm(): void {
-  player?.pause()
+  shouldPlay = false
+  applyPlayState()
 }
