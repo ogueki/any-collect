@@ -10,7 +10,7 @@ import Sprite2DRenderer from '../../lib/character/Sprite2DRenderer'
 import type { FairyExpression } from '../../lib/character/CharacterRenderer'
 import { useFairyReaction } from '../../lib/character/useFairyReaction'
 import { homeBackgroundUrl } from '../../lib/character/homeBackground'
-import { primeAudio } from '../../lib/audio/useSpeak'
+import { primeAudio, speakReaction } from '../../lib/audio/useSpeak'
 import { debugTools } from '../../lib/debug'
 import {
   SoundOnIcon,
@@ -179,9 +179,12 @@ export default function HomeMode() {
     return null
   })()
 
+  // 返事が来たら立ち絵を反応させ、同時に感情の掛け声を鳴らす（本文は読み上げない＝spec §4.5）。
+  // 表情と声を同じ感情から出すので、見た目と聞こえ方の温度がそろう。
   useEffect(() => {
     if (!replyNonce || !lastFairyEmotion) return
     fire(lastFairyEmotion)
+    void speakReaction(lastFairyEmotion)
   }, [replyNonce, lastFairyEmotion, fire])
 
   // ホームに来たら、コレットの方から第一声（会話が空のとき・セッション1回・失敗は固定挨拶のまま）。

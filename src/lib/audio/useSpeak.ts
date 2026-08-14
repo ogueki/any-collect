@@ -1,7 +1,7 @@
 import { ttsProvider } from '../ai/tts'
 import type { TtsSpeechOptions } from '../ai/ttsProvider'
 import { useAppStore } from '../../store/appStore'
-import { findPartVoice, type SpokenLine } from './partVoice'
+import { findPartVoice, pickReactionVoice, type SpokenLine } from './partVoice'
 
 /**
  * 妖精の声を鳴らす共有ユーティリティ（STEP3・動的TTS）。
@@ -226,6 +226,29 @@ export async function speakLine(line: SpokenLine): Promise<void> {
   const p = getPlayer()
   p.muted = false
   // 静的アセットの URL＝object URL ではないので revoke 対象にしない（currentObjectUrl は null のまま）。
+  p.src = url
+  await p.play().catch(() => {})
+}
+
+/**
+ * **感情の掛け声を鳴らす（ホームの会話用・STEP3b）。**
+ * 返事の本文は読み上げず、`voice/<感情>/` の短い相槌を1本ランダムに鳴らす
+ * ＝**声＝反応／文字＝内容**。返事は AI の自由文なので事前収録できないが、
+ * 掛け声なら何を返しても矛盾せず、実行時ゼロ円で生成待ちも無い。
+ *
+ * 収録が無い感情は**黙る**（動的TTS にはしない＝ホームは声にお金をかけない方針）。
+ * 本文を声で聞きたい人は会話ログの 🔊 タップ（`speak`）が残っている。
+ */
+export async function speakReaction(expression: string): Promise<void> {
+  if (!useAppStore.getState().voiceEnabled) return
+
+  const url = pickReactionVoice(useAppStore.getState().characterId, expression)
+  if (!url) return
+
+  requestSeq += 1
+  stopSpeaking()
+  const p = getPlayer()
+  p.muted = false
   p.src = url
   await p.play().catch(() => {})
 }

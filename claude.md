@@ -33,9 +33,9 @@ Claude Code がプロジェクト作業時に参照する**開発規約**。こ�
 - `src/lib/character/` … キャラ表示の抽象化（今は2Dスプライト、将来3D/Live2D）。**待ち／失敗の in-character 文面もここ**（`waitLines.ts`／`failureLines.ts`＝**非コーダーが直接編集できる素のテキスト**として保つ）。
 - `src/lib/storage/` … Repository パターン。現状＝`ItemRepository`/`PhotoRepository`/`CollectionRepository`（IndexedDB）。記憶・好感度・まほうパワー・会話履歴は軽量値なので localStorage ストア直（Repository 化は STEP6）。**インターフェースを先に切って** IndexedDB↔Supabase を同一抽象の裏に吸収する。
 - `src/store/` … Zustand ストア。`src/components/` … モード横断の共有UI。`src/types/` … 共有型。
-- `src/characters/<id>/` … キャラ定義一式（`persona.md` ＋ `sprites/<感情>/`＝感情フォルダ式・好感度 level-aware ＋ `backgrounds/<背景ID>/`＝時間帯4枚を `src/lib/character/homeBackground.ts` が切替 ＋ `transitions/`＝場面転換の一枚絵・透過前提 ＋ `voice.json`）。
+- `src/characters/<id>/` … キャラ定義一式（`persona.md` ＋ `voiceLines.ts`＝感情ごとの掛け声（非コーダー編集可）＋ `voice/`＝事前収録の音声 ＋ `sprites/<感情>/`＝感情フォルダ式・好感度 level-aware ＋ `backgrounds/<背景ID>/`＝時間帯4枚を `src/lib/character/homeBackground.ts` が切替 ＋ `transitions/`＝場面転換の一枚絵・透過前提 ＋ `voice.json`）。
   - **画像素材のルール**：本番素材は **WebP**（スプライト最大1024px／背景最大1536px）。png/jpg を追加したら **`npm run sprites:optimize` を実行してから commit**（1枚~1MB→~120KB、冪等）。**大きい元 png をそのままコミットしない。**
-  - **パートボイスのルール**：`voice/`＝固定セリフの事前収録（`<lineId>.mp3`＋`manifest.json`）。**台本（`src/features/onboarding/script.ts`）の文面・演技指示を直したら `npm run voice:record` を実行してから commit**（冪等・変更が無い回は Fish を叩かない）。回し忘れても動的TTSに落ちるだけで壊れない（判定＝`src/lib/audio/partVoice.ts`）。**`--force` は使わない**＝いま入っている mp3 は聴き比べて選んだテイクで、生成し直すと別の読みになる（DECISIONS 2026-08-14）。`manifest.json` は生成物＝手で書き換えない。
+  - **パートボイスのルール**：`voice/`＝事前収録の音声（`<lineId>.mp3`＝台本のセリフ／`<感情>/*.mp3`＝会話の掛け声／`manifest.json`）。**掛け声は手で作って置く**＝ファイル名も本数も自由・スクリプトは触らない（`voiceLines.ts` が空のあいだ）。**台本（`src/features/onboarding/script.ts`）を直したら `npm run voice:record` を実行してから commit**（冪等・変更が無い回は Fish を叩かない）。台本は回し忘れても動的TTSに落ちるだけで壊れない（判定＝`src/lib/audio/partVoice.ts`）。**`--force` は使わない**＝いま入っている mp3 は聴き比べて選んだテイクで、生成し直すと別の読みになる（DECISIONS 2026-08-14）。`manifest.json` は生成物＝手で書き換えない。
 
 ## プライバシー / セキュリティ（遵守）
 - **匿名認証**。引き継ぎは **opt-in メール/パスキー**（全員から強制的に PII を集めない）。

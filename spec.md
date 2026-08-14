@@ -107,7 +107,14 @@
 
 ### 4.5 声（TTS）
 - **声はキャラの根幹。無料ユーザーが声ゼロは絶対NG＝全員に声を届ける。**
-- **AI が書いた文＝動的TTS（都度生成）／台本の固定セリフ＝パートボイス（事前収録・実行時ゼロ円）**。→ `persona.md` を**決め台詞・口癖多め**に書いて声化率を上げる。
+- **モードで方式を分ける**：**カメラモード（外・冒険）＝常時 動的TTS**（都度生成・低頻度＝限定コスト）／**ホームモード（家・じっくり）＝テキスト＋事前収録**（実行時ゼロ円）。ホームの事前収録は2種類＝**台本の固定セリフ**（オンボ）と**感情ごとの掛け声**（会話の返事）。
+
+#### リアクションボイス（ホームの会話）
+- **ホームの返事は本文を読み上げない。**返事に付いてくる `emotion` で `voice/<感情>/` から**短い掛け声を1本ランダムに鳴らす**（直前と同じものは避ける）。**声＝反応／文字＝内容**と役割を分けるので、AI が何を返しても矛盾しない。実行時ゼロ円・生成待ちなし。
+- **音声は `voice/<感情>/*.mp3` を全部拾ってランダムに1本**。**ファイル名も本数も自由**＝立ち絵の `sprites/<感情>/` とまったく同じ流儀で、置くだけで候補が増える。**画面に文字が出ないので、台本のような一致チェックは不要**（＝違うことを喋る事故が原理的に起きない）。
+- **掛け声は手で作って置く運用**（`voiceLines.ts` の `REACTION_LINES` は空＝自動収録の対象なし）。文面をそこに書くとその分だけ `npm run voice:record` が録る（ファイル名＝文面のハッシュ）。**手で置いた音声はスクリプトの管理外＝録り直されも消されもしない。**
+- 収録が無い感情は**黙る**（動的TTS にはしない＝ホームは声にお金をかけない）。
+- **会話ログの 🔊 タップは残す**＝押した回だけ返事の全文を動的TTS で読む。普段は無料、聞きたい人だけ。
 - **経路**：`api/tts.ts`（Fish `POST /v1/tts` プロキシ・鍵はサーバのみ）／`api/_lib/voice.ts` `loadVoice`（**声の差し替えは `src/characters/<id>/voice.json` 1つ**）／`TtsProvider` 実装 `httpTtsProvider`／`src/lib/audio/useSpeak.ts`（`speak(text,{expression,direction})`・`appStore.voiceEnabled` でゲート・直前再生を停止）。
 
 #### パートボイス（固定セリフの事前収録）
@@ -128,7 +135,7 @@
 
 ### 4.6 妖精キャラクター
 - **コレット**＝デフォルト妖精。**好奇心旺盛・冒険好き・アクティブ**（主導的に話題・欲・意見を出す。ただし cozy であって needy でない）。3頭身ちびの2Dイラスト。
-- 表示は抽象化レイヤー越し（`CharacterRenderer`／将来 Live2D/3D 差し替え可）。**キャラは差し替え単位**：`src/characters/<id>/`（`persona.md` ＋ スプライト ＋ `voice.json` ＋ 背景 ＋ transitions）。
+- 表示は抽象化レイヤー越し（`CharacterRenderer`／将来 Live2D/3D 差し替え可）。**キャラは差し替え単位**：`src/characters/<id>/`（`persona.md` ＋ スプライト ＋ `voice.json`＝声の設定 ＋ `voiceLines.ts`＝掛け声の文面 ＋ `voice/`＝収録音声 ＋ 背景 ＋ transitions）。
 - **キャラ統一の原則**：アイテム名/説明/反応/会話の全AI呼び出しが `persona.md` を参照。
 
 ### 4.7 オマケ：アイテムで遊ぶミニゲーム
@@ -174,7 +181,7 @@
 |---|---|---|
 | 召喚・合成（図鑑エントリのクロップ／アイテム2つ→透過アイコン） | Gemini 2.5 Flash Image | 約 $0.04/枚＝¥7/回。**まほうパワー配給（実質1日1個）**で制御。`ART_STYLE_BLOCK` 共有 |
 | 反応・会話・名前/説明・記憶要約 | **Gemini（初期）→ Claude（将来切替可）** | `ChatProvider`/`SceneProvider`/`IdentifyProvider`/`MemoryProvider` 抽象。口調は persona.md で統一 |
-| 音声合成 | **Fish Audio** | $15/100万UTF-8バイト＝日本語 ¥0.007/字。AI が書いた文＝動的／台本の固定セリフ＝事前収録（§4.5 パートボイス） |
+| 音声合成 | **Fish Audio** | $15/100万UTF-8バイト＝日本語 ¥0.007/字。カメラ＝動的／ホーム＝事前収録（§4.5）＝実行時ゼロ円。🔊 タップ時のみ動的 |
 
 **コスト最適化（必須）**：①プロンプトキャッシュ ②履歴の要約＋窓（**送信窓＝直近12件は実装済**）③接地は top-k のみ ④画像ダウンスケール ⑤TTS 規律 ⑥レート制限/日次上限（**現状は未実装＝§12**）⑦プロバイダ抽象で安いモデルに差替可。
 - 実額（$1≈¥150）：会話1ターン≈¥0.15〜0.25／カメラ反応≈¥0.4〜0.5／アイテム化¥7。最適化後の月コスト＝ヘビー≈¥210・ライト¥30〜60 → サブスクで黒字（§15）。※価格は変動、実装時に最新確認。
@@ -233,7 +240,7 @@ any-collect/
       grounding.ts      # 図鑑・アルバム傾向→会話の接地ノート
       storage/{itemRepository,photoRepository,collectionRepository}.ts  # memory/affinity は STEP6
       supabase/client.ts  # STEP6 で追加予定
-    characters/default/{persona.md,sprites/,backgrounds/,transitions/,voice.json}
+    characters/default/{persona.md,sprites/,backgrounds/,transitions/,voice.json,voiceLines.ts,voice/}
     store/    # app / chat / album / collection / codex / gauge / affinity / memory / game / onboarding
     styles/  types/
   public/

@@ -34,10 +34,16 @@ interface VoiceManifestEntry {
   recordedAt?: string
 }
 
-type VoiceManifest = Record<string, VoiceManifestEntry>
+interface VoiceManifest {
+  /** 台本の固定セリフ（画面に同じ文字が出るので突き合わせが要る）。 */
+  lines?: Record<string, VoiceManifestEntry>
+  /** リアクションボイス（感情→ハッシュ→文面）。**文字は画面に出ない**ので突き合わせは不要。 */
+  reactions?: Record<string, Record<string, string>>
+}
 
 // 収録音声とその manifest をビルドに取り込む（スプライトと同じ eager glob 方式）。
-const voiceModules = import.meta.glob('../../characters/*/voice/*.mp3', {
+// `voice/<lineId>.mp3`（台本）と `voice/<感情>/<hash>.mp3`（掛け声）の両方を拾う。
+const voiceModules = import.meta.glob('../../characters/*/voice/**/*.mp3', {
   eager: true,
   query: '?url',
   import: 'default',
@@ -48,18 +54,31 @@ const manifestModules = import.meta.glob('../../characters/*/voice/manifest.json
   import: 'default',
 }) as Record<string, VoiceManifest>
 
-/** `.../characters/<charId>/voice/<file>` から charId と拡張子なしのファイル名を取り出す。 */
-function parsePath(path: string): { charId: string; name: string } | null {
-  const m = /characters\/([^/]+)\/voice\/([^/]+)\.[^./]+$/.exec(path)
-  return m ? { charId: m[1], name: m[2] } : null
+/**
+ * `.../characters/<charId>/voice/<file>` または `.../voice/<感情>/<file>` を分解する。
+ * `emotion` があれば掛け声、無ければ台本のセリフ。
+ */
+function parsePath(path: string): { charId: string; emotion?: string; name: string } | null {
+  const m = /characters\/([^/]+)\/voice\/(?:([^/]+)\/)?([^/]+)\.[^./]+$/.exec(path)
+  return m ? { charId: m[1], emotion: m[2], name: m[3] } : null
 }
 
-/** charId → lineId → 音声URL。 */
+/** charId → lineId → 音声URL（台本のセリフ）。 */
 const urlIndex: Record<string, Record<string, string>> = {}
+/** charId → 感情 → 音声URL の配列（掛け声。ランダムに1本選ぶ）。 */
+const reactionIndex: Record<string, Record<string, string[]>> = {}
 for (const [path, url] of Object.entries(voiceModules)) {
   const parsed = parsePath(path)
   if (!parsed) continue
-  ;(urlIndex[parsed.charId] ??= {})[parsed.name] = url
+  if (parsed.emotion) {
+    ;((reactionIndex[parsed.charId] ??= {})[parsed.emotion] ??= []).push(url)
+  } else {
+    ;(urlIndex[parsed.charId] ??= {})[parsed.name] = url
+  }
+}
+// glob の並びはビルド依存なので、選び方が環境で変わらないよう固定する。
+for (const byEmotion of Object.values(reactionIndex)) {
+  for (const urls of Object.values(byEmotion)) urls.sort()
 }
 
 /** charId → manifest。 */
@@ -77,7 +96,7 @@ export function findPartVoice(characterId: string, line: SpokenLine): string | n
   const url = urlIndex[characterId]?.[line.id]
   if (!url) return null
 
-  const recorded = manifestIndex[characterId]?.[line.id]
+  const recorded = manifestIndex[characterId]?.lines?.[line.id]
   if (!recorded) return null
   if (
     recorded.text !== line.text ||
@@ -87,6 +106,25 @@ export function findPartVoice(characterId: string, line: SpokenLine): string | n
     return null
   }
   return url
+}
+
+/** 感情ごとに直前に鳴らした掛け声。2連続で同じものを引かないために覚えておく。 */
+const lastReaction: Record<string, string> = {}
+
+/**
+ * その感情の掛け声を1本ランダムに選ぶ（**直前と同じものは避ける**）。収録が無ければ null。
+ * 立ち絵（`Sprite2DRenderer`）の感情フォルダからのランダム選択と同じ考え方＝
+ * `voice/<感情>/` にファイルを足すだけで候補が増える。
+ */
+export function pickReactionVoice(characterId: string, expression: string): string | null {
+  const urls = reactionIndex[characterId]?.[expression]
+  if (!urls || urls.length === 0) return null
+
+  const key = `${characterId}/${expression}`
+  const candidates = urls.length > 1 ? urls.filter((u) => u !== lastReaction[key]) : urls
+  const picked = candidates[Math.floor(Math.random() * candidates.length)]
+  lastReaction[key] = picked
+  return picked
 }
 
 /**
