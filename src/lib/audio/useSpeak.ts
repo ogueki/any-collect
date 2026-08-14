@@ -2,6 +2,7 @@ import { ttsProvider } from '../ai/tts'
 import type { TtsSpeechOptions } from '../ai/ttsProvider'
 import { useAppStore } from '../../store/appStore'
 import { findPartVoice, pickReactionVoice, type SpokenLine } from './partVoice'
+import { duckBgm, unduckBgm, primeBgm } from './bgm'
 
 /**
  * 妖精の声を鳴らす共有ユーティリティ（STEP3・動的TTS）。
@@ -43,6 +44,10 @@ function getPlayer(): HTMLAudioElement {
     a.preload = 'auto'
     // ManagedMediaSource 利用時にリモート再生の絡みを避ける（非対応ブラウザでは無害）。
     ;(a as HTMLAudioElement & { disableRemotePlayback?: boolean }).disableRemotePlayback = true
+    // 声が鳴っているあいだは BGM を下げる（ダッキング）＝声が床に埋もれないようにする。
+    // 要素は使い回すので、ここで一度だけ張れば以後すべての発話に効く。
+    a.addEventListener('playing', duckBgm)
+    for (const ev of ['ended', 'pause', 'error', 'emptied']) a.addEventListener(ev, unduckBgm)
     player = a
   }
   return player
@@ -262,6 +267,8 @@ let primed = false
 export function primeAudio(): void {
   if (primed) return
   primed = true
+  // BGM は別の <audio> なので別途アンロックが要る（同じ操作の中で済ませる）。
+  primeBgm()
   try {
     const p = getPlayer()
     p.muted = false

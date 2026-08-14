@@ -109,6 +109,15 @@
 - **声はキャラの根幹。無料ユーザーが声ゼロは絶対NG＝全員に声を届ける。**
 - **モードで方式を分ける**：**カメラモード（外・冒険）＝常時 動的TTS**（都度生成・低頻度＝限定コスト）／**ホームモード（家・じっくり）＝テキスト＋事前収録**（実行時ゼロ円）。ホームの事前収録は2種類＝**台本の固定セリフ**（オンボ）と**感情ごとの掛け声**（会話の返事）。
 
+#### BGM（音の床）
+- **声だけが無音の上に鳴ると「人の声」でなく「システム音」に聞こえる。** 音楽/環境音の層があって初めて、声はその空間の中の出来事になる。掛け声が寂しく聞こえた原因はここ（判断＝DECISIONS 2026-08-15）。
+- 素材は `src/characters/<id>/bgm/<シーン>.mp3`＝**キャラ差し替え単位**（背景と対になるものなのでキャラ配下）。**ファイル名がそのままシーンの指定**で、置くだけで有効・無いシーンは黙る。
+  - `home`＝ホーム/図鑑/アルバム/窯/オンボ ／ `game`＝ミニゲーム ／ `treasure`＝たからばこ（無ければ `home` でつなぐ）／ **カメラは鳴らさない**（屋外で現実の音が鳴っている）。
+- **同じ曲なら鳴らし直さない**＝ホーム↔図鑑↔アルバムを行き来しても曲は途切れない。
+- **ダッキング**＝声が鳴るあいだ BGM を 0.35→0.12 に下げて戻す（220ms）。**これが無いと BGM を足したぶん声が埋もれる。** 実装は声の `<audio>` の `playing`/`ended` に張ってあるので、すべての発話に自動で効く。
+- ON/OFF は**声のトグルに相乗り**（`voiceEnabled` 1つ）。既定 ON。自動再生の解除は `primeAudio()` と同じ操作の中で `primeBgm()`。タブが隠れたら停止。
+- **`npm run bgm:optimize`** で 96kbps に落としてから commit（下記 §8 の素材ルール）。
+
 #### リアクションボイス（ホームの会話）
 - **ホームの返事は本文を読み上げない。**返事に付いてくる `emotion` で `voice/<感情>/` から**短い掛け声を1本ランダムに鳴らす**（直前と同じものは避ける）。**声＝反応／文字＝内容**と役割を分けるので、AI が何を返しても矛盾しない。実行時ゼロ円・生成待ちなし。
 - **音声は `voice/<感情>/*.mp3` を全部拾ってランダムに1本**。**ファイル名も本数も自由**＝立ち絵の `sprites/<感情>/` とまったく同じ流儀で、置くだけで候補が増える。**画面に文字が出ないので、台本のような一致チェックは不要**（＝違うことを喋る事故が原理的に起きない）。
@@ -242,7 +251,7 @@ any-collect/
       grounding.ts      # 図鑑・アルバム傾向→会話の接地ノート
       storage/{itemRepository,photoRepository,collectionRepository}.ts  # memory/affinity は STEP6
       supabase/client.ts  # STEP6 で追加予定
-    characters/default/{persona.md,sprites/,backgrounds/,transitions/,voice.json,voiceLines.ts,voice/}
+    characters/default/{persona.md,sprites/,backgrounds/,transitions/,voice.json,voiceLines.ts,voice/,bgm/}
     store/    # app / chat / album / collection / codex / gauge / affinity / memory / game / onboarding
     styles/  types/
   public/

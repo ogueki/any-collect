@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { useAppStore } from './store/appStore'
 import { useOnboardingStore } from './store/onboardingStore'
+import { syncBgm, pauseBgm } from './lib/audio/bgm'
 import OnboardingOverlay from './features/onboarding/OnboardingOverlay'
 import HomeMode from './features/home/HomeMode'
 import CameraMode from './features/camera/CameraMode'
@@ -19,6 +21,24 @@ export default function App() {
   const closeGame = useAppStore((s) => s.closeGame)
   // 初回だけ：コレット主導の導入オーバーレイを最前面に出す（撮影ガイドは CameraMode 側）。
   const onboardingPhase = useOnboardingStore((s) => s.phase)
+
+  // BGM（音の床）を画面に追従させる。同じ曲のままなら鳴らし直さないので、
+  // ホーム↔図鑑↔アルバムを行き来しても曲は途切れない（判定は bgm.ts）。
+  const characterId = useAppStore((s) => s.characterId)
+  const voiceEnabled = useAppStore((s) => s.voiceEnabled)
+  useEffect(() => {
+    syncBgm(characterId, screen, game, onboardingPhase === 'intro')
+  }, [characterId, screen, game, onboardingPhase, voiceEnabled])
+
+  // タブが隠れているあいだは止める（電池と行儀）。戻ったら上の効果が鳴らし直す。
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.hidden) pauseBgm()
+      else syncBgm(characterId, screen, game, onboardingPhase === 'intro')
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
+  }, [characterId, screen, game, onboardingPhase])
 
   return (
     // max-w-md＋中央寄せ＝タブレット/PC でも SP レイアウトのまま表示（iPad 専用レイアウトは作らない・2026-07-19）

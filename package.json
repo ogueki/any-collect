@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "sprites:optimize": "node scripts/optimize-sprites.mjs",
-    "voice:record": "node scripts/record-voice.mjs"
+    "voice:record": "node scripts/record-voice.mjs",
+    "bgm:optimize": "node scripts/optimize-bgm.mjs"
   },
   "dependencies": {
     "@types/matter-js": "^0.20.2",
@@ -28,6 +29,7 @@
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
+    "ffmpeg-static": "^5.3.0",
     "globals": "^17.4.0",
     "postcss": "^8.5.8",
     "sharp": "^0.35.2",
