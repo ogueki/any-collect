@@ -94,7 +94,11 @@ export default function ChatPanel() {
           disabled={sending}
           placeholder="コレットに話しかける…"
           aria-label="メッセージ入力"
-          className="flex-1 rounded-full border border-slate-200 bg-white/90 px-4 py-2.5 text-base outline-none focus:border-lavender disabled:opacity-60"
+          // min-w-0 は必須。flex アイテムは既定で min-width:auto ＝ 中身の固有幅より小さくならず、
+          // input の固有幅（約20文字ぶん）は**ルート font-size に比例して広がる**。
+          // 背の高い画面ほど `dvh` ズームで font-size が上がるので、行が容器からあふれて
+          // shrink-0 の送信ボタンが画面外へ押し出される（ルートが overflow-hidden なので消える）。
+          className="min-w-0 flex-1 rounded-full border border-slate-200 bg-white/90 px-4 py-2.5 text-base outline-none focus:border-lavender disabled:opacity-60"
         />
         <button
           type="button"
