@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useAppStore } from './store/appStore'
 import { useOnboardingStore } from './store/onboardingStore'
 import { syncBgm, pauseBgm } from './lib/audio/bgm'
+import { installAudioUnlock } from './lib/audio/useSpeak'
 import OnboardingOverlay from './features/onboarding/OnboardingOverlay'
 import HomeMode from './features/home/HomeMode'
 import CameraMode from './features/camera/CameraMode'
@@ -29,6 +30,10 @@ export default function App() {
   useEffect(() => {
     syncBgm(characterId, screen, game, onboardingPhase === 'intro')
   }, [characterId, screen, game, onboardingPhase, voiceEnabled])
+
+  // 自動再生には**必ずユーザー操作が要る**（ブラウザの規約＝読み込んだ瞬間には鳴らせない）。
+  // せめて「最初の操作」を取りこぼさないよう、画面のどこを触っても1回だけアンロックする。
+  useEffect(() => installAudioUnlock(), [])
 
   // タブが隠れているあいだは止める（電池と行儀）。戻ったら上の効果が鳴らし直す。
   useEffect(() => {

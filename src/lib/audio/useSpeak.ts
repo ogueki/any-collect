@@ -286,3 +286,31 @@ export function primeAudio(): void {
     // 要素生成に失敗しても声はベストエフォート。
   }
 }
+
+/**
+ * **最初のユーザー操作なら「何でも」アンロックする保険**（全画面共通・1回だけ）。
+ *
+ * ブラウザは操作なしの自動再生を許さないので、**読み込んだ瞬間に鳴らすことは原理的にできない**。
+ * できるのは「最初の操作を逃さない」ことだけ。`primeAudio()` はこれまで撮影・送信・声トグル・
+ * オンボの「はい」の4か所にしか付いておらず、**図鑑やたからばこを開くだけの人は BGM が
+ * 鳴り出さないまま**だった（ボタンを1つ足すたびに付け忘れが増える形でもある）。
+ *
+ * document の capture 段で拾うので、途中で `stopPropagation()` するUIがあっても効く。
+ * 冪等（`primeAudio` の `primed` で二重実行しない）なので、既存の各ボタンの呼び出しは
+ * そのまま残してよい＝そちらの方が早く鳴る場面がある。
+ */
+export function installAudioUnlock(): () => void {
+  const events = ['pointerdown', 'touchend', 'keydown'] as const
+
+  function remove(): void {
+    for (const e of events) document.removeEventListener(e, onFirstGesture, true)
+  }
+  function onFirstGesture(): void {
+    primeAudio()
+    remove()
+  }
+
+  if (primed) return () => {}
+  for (const e of events) document.addEventListener(e, onFirstGesture, true)
+  return remove
+}
