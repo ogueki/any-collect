@@ -10,6 +10,7 @@ import Sprite2DRenderer from '../../lib/character/Sprite2DRenderer'
 import type { FairyExpression } from '../../lib/character/CharacterRenderer'
 import { useFairyReaction } from '../../lib/character/useFairyReaction'
 import { homeBackgroundUrl } from '../../lib/character/homeBackground'
+import { restingExpression } from '../../lib/character/restingExpression'
 import { primeAudio, speakReaction } from '../../lib/audio/useSpeak'
 import { debugTools } from '../../lib/debug'
 import {
@@ -209,12 +210,20 @@ export default function HomeMode() {
     return () => clearTimeout(timer)
   }, [pendingLevelUp, fire, clearLevelUp])
 
+  // 現地時刻の「時」。部屋の背景と常態の表情が同じ区分（chatStore.timeOfDayLabel）を共有する。
+  // レンダー時に読む＝背景と同じ扱い（effect で state に持たない）。画面が動けば追従する。
+  const hour = new Date().getHours()
+
+  // 常態＝まだ何も喋っていないときの立ち姿。深夜は眠そうにする（Ⅰ-9）。
+  // 会話が始まれば返事の感情（lastFairyEmotion）が上書きするので、眠さが会話に貼り付くことはない。
   const baseExpression: FairyExpression =
-    status === 'error' ? 'sad' : (lastFairyEmotion ?? (heroFairy ? 'happy' : 'neutral'))
+    status === 'error'
+      ? 'sad'
+      : (lastFairyEmotion ?? (heroFairy ? 'happy' : restingExpression(hour)))
   const expression = reactionExpression ?? baseExpression
 
   // コレットの部屋（時間帯で4枚切替・会話接地と同じ現地時刻基準）。未配置なら従来のグラデのまま。
-  const backgroundUrl = homeBackgroundUrl(characterId, new Date().getHours())
+  const backgroundUrl = homeBackgroundUrl(characterId, hour)
 
   return (
     <div className="relative h-full">
