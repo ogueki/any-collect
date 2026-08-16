@@ -11,18 +11,22 @@
 ## 置き方（2通り・どちらでも可）
 
 ### ① 感情ごとのフォルダ（推奨）
-同じ感情に**何枚でも**ポーズ差分を入れられます。ファイル名は自由。
+同じ感情に**何枚でも**ポーズ差分を入れられます。
 表示のたびにランダムで1枚選ばれ、**連続で同じ絵は出ません**（飽き対策）。
+
+**ファイル名は `<感情><番号>` にそろえる**（`happy1.webp`, `happy2.webp` …）。
+コードはフォルダ名しか見ていないので**技術的には自由**ですが、
+`ChatGPT Image 2026年6月22日 02_54_16.webp` のような書き出しそのままの名前が混ざると
+**どの絵がどの感情か一覧で分からず、枚数も数えられません**。番号は 1 始まりの連番、
+抜けても動きますが詰めておくと「何枚あるか」が名前で分かります。
 
 ```
 sprites/
   happy/        ← happy 系を好きなだけ
-    a.png
-    b.png
-    wave.png
+    happy1.webp
+    happy2.webp
   excited/
-    jump.png
-    sparkle.png
+    excited1.webp
   neutral.png   ← 直置きもOK（②と混在可）
 ```
 
@@ -38,11 +42,11 @@ sprites/
 sprites/
   embarrassed/
     lv1/        ← 少し照れ（好感度 低）
-      a.png
+      embarrassed-lv1-1.webp
     lv2/        ← すごく照れる（好感度 高）
-      b.png
+      embarrassed-lv2-1.webp
   happy/        ← lv を作らなければ全レベル共通（従来どおり）
-    a.png
+    happy1.webp
 ```
 
 - 表示は現在のレベルに対し **`lv{level}` → 下位レベル → lvなし共通 → neutral** の順でフォールバック。
@@ -71,8 +75,9 @@ sprites/
 | `worried` | 心配 | **きみ**を案じる・気遣う（`sad` と対） |
 | `sleepy` | ねむい | 夜おそくの会話＋**会話が始まる前の常態**（時間帯で表示側が決める） |
 
-> **絵がまだ無い**＝`proud` / `worried` / `sleepy`（当面 `neutral` の絵で出ます）。
-> **1枚しか無い**＝`angry` / `excited` / `happy` / `neutral` / `searching` / `shy` / `exasperated`（毎回同じ絵になるので2枚目がほしい）。
+> **絵が無い感情はもうありません**（全15キー配置済み）。
+> **1枚しか無い**＝`angry` / `casting` / `exasperated` / `excited` / `happy` / `neutral` / `proud` / `searching` / `shy` / `sleepy`
+> （毎回同じ絵になるので2枚目がほしい。`casting` は召喚待ちの表示専用なので優先度は低い）。
 
 ## 感情を増やしたいとき
 1. `src/lib/character/CharacterRenderer.ts` の `FAIRY_EXPRESSIONS` に 1 語追加
