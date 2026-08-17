@@ -80,6 +80,12 @@ const HERO_CLOUD = [
   'rgba(255,255,255,0) 100%)',
 ].join(', ')
 
+/**
+ * こちらの発話と大セリフを「ひと続きのやりとり」と見なす間隔（`prevUser` の表示条件）。
+ * 実際の返事は数秒で返るので、これは遅い回線や写真つきの話題振りのための余裕。
+ */
+const EXCHANGE_WINDOW_MS = 5 * 60_000
+
 /** 検証用：なつきチップのタップで上げるレベルの上限（ここまで行ったら 0 に戻す）。なつき自体に上限は無い。 */
 const DEBUG_LEVEL_CYCLE = 5
 
@@ -127,6 +133,8 @@ export default function HomeMode() {
   const status = useChatStore((s) => s.status)
   const messages = useChatStore((s) => s.messages)
   const replyNonce = useChatStore((s) => s.replyNonce)
+  const reactedNonce = useChatStore((s) => s.reactedNonce)
+  const markReacted = useChatStore((s) => s.markReacted)
   const opening = useChatStore((s) => s.opening)
   const openConversation = useChatStore((s) => s.openConversation)
   const gaugeValue = useGaugeStore((s) => s.value)
@@ -156,6 +164,9 @@ export default function HomeMode() {
     return -1
   })()
   const heroFairy = lastFairyIdx >= 0 ? messages[lastFairyIdx] : null
+  // 現在時刻はレンダー時に読む（部屋の背景・常態の表情と同じ扱い＝effect で state に持たない）。
+  // 画面が動けば追従する。時刻を使うのは「直前の発話」の間隔判定と時間帯の2か所。
+  const now = new Date()
   const lastFairyEmotion = heroFairy?.emotion
 
   /**
@@ -174,19 +185,34 @@ export default function HomeMode() {
     codexReloaded.current = true
     void loadItems()
   }, [heroItemId, heroItem, loadItems])
+  /**
+   * 薄く残す「直前のこちらの発話」。**大セリフとひと続きのやりとりのときだけ**出す。
+   * 間を空けて開き直すとコレットは第一声で挨拶する（`chatStore.openConversation`）が、その挨拶の
+   * すぐ前に並んでいるのは**前回の自分の発話**なので、無条件に出すと大セリフだけ新しくて
+   * こちらのセリフだけ何時間も前のまま＝会話が噛み合っていないように見える（実機FB 2026-08-17）。
+   * 測るのは「いまから何分前か」ではなく **発話と大セリフの間隔**＝20分ぶりに開いて第一声が
+   * 出なかったとき（`REUNION_QUIET_MIN` 未満）は、前回のやりとりが対のまま残ってよい。
+   */
   const prevUser = (() => {
-    const upto = sending ? messages.length : lastFairyIdx >= 0 ? lastFairyIdx : messages.length
-    for (let i = upto - 1; i >= 0; i--) if (messages[i].role === 'user') return messages[i]
-    return null
+    // 送信中はまだ返事が無い＝末尾の「いま送った文」を見せる。それ以外は大セリフの直前。
+    const idx = (sending ? messages.length : lastFairyIdx >= 0 ? lastFairyIdx : messages.length) - 1
+    const candidate = idx >= 0 ? messages[idx] : null
+    if (!candidate || candidate.role !== 'user') return null
+    const anchor = sending || !heroFairy ? now.getTime() : new Date(heroFairy.createdAt).getTime()
+    return anchor - new Date(candidate.createdAt).getTime() <= EXCHANGE_WINDOW_MS ? candidate : null
   })()
 
   // 返事が来たら立ち絵を反応させ、同時に感情の掛け声を鳴らす（本文は読み上げない＝spec §4.5）。
   // 表情と声を同じ感情から出すので、見た目と聞こえ方の温度がそろう。
+  // ⚠️ 発火の判定は `replyNonce > reactedNonce`＝**まだ再生していない返事のときだけ**。
+  // ホームは画面を移るとアンマウントされるので、これが無いと ずかん/たからばこ/カメラ から
+  // 戻るたびに直前の返事のアニメと掛け声がもう一度鳴る（実機FB 2026-08-17）。
   useEffect(() => {
-    if (!replyNonce || !lastFairyEmotion) return
+    if (replyNonce <= reactedNonce || !lastFairyEmotion) return
+    markReacted(replyNonce)
     fire(lastFairyEmotion)
     void speakReaction(lastFairyEmotion)
-  }, [replyNonce, lastFairyEmotion, fire])
+  }, [replyNonce, reactedNonce, markReacted, lastFairyEmotion, fire])
 
   // ホームに来たら、コレットの方から第一声（会話が空のとき・セッション1回・失敗は固定挨拶のまま）。
   // オンボ中（intro/shoot）は鳴らさない（完了して done になってから発火する）。
@@ -211,8 +237,7 @@ export default function HomeMode() {
   }, [pendingLevelUp, fire, clearLevelUp])
 
   // 現地時刻の「時」。部屋の背景と常態の表情が同じ区分（chatStore.timeOfDayLabel）を共有する。
-  // レンダー時に読む＝背景と同じ扱い（effect で state に持たない）。画面が動けば追従する。
-  const hour = new Date().getHours()
+  const hour = now.getHours()
 
   // 常態＝まだ何も喋っていないときの立ち姿。深夜は眠そうにする（Ⅰ-9）。
   // 会話が始まれば返事の感情（lastFairyEmotion）が上書きするので、眠さが会話に貼り付くことはない。

@@ -232,6 +232,15 @@ interface ChatState {
   openingRequested: boolean
   /** 返信が来るたびに +1。立ち絵の一発アニメ（animateKey）の発火に使う */
   replyNonce: number
+  /**
+   * どの `replyNonce` まで立ち絵のリアクション（アニメ＋掛け声）を再生したか。
+   * **ホームは画面を移るとアンマウントされる**（`App.tsx` は `screen === 'home' && <HomeMode />`）ので、
+   * 「再生済み」を component 側の ref に持つと**戻るたびに初期化されて同じ返事でまた鳴る**。
+   * アンマウントを跨ぐ必要があるのでストア側に置く（永続はしない＝リロードで 0 に戻ってよい）。
+   */
+  reactedNonce: number
+  /** リアクションを再生したことを記録する（再マウントでの二重再生を防ぐ） */
+  markReacted: (nonce: number) => void
   /** 先頭から何件が記憶へ要約済みか（永続。要約トリガーと切り詰めの基準） */
   consolidatedCount: number
   /** ユーザー入力を送り、妖精の応答を履歴に追加する。成功したら true（呼び出し側の入力クリア用） */
@@ -405,6 +414,12 @@ export const useChatStore = create<ChatState>((set, get) => {
     opening: false,
     openingRequested: false,
     replyNonce: 0,
+    reactedNonce: 0,
+
+    markReacted: (nonce) => {
+      if (nonce <= get().reactedNonce) return
+      set({ reactedNonce: nonce })
+    },
 
     send: async (userInput, personaId) => {
       const text = userInput.trim()
@@ -562,6 +577,7 @@ export const useChatStore = create<ChatState>((set, get) => {
         opening: false,
         openingRequested: false,
         replyNonce: 0,
+        reactedNonce: 0,
         consolidatedCount: 0,
       })
     },
