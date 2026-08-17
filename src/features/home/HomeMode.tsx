@@ -285,7 +285,7 @@ export default function HomeMode() {
         </div>
 
         {/* 状態を一本バーに：なつき（左）＋まほうパワー（右）。
-            `?debug=1` のときだけ なつき＝タップでLv循環／まほうパワー＝タップで満タン⇄0 トグル（検証用の近道）。 */}
+            なつき＝`?debug=1` のときだけタップで Lv 循環／**まほうパワー＝常時タップで満タン⇄0**。 */}
         <div className="flex w-full max-w-xs shrink-0 items-center gap-3 rounded-2xl bg-white/80 px-3.5 py-2.5 shadow-pop backdrop-blur-sm">
           {/* なつきレベルに上限は無い（節目がずっと訪れ続ける）ので、
               固定の段数ドットでなく「次のレベルまで」の細いバーで進みを見せる。 */}
@@ -304,10 +304,14 @@ export default function HomeMode() {
             </span>
           </DebugTap>
           <span className="h-6 w-px shrink-0 bg-slate-100" />
-          <DebugTap
-            onTap={() => (gaugeFull ? spendGauge() : addGauge(GAUGE_MAX))}
-            className="min-w-0 flex-1 text-left"
-            ariaLabel="まほうパワー"
+          {/* ⚠️ **ここだけ `?debug=1` を外して常時タップ可**（2026-08-18）＝満タン⇄0 のトグル。
+              触ってもらう場面で「まず3枚撮ってきて」を強いると、体験の山（召喚）まで辿り着けないため。
+              見た目は変えていない＝知っている人だけが使う近道。 */}
+          <button
+            type="button"
+            onClick={() => (gaugeFull ? spendGauge() : addGauge(GAUGE_MAX))}
+            aria-label="まほうパワー"
+            className="min-w-0 flex-1 text-left transition active:scale-95"
           >
             <div className="mb-1 flex items-center justify-between">
               <span className="flex items-center gap-1 text-xs font-extrabold text-emerald-600">
@@ -324,7 +328,7 @@ export default function HomeMode() {
                 style={{ width: `${gaugePct}%` }}
               />
             </div>
-          </DebugTap>
+          </button>
         </div>
 
         {pendingLevelUp && (
