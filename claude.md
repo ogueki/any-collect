@@ -28,7 +28,7 @@ Claude Code がプロジェクト作業時に参照する**開発規約**。こ�
 5. **失敗をシステムの言葉で見せない。** 生のエラーを画面に出さず、コレットのセリフで受ける（`src/lib/character/failureLines.ts`）。
 
 ## ディレクトリ方針
-- `api/` … 外部API呼び出し（**鍵を使う処理は必ずここ**）。**新しいエンドポイントを足すときは必ず `_lib/http.ts` の共通ガードを通す**（ボディ/画像のサイズ上限・`sanitizePersonaId`・`sanitizeText`・`fail()` でエラー詳細を隠す）。**相対 import には `.js` 拡張子が必須**（Vercel は nodenext(ESM) でビルドするため。無いと実行時 500）。ファイル一覧は spec.md §8。
+- `api/` … 外部API呼び出し（**鍵を使う処理は必ずここ**）。**新しいエンドポイントを足すときは必ず `_lib/http.ts` の共通ガードを通す**（`rejectForeignOrigin()` を method チェックの直後に1行・ボディ/画像のサイズ上限・`sanitizePersonaId`・`sanitizeText`・`fail()` でエラー詳細を隠す）。**相対 import には `.js` 拡張子が必須**（Vercel は nodenext(ESM) でビルドするため。無いと実行時 500）。ファイル一覧は spec.md §8。
 - `src/features/<機能>/` … 機能単位（camera / home / collection＝図鑑 / album / kiln＝窯 / treasure＝たからばこ / game / onboarding）。妖精リアクションは表示層なので `src/lib/character/` 側。
 - `src/lib/ai/` … AIプロバイダの抽象化（`ImageGenProvider`/`ChatProvider`/`SceneProvider`/`IdentifyProvider`/`TtsProvider`/`MemoryProvider`）＝**差し替え点**。
 - `src/lib/character/` … キャラ表示の抽象化（今は2Dスプライト、将来3D/Live2D）。**待ち／失敗の in-character 文面もここ**（`waitLines.ts`／`failureLines.ts`＝**非コーダーが直接編集できる素のテキスト**として保つ）。

@@ -10,6 +10,7 @@ import {
   parseImageDataUrl,
   PayloadTooLargeError,
   readJsonBody,
+  rejectForeignOrigin,
   sanitizePersonaId,
   sendJson,
   timed,
@@ -39,6 +40,7 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
     sendJson(res, 405, { error: 'POST のみ対応しています' })
     return
   }
+  if (rejectForeignOrigin(req, res)) return
 
   // メタ生成（名前/説明/カテゴリ）は常に Gemini なので GEMINI_API_KEY は必須。
   const apiKey = process.env.GEMINI_API_KEY

@@ -4,6 +4,7 @@ import {
   fail,
   PayloadTooLargeError,
   readJsonBody,
+  rejectForeignOrigin,
   sanitizePersonaId,
   sendJson,
   type NodeReq,
@@ -81,6 +82,7 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
     sendJson(res, 405, { error: 'POST のみ対応しています' })
     return
   }
+  if (rejectForeignOrigin(req, res)) return
 
   const apiKey = process.env.FISH_AUDIO_API_KEY
   if (!apiKey) {

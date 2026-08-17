@@ -12,10 +12,12 @@ import type { InlineImage } from './gemini-image.js'
  *   - personaId のサニタイズ（パストラバーサル防止）
  *   - プロンプトに載る自由文字列の正規化
  *   - エラー詳細を外に出さない
+ *   - 発信元オリジンの検査（`rejectForeignOrigin`）
  *
- * ⚠️ **呼び出し回数の制限（レート制限・日次上限）は未実装**。
- * 「1人あたりどれだけ使わせるか」は製品の方針＝仕様が決まってから入れる
- * （spec §12「レート制限/1日あたり上限」・認証は STEP6）。
+ * ⚠️ **ひとりあたりの回数制限は入れない**（判断＝DECISIONS 2026-08-04・社内公開のため。
+ * 再検討トリガー＝一般公開／社外配布／請求が想定超え／STEP6 着手）。
+ * ⚠️ **全体の日次総量上限も未実装**＝予算の最終的な蓋は Vercel / Google 側の上限で持つ。
+ * コード側で持つなら per-IP でなく**サーバ側の総量**（＝「1日いくらまで払うか」）から。
  */
 
 export type NodeReq = IncomingMessage & { body?: unknown }
@@ -83,6 +85,57 @@ export function fail(
     return
   }
   sendJson(res, status, { error: publicMessage })
+}
+
+/**
+ * 許可する発信元オリジン。**`ALLOWED_ORIGINS` が未設定なら空＝検査そのものを行わない**（opt-in）。
+ * 設定を忘れただけで本番が全滅するほうが害が大きいので、既定は「今までどおり通す」にしてある。
+ * 値はカンマ区切り（例: `https://any-collect.vercel.app,http://localhost:5173`）。
+ * Vercel のプレビューは配信のたびにホスト名が変わるので `VERCEL_URL` を自動で足す。
+ */
+function allowedOrigins(): string[] {
+  const configured = (process.env.ALLOWED_ORIGINS ?? '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase().replace(/\/+$/, ''))
+    .filter(Boolean)
+  if (configured.length === 0) return []
+  const vercelUrl = process.env.VERCEL_URL
+  return vercelUrl ? [...configured, `https://${vercelUrl.toLowerCase()}`] : configured
+}
+
+/** 発信元オリジン。`Origin` が無ければ `Referer` から導出する。分からなければ null。 */
+function requestOrigin(req: NodeReq): string | null {
+  const origin = req.headers.origin
+  if (typeof origin === 'string' && origin) return origin.toLowerCase().replace(/\/+$/, '')
+  const referer = req.headers.referer
+  if (typeof referer === 'string' && referer) {
+    try {
+      return new URL(referer).origin.toLowerCase()
+    } catch {
+      return null
+    }
+  }
+  return null
+}
+
+/**
+ * 許可されていない発信元なら 403 を返して true（呼び出し側は
+ * `if (rejectForeignOrigin(req, res)) return` を method チェックの直後に置く）。
+ *
+ * 狙い＝**ブラウザが自分のデプロイから送ったものだけを通す**＝URL を知った人が curl や
+ * スクリプトで直接叩く経路（`Origin` も `Referer` も付かない）を落とす。
+ *
+ * ⚠️ **これは鍵ではない。** `Origin` は偽装できるので、本気で叩く相手は止まらない。
+ * 目的は「無防備で置いていたわけではない」ことと、素朴な叩かれ方の遮断まで。
+ * 予算の最終的な蓋はプラットフォーム側の上限で持つ（認証の本体は STEP6）。
+ */
+export function rejectForeignOrigin(req: NodeReq, res: ServerResponse): boolean {
+  const allowed = allowedOrigins()
+  if (allowed.length === 0) return false
+  const origin = requestOrigin(req)
+  if (origin && allowed.includes(origin)) return false
+  sendJson(res, 403, { error: '許可されていないリクエストです' })
+  return true
 }
 
 /**

@@ -52,6 +52,8 @@ export default defineConfig(({ mode }) => {
     'FAL_KEY',
     'FAL_IMAGE_MODEL',
     'FAL_IMG2IMG_STRENGTH',
+    // 発信元オリジンの検査（未設定なら検査しない）。dev で本番と同じ挙動を確かめたいとき用。
+    'ALLOWED_ORIGINS',
   ] as const) {
     if (env[key]) process.env[key] = env[key]
   }
