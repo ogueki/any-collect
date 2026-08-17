@@ -15,6 +15,7 @@ Claude Code がプロジェクト作業時に参照する**開発規約**。こ�
 - `npm run dev` … 開発サーバ
 - `npm run build` … 型チェック＋本番ビルド
 - `npm run lint` … ESLint（**0 problems が基準**。警告を「既知」として残さない）
+- `npm test` … vitest（`{src,api}/**/*.test.ts`）。**純関数だけ**を対象にする＝**UI・ストアの副作用は書かない**（壊れやすいテストは負債になる。基準＝「壊れても画面を見ただけでは気づけないか」）
 - `npm run sprites:optimize` … 画像素材の WebP 化（下記の画像ルール）
 - `npm run voice:record` … 固定セリフの事前収録（下記のパートボイスのルール）
 - `npm run bgm:optimize` … BGM のビットレート最適化（下記の BGM のルール）
