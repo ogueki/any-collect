@@ -26,8 +26,6 @@ interface ChatRequestBody {
   history?: ChatTurn[]
   userInput?: string
   personaId?: string
-  /** コレットとの好感度レベル（1..）。口調 tier の選択に使う（クライアントが送る） */
-  affinityLevel?: number
   /** コレットが覚えている「きみについての短い事実」（クライアントが送る・接地注入） */
   memoryFacts?: { key?: unknown; value?: unknown }[]
   /** きみの最近のようす（図鑑・アルバム傾向）。クライアントが集計した短いノート（接地注入・STEP2c） */
@@ -106,10 +104,6 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
     : []
 
   try {
-    const affinityLevel =
-      typeof body.affinityLevel === 'number' && Number.isFinite(body.affinityLevel)
-        ? body.affinityLevel
-        : undefined
     // 記憶ファクト・接地ノートはクライアント由来の自由文字列がそのまま system prompt に載る。
     // 制御文字を潰して長さで切る（プロンプトの構造を壊させない）。
     const memoryFacts = Array.isArray(body.memoryFacts)
@@ -140,7 +134,6 @@ export default async function handler(req: NodeReq, res: ServerResponse): Promis
     const parsedImage = parseImageDataUrl(body.image)
     const image = parsedImage && isImageWithinLimit(parsedImage.data) ? parsedImage : undefined
     const systemPrompt = buildSystemPrompt(loadPersona(sanitizePersonaId(body.personaId)), {
-      affinityLevel,
       memoryFacts,
       groundingNotes,
       timeOfDay,

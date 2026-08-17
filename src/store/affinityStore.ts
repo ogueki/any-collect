@@ -59,8 +59,9 @@ export function levelProgress(score: number): number {
 }
 
 /**
- * persona.md「好感度別の口調」と level-aware スプライトに渡す tier（1..3）。
- * レベルは無限に伸びるが、tier は用意された段数で頭打ちにする（Lv.7 に対応する tier は無いため）。
+ * level-aware スプライト（`sprites/<感情>/lv1,lv2…`）に渡す tier（1..3）。
+ * レベルは無限に伸びるが、tier は用意された段数で頭打ちにする（Lv.7 に対応する絵は無いため）。
+ * ⚠️ **会話の口調には使わない**（2026-08-18 に切り離した＝理由は DECISIONS）。絵の選択専用。
  */
 export function toneTierForLevel(level: number): number {
   return Math.min(Math.max(1, level), MAX_TONE_TIER)
@@ -142,8 +143,6 @@ interface AffinityState extends AffinityRecord {
   pendingLevelUp: number | null
   /** 現在のレベル（1..∞） */
   level: () => number
-  /** persona/スプライトに渡す tier（1..3・レベルの頭打ち版） */
-  toneTier: () => number
   /** なつきを足す（レベルが上がったら pendingLevelUp を立てる）。source は内訳の記録用 */
   add: (amount: number, source: AffinitySource) => void
   /** レベルアップ演出を消化済みにする */
@@ -184,7 +183,6 @@ export const useAffinityStore = create<AffinityState>((set, get) => {
     pendingLevelUp: null,
 
     level: () => levelForScore(get().score),
-    toneTier: () => toneTierForLevel(levelForScore(get().score)),
 
     add: (amount, source) => {
       if (!Number.isFinite(amount) || amount <= 0) return

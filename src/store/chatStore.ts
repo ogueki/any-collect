@@ -198,8 +198,8 @@ export function buildEntryTopicNote(entry: CollectionEntry, now = new Date()): s
 
 /** 会話に載せる接地文脈（好感度・記憶・図鑑/アルバム傾向・時間帯）を集める。send/opening 共用。 */
 async function gatherChatContext() {
-  // persona の「好感度別の口調」は3段しか無いので、無限に伸びるレベルでなく tier を渡す。
-  const affinityLevel = useAffinityStore.getState().toneTier()
+  // ⚠️ 好感度（なつき度）は**会話に載せない**（2026-08-18）＝レベルで口調を変えるのはやめた。
+  // なつき度は貯まり続けるが、返事の文面には効かない（理由＝DECISIONS）。
   const memoryFacts = useMemoryStore.getState().facts
 
   // 図鑑・アルバムの傾向を接地ノートに（STEP2c）。会話タブ単独起動でも接地できるよう、
@@ -215,7 +215,6 @@ async function gatherChatContext() {
   if (import.meta.env.DEV) console.debug('[grounding]', groundingNotes)
 
   return {
-    affinityLevel,
     memoryFacts,
     groundingNotes,
     timeOfDay: timeOfDayLabel(new Date().getHours()),

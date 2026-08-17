@@ -13,10 +13,9 @@ export interface ChatReply {
   voiceDirection?: string
 }
 
-/** 会話に載せる接地オプション（好感度・記憶・図鑑/アルバム傾向・時間帯）。 */
+/** 会話に載せる接地オプション（記憶・図鑑/アルバム傾向・時間帯）。好感度は載せない（2026-08-18）。 */
 export interface ChatOpts {
   personaId?: string
-  affinityLevel?: number
   memoryFacts?: MemoryFact[]
   groundingNotes?: string[]
   /** いまの時間帯（朝/昼/夕方/夜/深夜）。クライアントの現地時刻から */
