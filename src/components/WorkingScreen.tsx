@@ -99,6 +99,7 @@ export default function WorkingScreen({
             size="sm"
             animateKey={animateKey}
             level={affinityLevel}
+            glow={dark}
           />
         </div>
       </div>

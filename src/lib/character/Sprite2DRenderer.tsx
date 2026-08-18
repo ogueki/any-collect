@@ -126,6 +126,7 @@ export default function Sprite2DRenderer({
   size = 'lg',
   animateKey,
   level = 1,
+  glow = false,
 }: FairyViewProps) {
   // animateKey が変わるたびに引き直す（リアクション発火ごとに別ポーズ）。
   const url = useMemo(() => {
@@ -167,18 +168,24 @@ export default function Sprite2DRenderer({
     <div className={`${SIZE_CLASS[size]} relative animate-float`}>
       {url ? (
         <>
-          {/* 背景から分離させる淡い光。`filter: drop-shadow` は使わない＝常時の
-              animate-float で合成レイヤーに載ると、iOS Safari が影をアルファ形状ではなく
-              **要素の矩形**に対して描き「四角い光」になるため（暗背景のたからばこで発覚・
-              2026-07-21）。背景の放射グラデならレイヤー化の影響を受けない。 */}
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-0"
-            style={{
-              background:
-                'radial-gradient(ellipse 42% 38% at 50% 70%, rgba(196,181,253,0.42) 0%, rgba(196,181,253,0.12) 55%, rgba(196,181,253,0) 78%)',
-            }}
-          />
+          {/* 背景から分離させる淡い光。**呼び出し側が `glow` で明示したときだけ出す**＝
+              分離が要るのは暗い背景の画面だけで、明るい背景では役目が無く「丸いしみ」に
+              見えるだけだった（実機FB・2026-08-18）。色は白＝色つき（旧：lavender）だと
+              「背景より暗い」場面が必ず出るため。
+              `filter: drop-shadow` は使わない＝常時の animate-float で合成レイヤーに載ると、
+              iOS Safari が影をアルファ形状ではなく**要素の矩形**に対して描き「四角い光」に
+              なるため（暗背景のたからばこで発覚・2026-07-21）。背景の放射グラデならレイヤー
+              化の影響を受けない。 */}
+          {glow && (
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background:
+                  'radial-gradient(ellipse 42% 38% at 50% 70%, rgba(255,250,240,0.36) 0%, rgba(255,250,240,0.10) 55%, rgba(255,250,240,0) 78%)',
+              }}
+            />
+          )}
           <img
             ref={imgRef}
             src={url}
