@@ -259,7 +259,7 @@ any-collect/
     characters/default/{persona.md,sprites/,backgrounds/,transitions/,voice.json,voiceLines.ts,voice/,bgm/}
     store/    # app / chat / album / collection / codex / gauge / affinity / memory / game / onboarding
     styles/  types/
-  public/
+  public/  # manifest.webmanifest ＋ アイコン（icon-192/512・maskable・apple-touch-icon）
   .env.example
   spec.md  DECISIONS.md  ROADMAP.md  UI-NOTES.md  claude.md
 ```
@@ -295,6 +295,8 @@ any-collect/
 ## 11. ネイティブアプリ化の方針
 - **Capacitor** 採用。**提出（社内Web）後すぐネイティブ化**し、**プッシュ通知＝毎日フックの配信（retention 本番）**／ネイティブカメラ・OS／梱包を入れる。
 - まず PWA を維持。ネイティブ機能はアダプタ層越し。
+- **ホーム画面に追加＝両OSで全画面**（`public/manifest.webmanifest`／`display: standalone`／`orientation: portrait`）。**iOS 17+ は manifest 無しでも全画面になるが、Android の Chrome は manifest が無いとアドレスバー付きのショートカットにしかならない。** Service Worker はまだ入れていない＝オフラインでは動かない。
+- **ホーム画面版とブラウザのタブはストレージが別**（図鑑・アルバム・会話は別々に貯まる）。**アイコンはコレットの立ち絵から起こした仮のもの**＝`public/` の png を差し替えれば入れ替わる。
 
 ## 12. 非機能要件
 - 生成中/反応中のUX：コレットの演出でローディング（悪通信フォールバック含む）。

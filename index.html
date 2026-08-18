@@ -4,6 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#C4B5FD" />
+
+    <!-- PWA（ホーム画面に追加）。iOS 17+ は追加した時点で全画面になるが、**Android の Chrome は
+         manifest が無いとアドレスバー付きのショートカットにしかならない**ので manifest が要る。
+         アイコンは立ち絵から起こした仮のもの＝`public/` の png を差し替えれば入れ替わる。 -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icon-192.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="えにこれ" />
+    <!-- iOS 16 以前はこの meta が無いと全画面にならない（17+ は既定で全画面）。 -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <title>えにこれ</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
