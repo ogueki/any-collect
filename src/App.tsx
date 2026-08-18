@@ -10,7 +10,8 @@ import WorkingScreen from './components/WorkingScreen'
 import MenuSheet from './components/MenuSheet'
 import CollectionView from './features/collection/CollectionView'
 import AlbumView from './features/album/AlbumView'
-import KilnView from './features/kiln/KilnView'
+import CauldronView from './features/cauldron/CauldronView'
+import { sceneArtUrl } from './lib/character/sceneArt'
 import TreasureBoxView from './features/treasure/TreasureBoxView'
 import TowerGame from './features/game/TowerGame'
 import FlappyGame from './features/game/FlappyGame'
@@ -60,9 +61,9 @@ export default function App() {
           <AlbumView />
         </WorkingScreen>
       )}
-      {screen === 'kiln' && (
-        <WorkingScreen title="妖精の窯">
-          <KilnView onGoTreasure={() => go('treasure')} />
+      {screen === 'cauldron' && (
+        <WorkingScreen title="妖精の釜" tone="dark" background={sceneArtUrl(characterId, 'cauldron', 'room')}>
+          <CauldronView onGoTreasure={() => go('treasure')} />
         </WorkingScreen>
       )}
       {screen === 'treasure' && (

@@ -314,7 +314,7 @@ export interface ItemMeta {
   /** 安定キー。enum を強制＋未知は other にフォールバックするので常に有効値が入る。 */
   category: ItemCategoryKey
   /**
-   * 召喚直後にホームでコレットが言うひとこと。**空になりうる**＝合成（窯）は生成しないし、
+   * 召喚直後にホームでコレットが言うひとこと。**空になりうる**＝合成（釜）は生成しないし、
    * 召喚でもモデルが落とすことがある。呼び出し側は無いときの受けを持つこと。
    */
   comment?: string
@@ -437,7 +437,7 @@ export async function generateSynthesisMeta({
         {
           role: 'user',
           parts: [
-            { text: '2つの素材アイテムを妖精の窯で合成した結果を、スキーマ通りの JSON で答えて。' },
+            { text: '2つの素材アイテムを妖精の釜で合成した結果を、スキーマ通りの JSON で答えて。' },
           ],
         },
       ],

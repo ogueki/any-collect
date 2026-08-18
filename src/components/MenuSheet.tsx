@@ -5,7 +5,7 @@ import { resetAllData } from '../lib/storage/reset'
 
 /**
  * メニュー（ボトムシート）。ホームの「メニュー」から開く、二次機能の受け皿。
- * 現状＝妖精の窯（2素材合成）・アルバム・ゲーム（積んで/とんで）。将来機能はここに追加する。
+ * 現状＝妖精の釜（2素材合成）・アルバム・ゲーム（積んで/とんで）。将来機能はここに追加する。
  */
 export default function MenuSheet() {
   const open = useAppStore((s) => s.menuOpen)
@@ -32,7 +32,7 @@ export default function MenuSheet() {
       >
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-200" />
         <h2 className="mb-2 font-display text-sm font-bold text-slate-700">メニュー</h2>
-        <MenuRow title="妖精の窯" desc="アイテムを2つ混ぜて合成" onClick={() => go('kiln')} />
+        <MenuRow title="妖精の釜" desc="アイテムを2つ混ぜて合成" onClick={() => go('cauldron')} />
         <MenuRow title="アルバム" desc="撮った思い出の写真" onClick={() => go('album')} />
         <MenuRow title="積んで遊ぶ" desc="アイテムでタワー" onClick={() => openGame('tower')} />
         <MenuRow title="とんで遊ぶ" desc="アイテムでフラッピー" onClick={() => openGame('flappy')} />

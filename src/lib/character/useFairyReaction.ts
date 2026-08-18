@@ -4,7 +4,7 @@ import type { FairyExpression } from './CharacterRenderer'
 /**
  * 妖精の「一時リアクション」を扱う共有フック。
  *
- * どの文脈（カメラの生成/確定・ホームの会話・将来の風景コメント/妖精の窯など）でも、
+ * どの文脈（カメラの生成/確定・ホームの会話・将来の風景コメント/妖精の釜など）でも、
  * `fire(emotion)` を呼べば一定時間その表情に切り替わり、`animateKey` が変わって
  * 一発アニメ（`Sprite2DRenderer` の `REACTION_ANIMATION`）が再生され、`durationMs` 後に
  * 自動でベース表情へ戻る。

@@ -45,7 +45,7 @@ for (const [path, url] of Object.entries(bgmModules)) {
  *
  * - **カメラは無音**＝屋外で現実の音が鳴っている場所なので床を足す必要がない。
  * - **ゲームは専用曲があるときだけ**＝ホームのヒーリング系は合わない。`game.mp3` を置けば鳴る。
- * - ホーム系（会話・図鑑・アルバム・窯）とオンボは同じ床でつながる（画面を移っても切れない）。
+ * - ホーム系（会話・図鑑・アルバム・釜）とオンボは同じ床でつながる（画面を移っても切れない）。
  */
 export function bgmKeyFor(screen: Screen, game: string | null, onboarding: boolean): string | null {
   if (game) return 'game'

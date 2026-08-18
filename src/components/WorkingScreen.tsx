@@ -8,7 +8,7 @@ import { useFairyReaction } from '../lib/character/useFairyReaction'
 import { ShellFairyContext } from './shellFairy'
 
 /**
- * 作業画面（図鑑・アルバム・窯・たからばこ）の共通シェル。
+ * 作業画面（図鑑・アルバム・釜・たからばこ）の共通シェル。
  * 上部＝左に「ホームへ戻る」／中央にタイトル／右に声 ON/OFF（全画面で同じ位置＝導線の共通化）。
  * 右下に **コレット（1体）** を常駐させ、子ビューからの感情リアクションを表示する
  * （各ビューが自前スプライトを描く二重化をやめ、シェルに一本化＝mock の「作業画面＝右下コレット」）。
@@ -18,17 +18,21 @@ import { ShellFairyContext } from './shellFairy'
  * `bleed`＝子ビューを**画面いっぱい**に敷く（ヘッダーの裏まで）。たからばこの没入感用＝
  * カード状の枠と影をなくす。この時シェルは自前の背景を描かない（子ビューが全面を塗る）。
  * `tone='dark'`＝暗い背景の上に載るヘッダー配色（白抜き＋すりガラス）。
+ * `background`＝その画面の部屋の絵（`sceneArt.ts`）。敷くと既定のパステルのグラデは出さない。
+ *   ⚠️ 暗い絵を敷くときは `tone='dark'` も一緒に指定する（ヘッダーが読めなくなる）。
  */
 export default function WorkingScreen({
   title,
   children,
   bleed = false,
   tone = 'light',
+  background = null,
 }: {
   title: string
   children: ReactNode
   bleed?: boolean
   tone?: 'light' | 'dark'
+  background?: string | null
 }) {
   const go = useAppStore((s) => s.go)
   const voiceEnabled = useAppStore((s) => s.voiceEnabled)
@@ -46,9 +50,10 @@ export default function WorkingScreen({
   return (
     <ShellFairyContext.Provider value={{ fire }}>
       <div
-        className={`relative flex h-full flex-col ${
-          bleed ? '' : 'bg-gradient-to-b from-sky-50 via-violet-50 to-emerald-50'
+        className={`relative flex h-full flex-col bg-cover bg-center ${
+          bleed || background ? '' : 'bg-gradient-to-b from-sky-50 via-violet-50 to-emerald-50'
         }`}
+        style={background ? { backgroundImage: `url(${background})` } : undefined}
       >
         {/* bleed＝子ビューを画面いっぱいに敷く（ヘッダーの裏まで回り込ませる） */}
         {bleed && <div className="absolute inset-0">{children}</div>}

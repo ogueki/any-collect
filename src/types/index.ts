@@ -57,7 +57,7 @@ export interface CollectionEntry {
   lastSeenAt: string
 }
 
-/** アイテム（召喚魔法＝図鑑エントリから作る透過アイテム。窯の合成でも生まれる／たからばこに入る） */
+/** アイテム（召喚魔法＝図鑑エントリから作る透過アイテム。釜の合成でも生まれる／たからばこに入る） */
 export interface Item {
   id: string
   name: string
@@ -77,7 +77,7 @@ export interface Item {
   createdAt: string
 }
 
-/** 妖精の窯による合成の系譜 */
+/** 妖精の釜による合成の系譜 */
 export interface Synthesis {
   id: string
   resultItemId: string

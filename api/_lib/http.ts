@@ -23,7 +23,7 @@ import type { InlineImage } from './gemini-image.js'
 export type NodeReq = IncomingMessage & { body?: unknown }
 
 /**
- * 1 リクエストのボディ上限。窯の合成が透過 PNG 2 枚（各 1024px）を data URL で送るため
+ * 1 リクエストのボディ上限。釜の合成が透過 PNG 2 枚（各 1024px）を data URL で送るため
  * 余裕を持たせてある＝**正常系はこの上限に触れない**（サイズを絞る目的ではなく、
  * 無制限にメモリへ読み込ませない目的）。
  */

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Sprite2DRenderer from '../lib/character/Sprite2DRenderer'
+import { sceneArtUrl } from '../lib/character/sceneArt'
 import { getStatusStages, getTips, type WaitContext } from '../lib/character/waitLines'
 
 /**
- * 生成待ちの全画面オーバーレイ（召喚中／合成中）。召喚（図鑑）と窯（合成）で使い回す共有UI。
+ * 生成待ちの全画面オーバーレイ（召喚中／合成中）。召喚（図鑑）と釜（合成）で使い回す共有UI。
  *
  * **ここが"儀式"の本体**（実機FB 2026-08-10）。完成後に花火を足すより、
  * **待たされている ~7 秒**を魔法にする方が効く。前は「妖精＋進捗バー＋豆知識」で、
@@ -47,6 +48,9 @@ export default function GeneratingOverlay({
   context = 'summoning',
 }: GeneratingOverlayProps) {
   const stages = useMemo(() => getStatusStages(context), [context])
+  // 合成のときだけ差し替える専用の一枚絵（未配置なら null＝立ち絵のまま）。
+  const stirring =
+    context === 'synthesizing' ? sceneArtUrl(characterId, 'cauldron', 'fairy') : null
   const tips = useMemo(() => getTips(characterId, context), [characterId, context])
 
   const [progress, setProgress] = useState(0)
@@ -125,8 +129,11 @@ export default function GeneratingOverlay({
         />
 
         {/* 進捗＝陣が満ちる光の輪（旧・進捗バーの置き換え。情報は捨てない）。 */}
+        {/* 合成の一枚絵は不透明で大きいので、**リングを絵の外側まで広げる**＝そうしないと
+            進捗（あとどれくらい）が絵の裏に隠れて見えなくなる。立ち絵（召喚）は細身で
+            透明部分が多いため、内側のままでも透けて見える。 */}
         <svg
-          className="absolute h-40 w-40 -rotate-90"
+          className={`absolute -rotate-90 ${stirring ? 'h-64 w-64' : 'h-40 w-40'}`}
           viewBox="0 0 120 120"
           role="progressbar"
           aria-valuenow={Math.round(progress * 100)}
@@ -149,9 +156,20 @@ export default function GeneratingOverlay({
           />
         </svg>
 
-        {/* 魔法をかけている姿。召喚も合成（窯）も「魔法をかけている」ので同じポーズを使う
-            （分けたくなったら context で出し分ける）。絵が未配置なら neutral に落ちる。 */}
-        <Sprite2DRenderer characterId={characterId} expression="casting" size="lg" />
+        {/* 魔法をかけている姿。**合成（釜）だけは専用の一枚絵**＝コレットが釜をかき混ぜて
+            いる絵で、待っている行為と絵が一致する（召喚は立ち絵の casting のまま）。
+            絵が未配置なら casting に落ちるので、キャラを差し替えても壊れない。 */}
+        {stirring ? (
+          <img
+            src={stirring}
+            alt=""
+            aria-hidden
+            draggable={false}
+            className="relative h-56 w-56 animate-float select-none object-contain"
+          />
+        ) : (
+          <Sprite2DRenderer characterId={characterId} expression="casting" size="lg" />
+        )}
       </div>
 
       {/* 状況ステータス */}

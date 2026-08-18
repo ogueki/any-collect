@@ -28,7 +28,7 @@ graph LR
 ```
 
 - **図鑑（判定＋クロップ）は無料で取り放題／召喚（画像生成）だけがコスト高**なので、そこにだけ「まほうパワー」の栓をかけている
-- そのほか：**妖精の窯**（アイテム2つを合成）、**アルバム**（写真から会話に持ち込める）、ミニゲーム
+- そのほか：**妖精の釜**（アイテム2つを合成）、**アルバム**（写真から会話に持ち込める）、ミニゲーム
 - 声は**カメラ＝動的TTS／ホーム＝事前収録**（実行時ゼロ円）。BGM はシーンごとに差し替え
 
 ## アーキテクチャ
@@ -36,7 +36,7 @@ graph LR
 ```mermaid
 graph TD
   subgraph client["クライアント（React 19 + TypeScript + Vite + Tailwind + Zustand）"]
-    UI[features/<br/>camera・home・collection・album<br/>kiln・treasure・game・onboarding]
+    UI[features/<br/>camera・home・collection・album<br/>cauldron・treasure・game・onboarding]
     ABS[lib/ai の Provider 6種<br/>lib/storage の Repository<br/>lib/character の Renderer]
     UI --> ABS
   end
@@ -64,7 +64,7 @@ graph TD
 | パス | 役割 |
 |---|---|
 | `api/` | 外部API呼び出し（鍵を使う処理は必ずここ）。入力ガードは `_lib/http.ts` に集約 |
-| `src/features/<機能>/` | 機能単位（camera / home / collection / album / kiln / treasure / game / onboarding） |
+| `src/features/<機能>/` | 機能単位（camera / home / collection / album / cauldron / treasure / game / onboarding） |
 | `src/lib/ai/` | AI プロバイダの抽象化＝差し替え点 |
 | `src/lib/character/` | キャラ表示の抽象化。待ち／失敗の文面もここ |
 | `src/lib/storage/` | Repository パターン（IndexedDB ↔ Supabase） |

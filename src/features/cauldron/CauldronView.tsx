@@ -13,25 +13,25 @@ import type { GeneratedItem } from '../../lib/ai/imageProvider'
 import type { Item } from '../../types'
 
 /**
- * 妖精の窯（新IA・レイアウト再構成 ③）＝**2つのアイテムを混ぜて合成**する場所（メニュー内）。
+ * 妖精の釜（新IA・レイアウト再構成 ③）＝**2つのアイテムを混ぜて合成**する場所（メニュー内）。
  * 図鑑エントリ→透過アイテム化（召喚魔法）は図鑑（CollectionView）へ移したので、
- * 窯は名実一致で「合成」に戻す（残置していた synthesize 系を復活）。
+ * 釜は名実一致で「合成」に戻す（残置していた synthesize 系を復活）。
  * 素材は消費しない（何度でも合成の素になれる）。合成結果はたからばこに入るアイテムになる。
  */
 
-interface KilnViewProps {
+interface CauldronViewProps {
   /** 合成後にたからばこへ飛ぶ（App が渡す。未指定なら「つづける」のみ） */
   onGoTreasure?: () => void
 }
 
-type KilnPhase = 'select' | 'generating' | 'result' | 'saved'
+type CauldronPhase = 'select' | 'generating' | 'result' | 'saved'
 
 /** 結果プレビューの背景＝やわらかいパステル地（透過アイテムが映える・召喚と共通）。 */
 const PREVIEW_BG_STYLE: React.CSSProperties = {
   background: 'linear-gradient(to bottom, #dbeafe 0%, #ede9fe 45%, #d1fae5 100%)',
 }
 
-export default function KilnView({ onGoTreasure }: KilnViewProps) {
+export default function CauldronView({ onGoTreasure }: CauldronViewProps) {
   const characterId = useAppStore((s) => s.characterId)
   const items = useCodexStore((s) => s.items)
   const load = useCodexStore((s) => s.load)
@@ -41,7 +41,7 @@ export default function KilnView({ onGoTreasure }: KilnViewProps) {
   const { fire } = useShellFairy() // 合成成功→右下コレットが反応
 
   const [selected, setSelected] = useState<string[]>([])
-  const [phase, setPhase] = useState<KilnPhase>('select')
+  const [phase, setPhase] = useState<CauldronPhase>('select')
   const [result, setResult] = useState<GeneratedItem | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -68,7 +68,7 @@ export default function KilnView({ onGoTreasure }: KilnViewProps) {
 
   // 合成（撮り直しの「もう一回合成」と共通の生成本体）。
   const runSynthesis = useCallback(
-    async (onFailPhase: KilnPhase) => {
+    async (onFailPhase: CauldronPhase) => {
       const [a, b] = selectedItems
       if (!a || !b) return
       setPhase('generating')
@@ -132,9 +132,10 @@ export default function KilnView({ onGoTreasure }: KilnViewProps) {
 
   if (items.length < 2) {
     return (
-      <div className="flex flex-col items-center gap-2 py-8 text-center">
-        <p className="text-sm text-slate-500">合成にはアイテムが2つ以上必要だよ</p>
-        <p className="text-xs text-slate-400">図鑑から召喚して、アイテムを集めてこよう</p>
+      /* 部屋の絵の上に直接置くと読めないので、暗い絵に合わせた半透明の板に載せる。 */
+      <div className="mx-auto flex max-w-xs flex-col items-center gap-2 rounded-3xl bg-black/35 px-5 py-6 text-center backdrop-blur-sm">
+        <p className="text-sm font-bold text-white">合成にはアイテムが2つ以上必要だよ</p>
+        <p className="text-xs text-violet-200">図鑑から召喚して、アイテムを集めてこよう</p>
       </div>
     )
   }
@@ -161,7 +162,7 @@ export default function KilnView({ onGoTreasure }: KilnViewProps) {
           >
             合成する
           </button>
-          <p className="text-center text-xs text-slate-400">
+          <p className="text-center text-xs font-bold text-violet-100 drop-shadow-[0_1px_4px_rgba(0,0,0,0.6)]">
             {selected.length < 2 ? 'アイテムを2つえらんでね' : '2つを混ぜて新しいアイテムを作る？'}
           </p>
         </>
@@ -244,7 +245,7 @@ export default function KilnView({ onGoTreasure }: KilnViewProps) {
               type="button"
               onClick={handleReroll}
               disabled={saving}
-              className="rounded-full border border-slate-300 px-5 py-2 text-sm font-bold text-slate-500 transition active:scale-95 disabled:opacity-50"
+              className="rounded-full border border-white/40 bg-white/10 px-5 py-2 text-sm font-bold text-white backdrop-blur-sm transition active:scale-95 disabled:opacity-50"
             >
               もう一回合成
             </button>
@@ -252,7 +253,7 @@ export default function KilnView({ onGoTreasure }: KilnViewProps) {
               type="button"
               onClick={resetToSelect}
               disabled={saving}
-              className="rounded-full border border-slate-300 px-5 py-2 text-sm font-bold text-slate-500 transition active:scale-95 disabled:opacity-50"
+              className="rounded-full border border-white/40 bg-white/10 px-5 py-2 text-sm font-bold text-white backdrop-blur-sm transition active:scale-95 disabled:opacity-50"
             >
               素材を変える
             </button>
@@ -263,7 +264,7 @@ export default function KilnView({ onGoTreasure }: KilnViewProps) {
       {/* 保存後：たからばこへ誘導 */}
       {phase === 'saved' && (
         <div className="flex flex-col items-center gap-3 py-6 text-center">
-          <p className="flex items-center gap-1.5 text-sm font-bold text-slate-600">
+          <p className="flex items-center gap-1.5 text-sm font-bold text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.6)]">
             <SparkleIcon className="h-4 w-4 text-mint" />
             たからばこに増えたよ
           </p>
@@ -283,7 +284,7 @@ export default function KilnView({ onGoTreasure }: KilnViewProps) {
             <button
               type="button"
               onClick={resetToSelect}
-              className="rounded-full border border-slate-300 px-5 py-2 text-sm font-bold text-slate-500 transition active:scale-95"
+              className="rounded-full border border-white/40 bg-white/10 px-5 py-2 text-sm font-bold text-white backdrop-blur-sm transition active:scale-95"
             >
               つづけて合成
             </button>

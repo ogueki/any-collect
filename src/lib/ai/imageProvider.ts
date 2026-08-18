@@ -16,7 +16,7 @@ export interface GeneratedItem {
   category?: ItemCategory
   /**
    * 生まれたアイテムを見たコレットのひとこと（召喚後にホームで喋る分）。
-   * **無いことがある**＝合成（窯）は生成せず、召喚でもモデルが落としうる。
+   * **無いことがある**＝合成（釜）は生成せず、召喚でもモデルが落としうる。
    * 表示側は必ず固定セリフのフォールバックを持つこと。
    */
   comment?: string
@@ -32,6 +32,6 @@ export interface ImageGenProvider {
   /** 撮影画像から統一絵柄のアイテムアイコン＋名前＋説明を生成する */
   generateItem(photo: Blob, opts?: { personaId?: string }): Promise<GeneratedItem>
 
-  /** 2 つの素材を合成し、新しいアイテムを生成する（妖精の窯） */
+  /** 2 つの素材を合成し、新しいアイテムを生成する（妖精の釜） */
   synthesize(a: ItemRef, b: ItemRef, opts?: { personaId?: string }): Promise<GeneratedItem>
 }

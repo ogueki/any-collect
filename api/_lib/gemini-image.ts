@@ -39,7 +39,7 @@ interface GenerateSynthesisImageArgs {
   imageB: InlineImage
 }
 
-/** 2つのアイテムアイコンを融合して新アイテムアイコンを生成する（妖精の窯）。 */
+/** 2つのアイテムアイコンを融合して新アイテムアイコンを生成する（妖精の釜）。 */
 export async function generateSynthesisImage({
   apiKey,
   prompt,

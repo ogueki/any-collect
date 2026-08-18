@@ -28,7 +28,7 @@ import type { CollectionEntry, ItemCategory } from '../../types'
  *
  * 新IA（レイアウト再構成 ②）：図鑑は「召喚魔法」の起点でもある。まほうパワーが満タンの
  * ときだけ、図鑑エントリ1つ → 透過アイテムを Gemini で生成しコレットのたからばこに入れる
- * （旧 KilnView の単体化ロジックをここへ移設）。生成は成功時だけまほうパワーを消費・図鑑は消費しない。
+ * （旧 CauldronView の単体化ロジックをここへ移設）。生成は成功時だけまほうパワーを消費・図鑑は消費しない。
  */
 
 /** ISO 8601 を「2026/7/2」形式に。 */
@@ -433,7 +433,7 @@ export default function CollectionView() {
     // 角丸を落として内側に影を入れる＝「浮いたカード」でなく「紙の面」に見せる。
     // ⚠️ 明朝（font-zukan）を**ここに付けない**。この器の内側には詳細モーダル・召喚の待ち画面・
     // 結果プレビュー・オンボのリビールが入っており、ルートに付けると**コレットのセリフまで明朝**に
-    // なる（GeneratingOverlay は窯と共用なので入口によって見た目が変わる）。
+    // なる（GeneratingOverlay は釜と共用なので入口によって見た目が変わる）。
     // 明朝は「図鑑の中身（章見出しと標本カード）」だけに opt-in する。
     <div className="zukan-paper flex w-full max-w-md flex-col rounded-sm px-3 py-4 text-ink shadow-sheet">
       {/* 読み込み中 */}
